@@ -1,0 +1,120 @@
+\documentclass[paper=a4]{scrartcl}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{tensor}
+\usepackage{stmaryrd}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{csquotes}
+\usepackage{booktabs}
+\usepackage{tikz}
+\usepackage{cleveref}
+
+\renewcommand{\vec}{\boldsymbol}
+\newcommand{\avg}[1]{\{\!\{#1\}\!\}}
+\newcommand{\jump}[1]{\llbracket#1\rrbracket}
+
+% nice differentials
+% http://www.tug.org/TUGboat/Articles/tb18-1/tb54becc.pdf
+\makeatletter
+\providecommand*{\dd}%
+  {\@ifnextchar^{\DIfF}{\DIfF^{}}}
+\def\DIfF^#1{%
+  \mathop{\mathrm{\mathstrut d}}%
+    \nolimits^{#1}\gobblespace}
+\def\gobblespace{%
+  \futurelet\diffarg\opspace}
+\def\opspace{%
+  \let\DiffSpace\!%
+  \ifx\diffarg(%
+    \let\DiffSpace\relax
+  \else
+    \ifx\diffarg[%
+      \let\DiffSpace\relax
+    \else
+      \ifx\diffarg\{%
+        \let\DiffSpace\relax
+      \fi\fi\fi\DiffSpace}
+\providecommand*{\deriv}[3][]{%
+  \frac{\dd^{#1}#2}{\dd#3^{#1}}}
+\providecommand*{\pderiv}[3][]{%
+  \frac{\partial^{#1}#2}%
+    {\partial#3^{#1}}}
+\makeatother
+
+\DeclareMathOperator{\arcsinh}{arcsinh}
+
+\title{Rate and state}
+\author{Carsten Uphoff}
+
+\begin{document}
+
+\maketitle
+
+\section{Test problem}
+\begin{align}
+    0 &= \tau - \sigma_n a \arcsinh\left(
+        \dfrac{V}{2V_0}\exp\left(\dfrac{\psi}{a}\right)
+    \right) - \eta V\\
+    \deriv{\psi}{t} &= \dfrac{bV_0}{L}\left(\exp\left(\dfrac{f_0-\psi}{b}\right) - \dfrac{V}{V_0}\right)
+\end{align}
+
+\section{Manufactured solution}
+Let
+\begin{equation}
+    V^*(t) = \frac{1}{\pi}\left(\arctan\left(\frac{t-t_e}{t_w}\right) + \frac{\pi}{2}\right)
+\end{equation}
+
+\begin{equation}
+    \deriv{V^*}{t} = \frac{1}{\pi t_w}\frac{1}{\left(\frac{t-t_e}{t_w}\right)^2 + 1}
+\end{equation}
+
+Solve friction law for $\psi$:
+\begin{equation}
+    \psi^*(t) =
+        a \log\left(
+            \frac{2V_0}{V^*}\sinh\left(
+                \frac{\tau^* - \eta V^*}{a s_n}
+            \right)
+        \right)
+\end{equation}
+
+\begin{equation}
+    \deriv{\psi^*}{t} =
+    \frac{a\left(
+        \frac{2V_0}{Vas_n}\cosh\left(
+                \frac{\tau^* - \eta V^*}{a s_n}
+            \right)\left(\deriv{\tau^*}{t} - \eta\deriv{V^*}{t}\right)
+        -\frac{2V_0\deriv{V^*}{t}}{(V^*)^2}\sinh\left(
+                \frac{\tau^* - \eta V^*}{a s_n}
+            \right)
+    \right)}{\frac{2V_0}{V^*}\sinh\left(
+                \frac{\tau^* - \eta V^*}{a s_n}
+            \right)}
+\end{equation}
+
+State ODE:
+\begin{equation}
+    \deriv{\psi}{t} = \dfrac{bV_0}{L}\left(\exp\left(\dfrac{f_0-\psi}{b}\right) - \dfrac{V}{V_0}\right)
+    - \dfrac{bV_0}{L}\left(\exp\left(\dfrac{f_0-\psi^*}{b}\right) - \dfrac{V^*}{V_0}\right) + \deriv{\psi*}{t}
+\end{equation}
+
+\section{Bounds}
+
+Assume $\sigma_n, \tau > 0$. Let $V=\tau/\eta$. Then
+\begin{equation}
+    f(\tau/\eta) = - \sigma_n a \arcsinh\left(
+        \dfrac{\tau/\eta}{2V_0}\exp\left(\dfrac{\psi}{a}\right)
+    \right) < 0
+\end{equation}
+Let $V=-\tau/\eta$.
+\begin{equation}
+    f(-\tau/\eta) = 2\tau - \sigma_n a \arcsinh\left(
+        \dfrac{-\tau/\eta}{2V_0}\exp\left(\dfrac{\psi}{a}\right)
+    \right) > 0
+\end{equation}
+(If $\tau < 0$ the situation reverses, if $\tau = 0$ then $V=0$ is a zero of $f$.)
+
+Therefore we may use $[-\tau/\eta, \tau/\eta]$ as bisection interval.
+
+\end{document}

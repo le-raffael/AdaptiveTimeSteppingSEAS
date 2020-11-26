@@ -1,0 +1,225 @@
+\documentclass[paper=a4]{scrartcl}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{tensor}
+\usepackage{stmaryrd}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{csquotes}
+\usepackage{booktabs}
+\usepackage{tikz}
+\usepackage{cleveref}
+
+\renewcommand{\vec}{\boldsymbol}
+\newcommand{\avg}[1]{\{\!\{#1\}\!\}}
+\newcommand{\jump}[1]{\llbracket#1\rrbracket}
+
+% nice differentials
+% http://www.tug.org/TUGboat/Articles/tb18-1/tb54becc.pdf
+\makeatletter
+\providecommand*{\dd}%
+  {\@ifnextchar^{\DIfF}{\DIfF^{}}}
+\def\DIfF^#1{%
+  \mathop{\mathrm{\mathstrut d}}%
+    \nolimits^{#1}\gobblespace}
+\def\gobblespace{%
+  \futurelet\diffarg\opspace}
+\def\opspace{%
+  \let\DiffSpace\!%
+  \ifx\diffarg(%
+    \let\DiffSpace\relax
+  \else
+    \ifx\diffarg[%
+      \let\DiffSpace\relax
+    \else
+      \ifx\diffarg\{%
+        \let\DiffSpace\relax
+      \fi\fi\fi\DiffSpace}
+\providecommand*{\deriv}[3][]{%
+  \frac{\dd^{#1}#2}{\dd#3^{#1}}}
+\providecommand*{\pderiv}[3][]{%
+  \frac{\partial^{#1}#2}%
+    {\partial#3^{#1}}}
+\makeatother
+
+\DeclareMathOperator{\arcsinh}{arcsinh}
+
+\title{Rate and state}
+\author{Carsten Uphoff}
+
+\begin{document}
+
+\maketitle
+
+\section{Test problem}
+\begin{align}
+    0 &= \tau - \sigma_n a \arcsinh\left(
+        \dfrac{V}{2V_0}\exp\left(\dfrac{f_0 + b\log(V_0\psi/L)}{a}\right)
+    \right) - \eta V\\
+    \deriv{\psi}{t} &= 1 - \dfrac{V\psi}{L}
+\end{align}
+
+\section{Manufactured solution}
+Let
+\begin{equation}
+    V^*(t) = \frac{1}{\pi}\left(\arctan\left(\frac{t-t_e}{t_w}\right) + \frac{\pi}{2}\right)
+\end{equation}
+
+\begin{equation}
+    \deriv{V^*}{t} = \frac{1}{\pi t_w}\frac{1}{\left(\frac{t-t_e}{t_w}\right)^2 + 1}
+\end{equation}
+
+Solve friction law for $\psi$:
+\begin{equation}
+    \psi^*(t) = \frac{L}{V_0} \exp\left(
+        \frac{a}{b} \log\left(
+            \frac{2V_0}{V}\sinh\left(
+                \frac{\tau - \eta V}{a s_n}
+            \right)
+        \right)
+        - \frac{f_0}{b}
+    \right)
+\end{equation}
+
+\begin{multline}
+    \deriv{\psi^*}{t} = \frac{aV\frac{L}{V_0} \exp\left(
+        \frac{a}{b} \log\left(
+            \frac{2V_0}{V}\sinh\left(
+                \frac{\tau - \eta V}{a s_n}
+            \right)
+        \right)
+        - \frac{f_0}{b}
+    \right)}{
+        2bV_0\sinh\left(
+            \frac{\tau - \eta V}{a s_n}
+        \right)
+    }\\ \times
+    \left(
+        \frac{2V_0}{Vas_n}\cosh\left(
+            \frac{\tau - \eta V}{a s_n}
+        \right)\left(\deriv{\tau}{t} - \eta \deriv{V}{t}\right)
+        -\frac{2V_0 \deriv{V}{t}}{V^2}\sinh\left(
+            \frac{\tau - \eta V}{a s_n}
+        \right)
+    \right)
+\end{multline}
+
+State ODE:
+\begin{equation}
+    \deriv{\psi}{t} = 1 - \frac{V\psi}{L} - \left(1 - \frac{V^*\psi^*}{L}\right) + \deriv{\psi*}{t}
+\end{equation}
+
+\section{Bounds}
+
+Assume $\sigma_n, \tau > 0$. Let $V=\tau/\eta$. Then
+\begin{equation}
+    f(\tau/\eta) = - \sigma_n a \arcsinh\left(
+        \dfrac{\tau/\eta}{2V_0}\exp\left(\dfrac{f_0 + b\log(V_0\psi/L}{a}\right)
+    \right) < 0
+\end{equation}
+Let $V=-\tau/\eta$.
+\begin{equation}
+    f(-\tau/\eta) = 2\tau - \sigma_n a \arcsinh\left(
+        \dfrac{-\tau/\eta}{2V_0}\exp\left(\dfrac{f_0 + b\log(V_0\psi/L}{a}\right)
+    \right) > 0
+\end{equation}
+(If $\tau < 0$ the situation reverses, if $\tau = 0$ then $V=0$ is a zero of $f$.)
+
+Therefore we may use $[-\tau/\eta, \tau/\eta]$ as bisection interval.
+
+\section{Steady state}
+Let 
+\begin{align}
+    0 &= \tau - \sigma_n a \arcsinh\left(
+        \dfrac{V}{2V_0}\exp\left(\dfrac{f_0 + b\log(V_0\psi/L)}{a}\right)
+    \right) \\
+    0 &= 1 - \dfrac{V\psi}{L}
+\end{align}
+Steady state is
+\begin{equation}
+    \psi_{ss}(V, \tau) = \frac{L}{V}
+\end{equation}
+\begin{equation}
+    \tau_{ss}(V) = \sigma_n a\arcsinh\left(
+        \frac{V}{2V_0}\exp\left(\frac{b\log(V_0/V) + f_0}{a}\right)
+    \right)
+\end{equation}
+\begin{equation}
+    \deriv{\tau_{ss}}{V} = \sigma_n
+    \dfrac{\exp\left(\frac{b\log(V_0/V) + f_0}{a}\right)
+           (a - b)}
+          {2V_0\sqrt{\exp\left(\frac{2b\log(V_0/V) + 2f_0}{a}\right)V^2/(4V_0^2) + 1}}
+\end{equation}
+
+\section{Critical sizes (Lapusta)}
+Take
+\begin{align}
+    0 &= \tau - \sigma_n \left(f_0 + a\log\dfrac{V}{V_0} + b\log\dfrac{V_0\psi}{L}\right) \\
+    0 &= 1 - \dfrac{V\psi}{L}
+\end{align}
+Steady state is
+\begin{align}
+    \psi_{ss}(V) &= \frac{L}{V} \\
+    \tau_{ss}(V) &= \sigma_n \left(f_0 + a\log\dfrac{V}{V_0} + b\log\dfrac{V_0}{V}\right) \\
+    \deriv{\tau{ss}}{V} &= \sigma_n \left(a\dfrac{1}{V} - b\dfrac{1}{V}\right)
+\end{align}
+Critical size is
+\begin{equation}
+    h^* = \dfrac{\gamma\mu L}{\sigma_n(b-a)}
+\end{equation}
+For the time-step we need
+\begin{align}
+    A^* &= \sigma_n a \\
+    B^* - A^* &= \sigma_n(a-b) \\
+    \chi &= \dfrac{1}{4}\dfrac{B^*-A^*}{A^*}\left(\dfrac{h^*}{h} - 1\right)^2 - \dfrac{h^*}{h} \\
+    \Delta t &< \left\{\begin{array}{rcl}
+        \dfrac{L}{V}\dfrac{A^*}{(B^*-A^*)(h^*/h-1)} & \text{ if } & \chi > 0 \\
+        \dfrac{L}{V}(1-h/h^*) & \text{ if } & \chi < 0
+    \end{array}\right.
+\end{align}
+
+\section{Time-stepping elastodynamics}
+Let the semi-discrete form be given by
+\begin{equation}
+    \ddot{u}_p = b_p(\vec{S}(t)) - \hat{K}_{pq}u_q
+\end{equation}
+First order form is
+\begin{align*}
+    \dot{u}_p &= v_p \\
+    \dot{v}_p &= b_p(\vec{S}(t)) - \hat{K}_{pq}u_q
+\end{align*}
+Lets compactly write
+\begin{align*}
+    \dot{y}_p &= c_p(\vec{S}(t)) - G_{pq}y_p,
+\end{align*}
+where
+\begin{equation*}
+    \vec{y} = \begin{pmatrix}\vec{u} \\ \vec{v}\end{pmatrix}, \quad
+    \vec{c} = \begin{pmatrix}0 \\ \vec{b}\end{pmatrix}, \quad
+    G = \begin{pmatrix}
+        0 & -I \\
+        \hat{K} & 0
+    \end{pmatrix}
+\end{equation*}
+
+The Runge-Kutta method is
+\begin{align}
+    y_p^{n+1} &= y_p^n + h b_j k_{pj} \\
+    k_{pi} &= c_p(\vec{S}(t_n + hc_i)) - G_{pq} (1_iy_p^n + h a_{ij} k_{pj})
+\end{align}
+Collecting $k$ on the LHS gives
+\begin{equation*}
+    k_{pi} + h a_{ij} G_{pq} k_{pj} = c_p(\vec{S}(t_n + hc_i)) - 1_iG_{pq} y_p^n
+\end{equation*}
+Obviously,
+\begin{equation*}
+    \underbrace{(\delta_{ij} + h a_{ij})}_{=:\alpha_{ij}} G_{pq} k_{pj} = c_p(\vec{S}(t_n + hc_i)) - 1_iG_{pq} y_p^n
+\end{equation*}
+Multiply with $\alpha^{-1}_{si}$, which should exist (?), to obtain
+\begin{equation*}
+    G_{pq} k_{ps} = \alpha^{-1}_{si} c_p(\vec{S}(t_n + hc_i)) - (\alpha^{-1}_{si}1_i)G_{pq} y_p^n
+\end{equation*}
+
+
+\end{document}
+

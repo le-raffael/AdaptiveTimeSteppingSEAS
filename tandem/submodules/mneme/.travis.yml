@@ -1,0 +1,21 @@
+notifications:
+  email:
+    on_success: always
+    on_failure: always
+
+language: cpp
+compiler: gcc
+dist: bionic
+env:
+  - "CC=gcc-9 CXX=g++-9"
+
+before_install:
+  - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+  - sudo apt-get update
+  - sudo apt-get -y install gcc-9 g++-9 cmake clang-tidy
+script:
+  - mkdir build && cd build
+  - cmake "-DCMAKE_CXX_CLANG_TIDY=clang-tidy;-checks=clang-analyzer-*,bugprone-*,modernize-*,openmp-*,performance-*,portability-*,readability-*,-readability-magic-numbers,-readability-named-parameter" ..
+  - make -j2
+  - make test
+

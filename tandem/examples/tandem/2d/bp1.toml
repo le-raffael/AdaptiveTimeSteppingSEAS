@@ -1,0 +1,25 @@
+final_time = 31536000000
+mesh_file = "bp1.msh"
+
+[seas]
+type = "poisson"
+lib = "bp1.lua"
+boundary = "boundary"
+mu = "mu"
+ref_normal = [1, 0]
+
+[friction]
+lib = "bp1.lua"
+a = "a"
+eta = "eta"
+sn_pre = "sn_pre"
+tau_pre = "tau_pre"
+Vinit = "Vinit"
+    [friction.constant]
+    b = 0.015
+    V0 = 1.0e-6
+    L = 0.008
+    f0 = 0.6
+
+[output]
+prefix = "bp1"

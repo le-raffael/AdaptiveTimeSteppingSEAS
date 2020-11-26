@@ -1,0 +1,17 @@
+# Eclipse stuff
+.cproject
+.project
+.settings
+.pydevproject
+
+# KDevelop
+*.kdev4
+
+# SCons stuff
+.sconf_temp/
+.sconsign.dblite
+config.log
+*.pyc
+
+# Build directory
+test/build
