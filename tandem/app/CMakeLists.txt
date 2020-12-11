@@ -142,3 +142,15 @@ add_executable(tandem
     tandem.cpp)
 target_link_libraries(tandem PRIVATE app-common)
 target_include_directories(tandem PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
+
+
+# Jacobian test
+add_executable(testJacobian
+    tandem/RateAndStateBase.cpp
+    tandem/SeasAdapterBase.cpp
+    tandem/SeasElasticityAdapter.cpp
+    tandem/SeasPoissonAdapter.cpp
+    tandem/SEAS.cpp
+    testJacobian.cpp)
+target_link_libraries(testJacobian PRIVATE app-common)
+target_include_directories(testJacobian PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR})

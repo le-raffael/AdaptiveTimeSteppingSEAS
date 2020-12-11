@@ -83,7 +83,7 @@ void solve_seas_problem(LocalSimplexMesh<DomainDimension> const& mesh, Config co
     }
     if (scenario.boundary()) {
         seasop->set_boundary(*scenario.boundary());
-    }
+    } 
 
     auto ts = PetscTimeSolver(*seasop);
 

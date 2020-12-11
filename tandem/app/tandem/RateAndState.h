@@ -11,6 +11,7 @@
 #include <cstddef>
 #include <functional>
 #include <optional>
+#include <iostream>
 
 namespace tndm {
 

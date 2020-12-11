@@ -7,6 +7,7 @@
 #include <petscsystypes.h>
 #include <petscts.h>
 #include <petscvec.h>
+#include <iostream>
 
 #include <memory>
 

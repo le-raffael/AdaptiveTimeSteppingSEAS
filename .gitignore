@@ -13,3 +13,5 @@ _deps
 *.vtk
 *.csv
 *.ipynb_checkpoints*
+build/
+results/

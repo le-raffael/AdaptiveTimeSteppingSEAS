@@ -101,6 +101,7 @@ public:
         adapter_->end_traction();
         state.end_access_readonly(in_handle);
         result.end_access(out_handle);
+        evaluation_rhs_count++;
     }
 
     template <typename BlockVector> auto state(BlockVector& vector) {
@@ -127,6 +128,10 @@ public:
 
     void set_boundary(time_functional_t fun) { adapter_->set_boundary(std::move(fun)); }
 
+    void reset_rhs_count() { evaluation_rhs_count = 0; };
+
+    size_t rhs_count() {return evaluation_rhs_count; };
+
     double VMax() const { return VMax_; }
     LocalOperator& lop() { return *lop_; }
 
@@ -140,6 +145,7 @@ private:
     std::unique_ptr<double[]> scratch_mem_;
     std::size_t scratch_size_;
     double VMax_ = 0.0;
+    size_t evaluation_rhs_count = 0;
 };
 
 } // namespace tndm
