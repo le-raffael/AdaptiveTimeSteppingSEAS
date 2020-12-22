@@ -28,8 +28,23 @@ public:
         double Sinit;
     };
 
+    /**
+     * resize the local parameter array
+     * @param num_nodes number of nodes on the fault
+     */
     void set_num_nodes(std::size_t num_nodes) { p_.resize(num_nodes); }
+
+    /**
+     * Set global parameters
+     * @param params parameters
+     */
     void set_constant_params(ConstantParams const& params) { cp_ = params; }
+
+    /**
+     * Set local parameters
+     * @param index of the current node
+     * @param params local parameters at this node
+     */
     void set_params(std::size_t index, Params const& params) {
         p_[index].get<A>() = params.a;
         p_[index].get<Eta>() = params.eta;
@@ -39,6 +54,13 @@ public:
         p_[index].get<Sinit>() = params.Sinit;
     }
 
+    /**
+     * Initialize the state variable
+     * @param index of the current node
+     * @param sn sigma_n parameter at current node
+     * @param tau tau parameter at current node
+     * @return psi_init at the current node
+     */
     double psi_init(std::size_t index, double sn, double tau) const {
         double snAbs = sn + p_[index].get<SnPre>();
         auto tauAbs = tau + p_[index].get<TauPre>();
@@ -50,10 +72,67 @@ public:
         return a * l;
     }
 
+    /**
+     * get sn_pre
+     * @param index of the current node
+     * @return sn_pre at this node
+     * */
     double sn_pre(std::size_t index) const { return p_[index].get<SnPre>(); }
+
+    /**
+     * get tau_pre
+     * @param index of the current node
+     * @return tau_pre at this node
+     * */
     double tau_pre(std::size_t index) const { return p_[index].get<TauPre>(); }
+
+
+    /**
+     * get initial slip
+     * @param index of the current node
+     * @return slip at this node
+     * */
     double S_init(std::size_t index) const { return p_[index].get<Sinit>(); }
 
+
+    /**
+     * calculate the derivative df/dpsi of the algebraic equation f(V,psi)=0 w.r.t to the state variable
+     * @param index of the current node
+     * @param sn at the current node
+     * @param V slip rate at the current node
+     * @param psi state variable at the current node
+     * @return deriviative df/dpsi
+     * */
+    double df_dpsi(std::size_t index, double sn, double V, double psi){
+        auto eta = p_[index].get<Eta>();
+        auto a = p_[index].get<A>();
+        double snAbs = sn + p_[index].get<SnPre>();
+        return -snAbs * asinh(V / (2.0 * cp_.V0)) * exp(psi / a) - eta;
+    }
+
+    /**
+     * calculate the derivative df/dV of the algebraic equation f(V,psi)=0 w.r.t to the slip rate
+     * @param index of the current node
+     * @param sn at the current node
+     * @param V slip rate at the current node
+     * @param psi state variable at the current node
+     * @return deriviative df/dV
+     * */
+    double df_dV(std::size_t index, double sn, double V, double psi){
+        auto a = p_[index].get<A>();
+        double snAbs = sn + p_[index].get<SnPre>();
+        double twoV0 = 2.0 * cp_.V0;
+        return -snAbs * a / (twoV0 * sqrt(V * V / (twoV0 * twoV0) + 1)) * exp(psi / a);
+    }
+
+    /**
+     * Solve the algebraic equation f(V,psi) = 0 for the slip rate
+     * @param index of the current node
+     * @param sn at the current node
+     * @param tau at the current node
+     * @param psi state variable at the current node
+     * @return slip rate
+     * */
     double slip_rate(std::size_t index, double sn, double tau, double psi) const {
         auto eta = p_[index].get<Eta>();
         double tauAbs = tau + p_[index].get<TauPre>();
@@ -68,11 +147,27 @@ public:
         return zeroIn(a, b, fF);
     }
 
+    /**
+     * Evaluate the rhs of the state variable dpsi/dt = g(psi, V)
+     * @param index of the current node
+     * @param V slip rate at the current node
+     * @param psi state variable at the current node
+     * @return rhs of the state variable ODE
+     * */
     double state_rhs(std::size_t index, double V, double psi) const {
         return cp_.b * cp_.V0 / cp_.L * (exp((cp_.f0 - psi) / cp_.b) - V / cp_.V0);
     }
 
 private:
+    /**
+     * Evaluate the algebraic function f(psi,V)
+     * @param index of the current node
+     * @param sn at the current node
+     * @param tau at the current node
+     * @param V slip rate at the current node
+     * @param psi state variable at the current node
+     * @return value of f(psi,V) for the given parameters
+     * */
     double F(std::size_t index, double sn, double tau, double V, double psi) const {
         double snAbs = sn + p_[index].get<SnPre>();
         double tauAbs = tau + p_[index].get<TauPre>();

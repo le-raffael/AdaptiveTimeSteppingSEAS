@@ -150,7 +150,7 @@ add_executable(testJacobian
     tandem/SeasAdapterBase.cpp
     tandem/SeasElasticityAdapter.cpp
     tandem/SeasPoissonAdapter.cpp
-    tandem/SEAS.cpp
+    tandem/testJacobianScript.cpp
     testJacobian.cpp)
 target_link_libraries(testJacobian PRIVATE app-common)
 target_include_directories(testJacobian PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR})

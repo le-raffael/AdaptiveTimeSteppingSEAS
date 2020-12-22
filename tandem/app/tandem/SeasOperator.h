@@ -19,10 +19,18 @@ namespace tndm {
 
 template <typename LocalOperator, typename SeasAdapter> class SeasOperator {
 public:
+
     constexpr static std::size_t Dim = SeasAdapter::Dim;
+
     constexpr static std::size_t NumQuantities = SeasAdapter::NumQuantities;
+
     using time_functional_t = typename SeasAdapter::time_functional_t;
 
+    /**
+     * Creator function, prepare all operators
+     * @param localOperator method to solve the fault (e.g. rate and state)
+     * @param seas_adapter handler for the space domain (e.g. discontinuous Galerkin with Poisson/Elasticity solver)
+     */
     SeasOperator(std::unique_ptr<LocalOperator> localOperator,
                  std::unique_ptr<SeasAdapter> seas_adapter)
         : lop_(std::move(localOperator)), adapter_(std::move(seas_adapter)) {
@@ -45,12 +53,12 @@ public:
         lop_->end_preparation();
     }
 
-    std::size_t block_size() const { return lop_->block_size(); }
-    std::size_t numLocalElements() const { return adapter_->faultMap().size(); }
-    MPI_Comm comm() const { return adapter_->topo().comm(); }
-    BoundaryMap const& faultMap() const { return adapter_->faultMap(); }
-    SeasAdapter const& adapter() const { return *adapter_; }
-
+    /**
+     * Initialize the system 
+     *  - apply initial conditions on the local operator
+     *  - solve the system once
+     * @param vector solution vector to be initialized (has a block vector format)
+     */
     template <class BlockVector> void initial_condition(BlockVector& vector) {
         auto scratch = make_scratch();
         auto access_handle = vector.begin_access();
@@ -78,6 +86,14 @@ public:
         vector.end_access(access_handle);
     }
 
+    /**
+     * Solve the system for a given timestep
+     *  - first solve the DG problem
+     *  - then solve the ODE in the rate and state problem
+     * @param time current simulation time
+     * @param state current solution vector
+     * @param result next solution vector (to be filled in the execution of the function)
+     */
     template <typename BlockVector> void rhs(double time, BlockVector& state, BlockVector& result) {
         adapter_->solve(time, state);
 
@@ -104,6 +120,11 @@ public:
         evaluation_rhs_count++;
     }
 
+    /**
+     * write solution vector to Finite difference format (see state() in rate and state)
+     * @param solution vector in block format
+     * @return finite difference object with the solution
+     */
     template <typename BlockVector> auto state(BlockVector& vector) {
         auto soln = lop_->state_prototype(numLocalElements());
         auto& values = soln.values();
@@ -126,26 +147,51 @@ public:
         return soln;
     }
 
+    /**
+     * see SeasXXXXAdapter -> set_boundary
+     * @param fun functional to be used at the boundary
+     */
     void set_boundary(time_functional_t fun) { adapter_->set_boundary(std::move(fun)); }
 
+    /**
+     * Puts the counter of the number of evaluations of the right-hand side to zero
+     */
     void reset_rhs_count() { evaluation_rhs_count = 0; };
+
+    /**
+     *  Getter functions
+     */
+    std::size_t block_size() const { return lop_->block_size(); }
+    
+    MPI_Comm comm() const { return adapter_->topo().comm(); }
+    
+    BoundaryMap const& faultMap() const { return adapter_->faultMap(); }
+    
+    std::size_t numLocalElements() const { return adapter_->faultMap().size(); }
+
+    SeasAdapter& adapter() const { return *adapter_; }
 
     size_t rhs_count() {return evaluation_rhs_count; };
 
     double VMax() const { return VMax_; }
-    LocalOperator& lop() { return *lop_; }
+    
+    LocalOperator& lop() {return *lop_; }
 
-private:
+    /**
+     * Allocate memory in scratch
+     */
     auto make_scratch() const {
         return LinearAllocator<double>(scratch_mem_.get(), scratch_mem_.get() + scratch_size_);
     }
 
-    std::unique_ptr<LocalOperator> lop_;
-    std::unique_ptr<SeasAdapter> adapter_;
-    std::unique_ptr<double[]> scratch_mem_;
-    std::size_t scratch_size_;
-    double VMax_ = 0.0;
-    size_t evaluation_rhs_count = 0;
+    private:
+
+    std::unique_ptr<LocalOperator> lop_;    // on fault: rate and state instance (handles ageing law and slip_rate)
+    std::unique_ptr<SeasAdapter> adapter_;  // on domain: DG solver (handles traction and mechanical solver)
+    std::unique_ptr<double[]> scratch_mem_; // memory allocated, not sure for what
+    std::size_t scratch_size_;              // size of this memory
+    double VMax_ = 0.0;                     // metrics: maximal velocity among all fault elements
+    size_t evaluation_rhs_count = 0;        // metrics: counts the number of calls of the rhs function in one time step
 };
 
 } // namespace tndm

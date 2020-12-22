@@ -17,7 +17,7 @@ def add(generator, dim, nbf, Nbf, nq, Nq):
 
     generator.add('project_K', K['p'] <= matMinv['pk'] * K_Q['q'] * Em['qk'] * W['q'])
 
-    generator.add('assembleVolume', [
+    generator.add('assembleVolume', [ 
         D_x['kiq'] <= G['eiq'] * D_xi['keq'],
         A['kl'] <= J['q'] * W['q'] * K['m'] * Em['qm'] * D_x['kiq'] * D_x['liq']
     ])
@@ -80,3 +80,24 @@ def add(generator, dim, nbf, Nbf, nq, Nq):
         grad_u['pq'] <= d_x[0]['lpq'] * u[0]['l'] +
                         c0[0] * (e[0]['lq'] * u[0]['l'] - f_q['q']) * n_unit_q['pq']
     ])
+
+    # derivative of the gradient
+    Dgrad_u_Du = Tensor('Dgrad_u_Du', (dim, nq, Nbf))
+    generator.add('Dgrad_u_Du', [
+        d_x[0]['kiq'] <= k[0]['m'] * em[0]['qm'] * g[0]['eiq'] * d_xi[0]['keq'],
+        d_x[1]['kiq'] <= k[1]['m'] * em[1]['qm'] * g[1]['eiq'] * d_xi[1]['keq'],
+        Dgrad_u_Du['pqk'] <= 0.5 * (d_x[0]['kpq'] + d_x[1]['kpq']) +
+                       c0[0] * (e[0]['kq'] - e[1]['kq']) * n_unit_q['pq']
+#        Dgrad_u_Du['pqk'] <= 0.5 * (d_x[0]['kpq'] + d_x[1]['kpq'])
+    ])
+
+    Dgrad_u_Du_bnd = Tensor('Dgrad_u_Du_bnd', (dim, nq, Nbf))
+    generator.add('Dgrad_u_Du_bnd', [
+        d_x[0]['kiq'] <= k[0]['m'] * em[0]['qm'] * g[0]['eiq'] * d_xi[0]['keq'],
+        Dgrad_u_Du['pqk'] <= d_x[0]['kpq'] +
+                       c0[0] * e[0]['kq'] * n_unit_q['pq']
+#        Dgrad_u_Du['pqk'] <= 0.5 * (d_x[0]['kpq'] + d_x[1]['kpq'])
+    ])
+
+
+

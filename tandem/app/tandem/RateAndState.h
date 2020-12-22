@@ -24,9 +24,17 @@ public:
     using source_fun_t =
         std::function<std::array<double, 1>(std::array<double, DomainDimension + 1> const&)>;
 
+    /**
+     * Initialize global parameters (V0, b, L, f0)
+     * @param cps parameters
+     */
     void set_constant_params(typename Law::ConstantParams const& cps) {
         law_.set_constant_params(cps);
     }
+
+    /**
+     * Initialize local parameters (a, eta, sn_pre, tau_pre, V_init, S_init)
+     */
     void set_params(param_fun_t pfun) {
         auto num_nodes = fault_.storage().size();
         law_.set_num_nodes(num_nodes);
@@ -36,16 +44,63 @@ public:
         }
     }
 
+    /**
+     * Set source functional??
+     * @param source functional
+     */
     void set_source_fun(source_fun_t source) { source_ = std::make_optional(std::move(source)); }
 
+    /**
+     * Set initial slip to the state vector
+     * @param faultNo index of th curent fault
+     * @param state current solution vector
+     * @param . some scratch
+     */
     void pre_init(std::size_t faultNo, Vector<double>& state, LinearAllocator<double>&) const;
+
+
+    /**
+     * Set initial state variable
+     * @param faultNo index of the current fault
+     * @param traction matrix with sigma and tau at all nodes in the element
+     * @param state current solution vector
+     * @param . some scratch
+     * */
     void init(std::size_t faultNo, Matrix<double> const& traction, Vector<double>& state,
               LinearAllocator<double>&) const;
 
+    /**
+     * Evaluate the rhs of the ODE 
+     * - first solve the algebraic equation f(V, psi) = 0 for the slip rate
+     * - assign the derivative of dS_dt = V
+     * - assign the derivative of dpsi_dt = g(V, psi)
+     * @param faultNo index of the current fault
+     * @param traction matrix with sigma and tau at all nodes in the element
+     * @param state current solution vector
+     * @param result vector with the right hand side of the ODE dstate_dt
+     * @param . some scratch
+     * @return the maximal velocity encountered in this element
+     * */
     double rhs(std::size_t faultNo, double time, Matrix<double> const& traction,
                Vector<double const>& state, Vector<double>& result, LinearAllocator<double>&) const;
+
+
+    /**
+     * Extract some values from the current state
+     * @param faultNo index of the current fault
+     * @param state current solution vector
+     * @param traction matrix with sigma and tau at all nodes in the element
+     * @param result matrix with rows: nbf and cols: [psi, S, tau, V, sn]
+     * @param . some scratch
+     */
     void state(std::size_t faultNo, Matrix<double> const& traction, Vector<double const>& state,
                Matrix<double>& result, LinearAllocator<double>&) const;
+
+    /**
+     * get the ageing law
+     * @return law 
+     */
+    Law& getLaw(){return law_;}
 
 private:
     Law law_;

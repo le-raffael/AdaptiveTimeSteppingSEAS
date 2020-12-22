@@ -139,6 +139,7 @@ Tensor(real_t*, TensorBase<T> const&) -> Tensor<real_t, detail::traits<T>::Dim>;
 
 template <typename real_t> using Vector = Tensor<real_t, 1u>;
 template <typename real_t> using Matrix = Tensor<real_t, 2u>;
+template <typename real_t> using Tensor3 = Tensor<real_t, 3u>;
 
 namespace detail {
 

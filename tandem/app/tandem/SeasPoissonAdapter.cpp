@@ -75,4 +75,35 @@ void SeasPoissonAdapter::traction(std::size_t faultNo, Matrix<double>& traction,
     krnl.execute();
 }
 
+
+
+void SeasPoissonAdapter::dtau_du(std::size_t faultNo, Matrix<double>& dtau_du, 
+                                LinearAllocator<double>&) const {
+
+    double Dgrad_u_Du_raw[poisson::tensor::Dgrad_u_Du::Size];
+    auto tensorBase =  TensorBase<Tensor3<double>>(poisson::tensor::Dgrad_u_Du::Shape[0], poisson::tensor::Dgrad_u_Du::Shape[1], poisson::tensor::Dgrad_u_Du::Shape[2]);
+    auto Dgrad_u_Du = Tensor3<double>(Dgrad_u_Du_raw, tensorBase);
+
+    assert(Dgrad_u_Du.size() == poisson::tensor::Dgrad_u_Du::Size);
+
+    auto fctNo = faultMap_.fctNo(faultNo);
+    auto const& info = dgop_->topo().info(fctNo);
+    auto u0 = linear_solver_.x().get_block(handle_, info.up[0]);
+    auto u1 = linear_solver_.x().get_block(handle_, info.up[1]);
+    if (info.up[0] == info.up[1]) {
+        dgop_->lop().derivative_traction_boundary(fctNo, info, Dgrad_u_Du);    
+//        std::fill(Dgrad_u_Du.data(), Dgrad_u_Du.data() + Dgrad_u_Du.size(), 0.0);   // both sides are the same, derivative of the gradient is 0
+    } else {
+        dgop_->lop().derivative_traction_skeleton(fctNo, info, Dgrad_u_Du);    
+    }
+    poisson_adapter::kernel::evaluate_derivative_traction krnl;
+    krnl.e_q_T = e_q_T.data();
+    krnl.Dgrad_u_Du = Dgrad_u_Du_raw;
+    krnl.minv = minv.data();
+    krnl.dtau_du = &dtau_du(0, 0);
+    krnl.n_unit_q = fault_[faultNo].template get<UnitNormal>().data()->data();
+    krnl.w = dgop_->lop().facetQuadratureRule().weights().data();
+    krnl.execute(); 
+}
+
 } // namespace tndm

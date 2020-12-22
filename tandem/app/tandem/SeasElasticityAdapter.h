@@ -75,7 +75,11 @@ public:
     void end_traction() { linear_solver_.x().end_access_readonly(handle_); }
 
     auto displacement() const { return dgop_->solution(linear_solver_.x()); }
+
     std::size_t numLocalElements() const { return dgop_->numLocalElements(); }
+
+    auto& getSolutionLinearSystem(){ return linear_solver_.x();}
+
 
 private:
     void slip(std::size_t faultNo, Vector<double const>& state, Matrix<double>& s_q) const;
