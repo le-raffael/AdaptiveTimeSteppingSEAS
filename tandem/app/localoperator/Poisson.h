@@ -51,12 +51,56 @@ public:
     bool assemble_boundary(std::size_t fctNo, FacetInfo const& info, Matrix<double>& A00,
                            LinearAllocator<double>& scratch) const;
 
+    /**
+     * Evaluate the vector b of Au - b = 0 for the inner quadrature points of the elements
+     * @param fctNo index of the element among all in the space
+     * @param B rhs vector b
+     * @param scratch some spare memory
+     */
     bool rhs_volume(std::size_t elNo, Vector<double>& B, LinearAllocator<double>& scratch) const;
 
+    /**
+     * Evaluate the vector b of Au - b = 0 on all facet quadrature points of an element 
+     * @param fctNo index of the element among all in the space
+     * @param info contains info about the type of the facet (e.g. DBC, fault)
+     * @param B0 vector on one side of the facet
+     * @param B1 vector on the other side of the facet
+     * @param scratch some spare memory
+     */
     bool rhs_skeleton(std::size_t fctNo, FacetInfo const& info, Vector<double>& B0,
                       Vector<double>& B1, LinearAllocator<double>& scratch) const;
 
+    /**
+     * Evaluate the vector b of Au - b = 0 for the facets facet quadrature points of an element
+     * on the fault if the fault is inside the domain (non symmetric setting) 
+     * @param fctNo index of the element among all in the space
+     * @param info contains info about the type of the facet (e.g. DBC, fault)
+     * @param B0 vector on one side of the fault
+     * @param B1 vector on the other side of the fault
+     * @param scratch some spare memory
+     */
+    bool rhs_skeleton_only_slip(std::size_t fctNo, FacetInfo const& info, Vector<double>& B0,
+                      Vector<double>& B1, LinearAllocator<double>& scratch) const;
+
+    /**
+     * Evaluate the vector b of Au - b = 0 on all facet quadrature points of an element at 
+     * the domain boundary
+     * @param fctNo index of the element among all in the space
+     * @param info contains info about the type of the facet (e.g. DBC, fault)
+     * @param B0 vector on the domain boundary
+     * @param scratch some spare memory
+     */
     bool rhs_boundary(std::size_t fctNo, FacetInfo const& info, Vector<double>& B0,
+                      LinearAllocator<double>& scratch) const;
+    /**
+     * Evaluate the vector b of Au - b = 0 for the facets facet quadrature points of an element
+     * on the fault if the fault is at the domain boundary (symmetric setting) 
+     * @param fctNo index of the element among all in the space
+     * @param info contains info about the type of the facet (e.g. DBC, fault)
+     * @param B0 vector on the boundary fault 
+     * @param scratch some spare memory
+     */
+    bool rhs_boundary_only_slip(std::size_t fctNo, FacetInfo const& info, Vector<double>& B0,
                       LinearAllocator<double>& scratch) const;
 
     /**
@@ -102,6 +146,11 @@ public:
      * */
     void derivative_traction_boundary(std::size_t fctNo, FacetInfo const& info, Tensor3<double>& result) const;
 
+    /**
+     * returns the base transform Nbf -> nq 
+     * @return the transformation matrix
+     */
+    auto& get_E_q() const {return E_q; }
 
     FiniteElementFunction<DomainDimension> solution_prototype(std::size_t numLocalElements) const {
         return FiniteElementFunction<DomainDimension>(space_.clone(), NumQuantities,

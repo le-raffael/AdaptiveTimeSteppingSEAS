@@ -84,6 +84,9 @@ public:
         }
         adapter_->end_traction();
         vector.end_access(access_handle);
+
+        // Initialize the Jacobian matrix
+        this->initializeJacobian();
     }
 
     /**
@@ -92,7 +95,8 @@ public:
      *  - then solve the ODE in the rate and state problem
      * @param time current simulation time
      * @param state current solution vector
-     * @param result next solution vector (to be filled in the execution of the function)
+     * @param result next solution vector
+     * @param resultDerivatives contains df/dV, df/dpsi and dg/dpsi in a vector (used for the Jacobian)
      */
     template <typename BlockVector> void rhs(double time, BlockVector& state, BlockVector& result) {
         adapter_->solve(time, state);
@@ -100,6 +104,8 @@ public:
         auto scratch = make_scratch();
         auto in_handle = state.begin_access_readonly();
         auto out_handle = result.begin_access();
+        PetscBlockVector resultDerivatives(block_size() * 1.5, numLocalElements(), comm());
+        auto outDer_handle = resultDerivatives.begin_access();
         auto traction = Managed<Matrix<double>>(adapter_->traction_info());
         adapter_->begin_traction([&state, &in_handle](std::size_t faultNo) {
             return state.get_block(in_handle, faultNo);
@@ -110,13 +116,19 @@ public:
 
             auto state_block = state.get_block(in_handle, faultNo);
             auto result_block = result.get_block(out_handle, faultNo);
+            auto resultDerivatives_block = resultDerivatives.get_block(outDer_handle, faultNo);
             double VMax = lop_->rhs(faultNo, time, traction, state_block, result_block, scratch);
-
+            lop_->getDerivativesDfDVAndDfDpsi(faultNo, time, traction, state_block, resultDerivatives_block, scratch);
             VMax_ = std::max(VMax_, VMax);
         }
         adapter_->end_traction();
         state.end_access_readonly(in_handle);
         result.end_access(out_handle);
+        result.end_access(outDer_handle);
+
+        // update the Jacobian
+        updateJacobian(resultDerivatives);
+
         evaluation_rhs_count++;
     }
 
@@ -177,6 +189,8 @@ public:
     
     LocalOperator& lop() {return *lop_; }
 
+    Eigen::MatrixXd& getJacobian() { return Jacobian_; }
+
     /**
      * Allocate memory in scratch
      */
@@ -186,12 +200,141 @@ public:
 
     private:
 
+    /**
+     * Set up the constant parts of the Jacobian matrix
+     */
+    void initializeJacobian(){
+
+        using namespace Eigen;      // TODO: change all Eigen matrices to more convenient formats
+
+        // general parameters
+        size_t blockSize = this->block_size();
+        size_t numFaultElements = this->numLocalElements();
+        size_t totalSize = blockSize * numFaultElements;
+        size_t nbf = 0.5 * blockSize;
+
+        // initialize Jacobian matix to 0
+        Jacobian_ = MatrixXd::Zero(totalSize, totalSize);
+
+        // set up the Jacobian du_dS
+        MatrixXd du_dS_Eigen = MatrixXd::Zero(totalSize, totalSize);
+                                            
+        // vector to initialize other vectors
+        PetscBlockVector zeroVector = PetscBlockVector(blockSize, numFaultElements, this->comm());    
+        zeroVector.set_zero();
+
+        for (int noFault = 0; noFault < numFaultElements; noFault++){
+            for (int i = 0; i < blockSize; i++){
+                // set up unit vector e
+                PetscBlockVector unitVector(zeroVector);
+                auto AccessHandle = unitVector.begin_access();
+                auto block = unitVector.get_block(AccessHandle, noFault);
+                block.data()[i] = 1;
+                unitVector.end_access(AccessHandle);        
+
+                // solve system Au - e = 0
+                PetscBlockVector solutionVector(zeroVector);
+                adapter_->solveUnitVector(unitVector, solutionVector);
+                
+                // copy u = A^{-1} * e to the columns of du/dS
+                auto solutionVectorAccess = solutionVector.begin_access_readonly();  
+                for (int j = 0; j < totalSize; j++){
+                    du_dS_Eigen(j, noFault * nbf + i) = solutionVectorAccess[j];            
+                }
+                solutionVector.end_access_readonly(solutionVectorAccess);
+            }
+        }
+        std::cout<<"First column of du/dS: "<<std::endl;
+        std::cout<<du_dS_Eigen.col(0)<<std::endl;
+
+        // calculate dtau/dU 
+        MatrixXd dtau_du_Eigen = MatrixXd::Zero(totalSize, totalSize);
+        auto scratch = this->make_scratch();
+        TensorBase<Matrix<double>> tensorBase = adapter_->getBaseDtauDu();
+        auto dtau_du = Managed<Matrix<double>>(tensorBase);
+
+
+        for (int noFault = 0; noFault < numFaultElements; noFault++){
+            this->adapter().dtau_du(noFault, dtau_du, scratch);
+
+            for(int i = 0; i<nbf; i++){ // copy to Eigen matrix - why has dtau_du the shape [nbf, bs]??
+                for(int j = 0; j<blockSize; j++){
+                    dtau_du_Eigen(noFault * blockSize + i, noFault * blockSize + j) = dtau_du(i, j);
+                }
+            }
+        }
+
+        // df/dS = dtau/dS = dU/dS * dtau/dU
+        df_dS_ = du_dS_Eigen * dtau_du_Eigen;      
+    }
+
+
+    /**
+     * Update the Jacobian to the current state
+     * @param state current solution vector
+     * @param derivatives contains df/dV, df/dpsi and dg/dpsi in a vector
+     */
+    template <typename BlockVector>
+    void updateJacobian(BlockVector& derivatives){
+
+        using namespace Eigen;
+
+        size_t blockSize = this->block_size();
+        size_t numFaultElements = this->numLocalElements();
+        size_t totalSize = blockSize * numFaultElements;
+        size_t nbf = 0.5 * blockSize;
+
+        // fill df/dV, df/dpsi and dg/dpsi -> diagonal matrices of half size        
+        VectorXd df_dV(totalSize / 2);                             
+        VectorXd df_dpsi(totalSize / 2);
+        VectorXd dg_dpsi(totalSize / 2);
+
+        auto AccessHandle = derivatives.begin_access_readonly();
+        for (int noFault = 0; noFault < numFaultElements; noFault++){
+            auto localBlock = derivatives.get_block(AccessHandle, noFault);    
+            for(int i = 0; i<nbf; i++){ 
+                df_dV(noFault * nbf + i) = localBlock.data()[i];
+                df_dpsi(noFault * nbf + i) = localBlock.data()[i + nbf];
+                dg_dpsi(noFault * nbf + i) = localBlock.data()[i + 2 * nbf];
+            }
+        }
+        derivatives.end_access_readonly(AccessHandle);
+
+        // fill the Jacobian
+        for (int noFault = 0; noFault < numFaultElements; noFault++){
+            for (int i = 0; i < nbf; i++){
+                int JacobianIndexV = noFault * blockSize + i;
+                int JacobianIndexPSI = noFault * blockSize + i + nbf;
+
+                int VectorIndex = noFault * nbf + i;
+
+                // fill only diagonal components
+                Jacobian_(JacobianIndexV, JacobianIndexPSI) = -df_dpsi(VectorIndex) / df_dV(VectorIndex);        // dV/dpsi
+                Jacobian_(JacobianIndexPSI, JacobianIndexPSI) = dg_dpsi(VectorIndex);                            // dg/dpsi 
+
+                // fill non-diagonal components
+                for (int noFault2 = 0; noFault2 < numFaultElements; noFault2++){
+                    for(int j = 0; j < nbf; j++){
+                        double df_dS_local = df_dS_(JacobianIndexV, noFault2 * blockSize + j);
+                        Jacobian_(JacobianIndexV, noFault2 * blockSize + j) = -df_dS_local / df_dV(VectorIndex); // dV/dS
+                        Jacobian_(JacobianIndexPSI, noFault2 * blockSize + j) = df_dS_local / 
+                            (df_dV(VectorIndex) * lop_->getLaw().getV0());                                       // dV/dS
+                    }
+                }
+            }
+        }
+    }
+
+
+
     std::unique_ptr<LocalOperator> lop_;    // on fault: rate and state instance (handles ageing law and slip_rate)
     std::unique_ptr<SeasAdapter> adapter_;  // on domain: DG solver (handles traction and mechanical solver)
     std::unique_ptr<double[]> scratch_mem_; // memory allocated, not sure for what
     std::size_t scratch_size_;              // size of this memory
     double VMax_ = 0.0;                     // metrics: maximal velocity among all fault elements
     size_t evaluation_rhs_count = 0;        // metrics: counts the number of calls of the rhs function in one time step
+    Eigen::MatrixXd df_dS_;                 // Jacobian df/dS (constant, needed to construct  the real Jacobian)     
+    Eigen::MatrixXd Jacobian_;              // Jacobian matrix     
 };
 
 } // namespace tndm

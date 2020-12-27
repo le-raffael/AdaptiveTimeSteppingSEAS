@@ -15,6 +15,18 @@
 #include "tensor/TensorBase.h"
 #include "util/LinearAllocator.h"
 
+#include "config.h"
+#include "geometry/Curvilinear.h"
+#include "kernels/elasticity/tensor.h"
+#include "kernels/elasticity_adapter/init.h"
+#include "kernels/elasticity_adapter/kernel.h"
+#include "kernels/elasticity_adapter/tensor.h"
+
+#include "form/FacetInfo.h"
+#include "form/RefElement.h"
+#include "localoperator/Elasticity.h"
+#include "tensor/Managed.h"
+
 #include <algorithm>
 #include <array>
 #include <cstddef>
@@ -73,6 +85,59 @@ public:
     }
     void traction(std::size_t faultNo, Matrix<double>& traction, LinearAllocator<double>&) const;
     void end_traction() { linear_solver_.x().end_access_readonly(handle_); }
+
+    /**
+     * get the dimensions of the matrix dtau/dU to assemble the Jacobian
+     * @return Tensor base of Dtau/DU in one element [nbf, blockSize]
+     */
+        TensorBase<Matrix<double>> getBaseDtauDu(){
+            TensorBase<Matrix<double>> tensorBase(elasticity_adapter::tensor::dtau_du::Shape[0],
+                                          elasticity_adapter::tensor::dtau_du::Shape[1]);
+            return tensorBase;
+        }
+
+    /** 
+     * calculate the derivative of the traction w.r.t the displacement
+     * @param faultNo index if the fault
+     * @param dtau_du result tensor with dimensions (nbf, nbf)
+     * @param . this scratch thingy
+     */
+    void dtau_du(std::size_t faultNo, Matrix<double>& dtau_du, LinearAllocator<double>&) const;
+
+    /**
+     * Solve the DG problem, with a unit vector to set up the Jacobian
+     * @param state unit vector e 
+     * @param result contains A^{-1}e
+     */
+    template <typename BlockVector> void solveUnitVector(BlockVector& state, BlockVector& result) {
+        auto in_handle = state.begin_access_readonly();
+
+        // set the unit vector as slip and transform to quadrature points
+        dgop_->lop().set_slip(
+            [this, &state, &in_handle](std::size_t fctNo, Matrix<double>& f_q, bool) {
+                auto faultNo = this->faultMap_.bndNo(fctNo);
+                auto state_block = state.get_block(in_handle, faultNo);
+                this->slip(faultNo, state_block, f_q);
+            });
+
+        // solve         
+        linear_solver_.update_rhs(*dgop_);
+        linear_solver_.solve();
+        state.end_access_readonly(in_handle);
+
+        // extract values on fault
+        handle_ = linear_solver_.x().begin_access_readonly();
+        for (int faultNo = 0; faultNo < faultMap_.size(); faultNo++){
+            auto fctNo = faultMap_.fctNo(faultNo);
+            auto const& info = dgop_->topo().info(fctNo);
+            auto u0 = linear_solver_.x().get_block(handle_, info.up[0]);
+            auto u1 = linear_solver_.x().get_block(handle_, info.up[1]);
+            std::cout<<"shape u0: "<<u0.shape()[0]<<", "<<u0.shape()[1]<<std::endl;
+            std::cout<<"shape u1: "<<u1.shape()[0]<<", "<<u1.shape()[1]<<std::endl;
+        }
+        linear_solver_.x().end_access_readonly(handle_);
+    }
+
 
     auto displacement() const { return dgop_->solution(linear_solver_.x()); }
 

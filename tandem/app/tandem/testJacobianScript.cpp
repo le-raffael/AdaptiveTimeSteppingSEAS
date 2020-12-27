@@ -86,54 +86,8 @@ void solve_Jacobian(LocalSimplexMesh<DomainDimension> const& mesh, Config const&
 
 
 
-    /* ****************************************
-     * analytical computation of the Jacobian *
-     **************************************** */
-   auto& law = seasop->lop().getLaw();
-
-   // set up the Jacobian du_dS
-   MatrixXd du_dS = MatrixXd::Zero(totalSize, totalSize);
-                                      
-    PetscBlockVector zeroVector = PetscBlockVector(blockSize, numFaultElements, seasop->comm());    // to initializue the unit vectors
-
-   for (int noFault = 0; noFault < numFaultElements; noFault++){
-       for (int i = 0; i < nbf; i++){
-            PetscBlockVector unitVector(zeroVector);     // get unit vector
-            auto AccessHandle = unitVector.begin_access();
-            auto block = unitVector.get_block(AccessHandle, noFault);
-            block.data()[i] = 1;
-
-            unitVector.end_access(AccessHandle);        // solve system Au - e = 0
-            seasop->adapter().solve(nextTime, unitVector);
-            auto& solutionVector = seasop->adapter().getSolutionLinearSystem();
-            
-            VectorXd solutionVectorEigen(totalSize);    // write columnwise to Jacobian matrix
-            writeBlockToEigen(solutionVector, solutionVectorEigen);
-            du_dS.col(noFault * blockSize + i) = solutionVectorEigen;            
-       }
-   }
-
-
-    // calculate dtau_dU (should be 0 for a symmetric model)
-    MatrixXd dtau_du_Eigen = MatrixXd::Zero(totalSize, totalSize);
-    auto scratch = seasop->make_scratch();
-    TensorBase<Matrix<double>> tensorBase(poisson_adapter::tensor::dtau_du::Shape[0],
-                                          poisson_adapter::tensor::dtau_du::Shape[1]);
-    auto dtau_du = Managed<Matrix<double>>(tensorBase);
-
-    for (int noFault = 0; noFault < numFaultElements; noFault++){
-        seasop->adapter().dtau_du(noFault, dtau_du, scratch);
-
-        for(int i = 0; i<nbf; i++){ // copy to Eigen matrix
-            for(int j = 0; j<blockSize; j++){
-                dtau_du_Eigen(noFault * blockSize + i, noFault * blockSize + j) = dtau_du(i, j);
-            }
-        }
-    }
-    std::cout<<dtau_du_Eigen<<std::endl;
-    std::cout<<"shape of dtau_du: "<<poisson_adapter::tensor::dtau_du::Shape[0]<<", "<<poisson_adapter::tensor::dtau_du::Shape[1]<<std::endl;
     /* **************************************************
-     * numerical approximation of the Jacobian - broken *
+     * test of the Jacobian on an easy Newton Iteration *
      ************************************************** */
 
     // get handle for the right hand side
@@ -153,17 +107,20 @@ void solve_Jacobian(LocalSimplexMesh<DomainDimension> const& mesh, Config const&
     VectorXd fx = -x + x_init + dt * rhs(x);;
 
     // 1. first guess (explicit Euler)
-    VectorXd x_n = x + dt * rhs(x);
-//    VectorXd fx_n = rhs(x_n);
-    VectorXd fx_n = -x_n + x_init + dt * rhs(x_n);
+//    VectorXd x_n = x + dt * rhs(x);
+    VectorXd x_n = x;
+    VectorXd fx_n = rhs(x_n);
+//    VectorXd fx_n = -x_n + x_init + dt * rhs(x_n);
 
     // 2. initialize the Jacobi matrix by finite differences
-    MatrixXd J = 1e5 * MatrixXd::Identity(totalSize, totalSize);
+    MatrixXd J = seasop->getJacobian();
 //    for(int i=0; i<totalSize;i++){
 //        for(int j=0; j<totalSize;j++){
 //            J(i,j) = (fx_n(i) - fx(i)) / (x_n(j) - x(j));
 //        }
 //    }
+
+    std::cout<<J<<std::endl;
 
     // difference to the previous iteration step
     VectorXd dx_n(totalSize);
@@ -196,9 +153,9 @@ void writeBlockToEigen(PetscBlockVector& BlockVector, VectorXd& EigenVector){
     auto AccessHandle = BlockVector.begin_access_readonly();
 
     for (int faultNo = 0; faultNo < numFaultElements; faultNo++){
+        auto localBlock = BlockVector.get_block(AccessHandle, faultNo);    
         for (int i = 0; i < blockSize; i++){
             // fill the solution vector
-            auto localBlock = BlockVector.get_block(AccessHandle, faultNo);    
             EigenVector(i + faultNo * blockSize) = localBlock.data()[i];
         }
     }
@@ -211,9 +168,9 @@ void writeEigenToBlock(VectorXd& EigenVector, PetscBlockVector& BlockVector){
     auto AccessHandle = BlockVector.begin_access();
 
     for (int faultNo = 0; faultNo < numFaultElements; faultNo++){
+        auto localBlock = BlockVector.get_block(AccessHandle, faultNo);   
         for (int i = 0; i < blockSize; i++){
             // fill the solution vector
-            auto localBlock = BlockVector.get_block(AccessHandle, faultNo);   
             localBlock.data()[i] = EigenVector(i + faultNo * blockSize);
         }
     }

@@ -20,7 +20,7 @@
 #include <cstddef>
 #include <functional>
 #include <memory>
-#include <utility>
+#include <utility> 
 #include <vector>
 
 namespace tndm {
@@ -64,6 +64,21 @@ public:
                            Vector<double const>& u1, Matrix<double>& result) const;
     void traction_boundary(std::size_t fctNo, FacetInfo const& info, Vector<double const>& u0,
                            Matrix<double>& result) const;
+    /**
+     * Calculate the derivative of the traction w.r.t. to the displacement if the fault is not symmetric
+     * @param fctNo index of the quadrature point
+     * @param info needed to implement the boundary conditions
+     * @param result store the calculated traction tau
+     * */
+    void derivative_traction_skeleton(std::size_t fctNo, FacetInfo const& info, Tensor3<double>& result) const;
+
+    /**
+     * Calculate the derivative of the traction w.r.t. to the displacement if the fault is symmetric
+     * @param fctNo index of the quadrature point
+     * @param info needed to implement the boundary conditions
+     * @param result store the calculated traction tau
+     * */
+    void derivative_traction_boundary(std::size_t fctNo, FacetInfo const& info, Tensor3<double>& result) const;
 
     FiniteElementFunction<DomainDimension> solution_prototype(std::size_t numLocalElements) const {
         return FiniteElementFunction<DomainDimension>(space_.clone(), NumQuantities,

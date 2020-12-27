@@ -84,6 +84,20 @@ public:
     double rhs(std::size_t faultNo, double time, Matrix<double> const& traction,
                Vector<double const>& state, Vector<double>& result, LinearAllocator<double>&) const;
 
+    /**
+     * Evaluate some derivatives for the Jacobian 
+     * - assign the derivative of df/dV
+     * - assign the derivative of df/dpsi
+     * @param faultNo index of the current fault
+     * @param traction matrix with sigma and tau at all nodes in the element
+     * @param state current solution vector
+     * @param result vector with the derivatives df/dV and df/dpsi in the order [nbf, nbf]
+     * @param . some scratch
+     * */
+    void getDerivativesDfDVAndDfDpsi(std::size_t faultNo, double time, Matrix<double> const& traction,
+               Vector<double const>& state, Vector<double>& result, LinearAllocator<double>&) const;
+
+
 
     /**
      * Extract some values from the current state
@@ -157,6 +171,22 @@ double RateAndState<Law>::rhs(std::size_t faultNo, double time, Matrix<double> c
     }
     return VMax;
 }
+
+template <class Law>
+void RateAndState<Law>::getDerivativesDfDVAndDfDpsi(std::size_t faultNo, double time, Matrix<double> const& traction,
+               Vector<double const>& state, Vector<double>& result, LinearAllocator<double>&) const {
+    std::size_t nbf = space_.numBasisFunctions();
+    std::size_t index = faultNo * nbf;
+    for (std::size_t node = 0; node < nbf; ++node) {
+        auto sn = traction(node, 0);
+        auto tau = traction(node, 1);
+        auto psi = state(nbf + node);
+        double V = law_.slip_rate(index + node, sn, tau, psi);
+        result(node) = law_.df_dV(index + node, sn, V, psi);
+        result(nbf + node) = law_.df_dpsi(index + node, sn, V, psi);
+        result(2 * nbf + node) = law_.dg_dpsi(index + node, psi, -result(node + nbf) / result(node));
+    }
+}               
 
 template <class Law>
 void RateAndState<Law>::state(std::size_t faultNo, Matrix<double> const& traction,

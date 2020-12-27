@@ -43,7 +43,15 @@ public:
         dgop.rhs(*b_);
     }
 
-    void solve() { CHKERRTHROW(KSPSolve(ksp_, b_->vec(), x_->vec())); }
+    template <typename DGOp> void update_rhsOnlySlip(DGOp& dgop) {
+        b_->set_zero();
+        dgop.rhsOnlySlip(*b_);
+    }
+
+
+    void solve() { 
+        CHKERRTHROW(KSPSolve(ksp_, b_->vec(), x_->vec())); 
+}
 
     auto& x() { return *x_; }
     auto const& x() const { return *x_; }

@@ -1,15 +1,5 @@
 #include "SeasPoissonAdapter.h"
 
-#include "kernels/poisson/tensor.h"
-#include "kernels/poisson_adapter/kernel.h"
-#include "kernels/poisson_adapter/tensor.h"
-
-#include "form/FacetInfo.h"
-#include "form/RefElement.h"
-#include "tandem/SeasAdapterBase.h"
-#include "tensor/Managed.h"
-#include "tensor/Utility.h"
-
 #include <cassert>
 
 namespace tndm {
@@ -92,7 +82,6 @@ void SeasPoissonAdapter::dtau_du(std::size_t faultNo, Matrix<double>& dtau_du,
     auto u1 = linear_solver_.x().get_block(handle_, info.up[1]);
     if (info.up[0] == info.up[1]) {
         dgop_->lop().derivative_traction_boundary(fctNo, info, Dgrad_u_Du);    
-//        std::fill(Dgrad_u_Du.data(), Dgrad_u_Du.data() + Dgrad_u_Du.size(), 0.0);   // both sides are the same, derivative of the gradient is 0
     } else {
         dgop_->lop().derivative_traction_skeleton(fctNo, info, Dgrad_u_Du);    
     }

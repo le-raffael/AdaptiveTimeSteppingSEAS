@@ -94,6 +94,16 @@ public:
      * */
     double S_init(std::size_t index) const { return p_[index].get<Sinit>(); }
 
+    /**
+     * calculate the derivative dg/dpsi of the algebraic equation g(V,psi)=0 w.r.t to the state variable
+     * @param index of the current node
+     * @param psi state variable at the current node
+     * @param dV_dpsi the derivative dV/dPSI
+     * @return deriviative dg/dpsi
+     * */
+    double dg_dpsi(std::size_t index, double psi, double dV_dpsi) const {
+        return -cp_.V0 / cp_.L * (exp((cp_.f0 - psi) / cp_.b) - dV_dpsi / cp_.V0);
+    }
 
     /**
      * calculate the derivative df/dpsi of the algebraic equation f(V,psi)=0 w.r.t to the state variable
@@ -103,7 +113,7 @@ public:
      * @param psi state variable at the current node
      * @return deriviative df/dpsi
      * */
-    double df_dpsi(std::size_t index, double sn, double V, double psi){
+    double df_dpsi(std::size_t index, double sn, double V, double psi) const {
         auto eta = p_[index].get<Eta>();
         auto a = p_[index].get<A>();
         double snAbs = sn + p_[index].get<SnPre>();
@@ -118,7 +128,7 @@ public:
      * @param psi state variable at the current node
      * @return deriviative df/dV
      * */
-    double df_dV(std::size_t index, double sn, double V, double psi){
+    double df_dV(std::size_t index, double sn, double V, double psi) const {
         auto a = p_[index].get<A>();
         double snAbs = sn + p_[index].get<SnPre>();
         double twoV0 = 2.0 * cp_.V0;
@@ -157,6 +167,12 @@ public:
     double state_rhs(std::size_t index, double V, double psi) const {
         return cp_.b * cp_.V0 / cp_.L * (exp((cp_.f0 - psi) / cp_.b) - V / cp_.V0);
     }
+
+    /**
+     * get the environment velocity V_0
+     * @return the velocity
+     */
+    double getV0() const {return cp_.V0;}
 
 private:
     /**

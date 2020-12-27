@@ -15,6 +15,17 @@
 #include "tensor/TensorBase.h"
 #include "util/LinearAllocator.h"
 
+#include "kernels/poisson/tensor.h"
+#include "kernels/poisson_adapter/kernel.h"
+#include "kernels/poisson_adapter/tensor.h"
+
+#include "form/FacetInfo.h"
+#include "form/RefElement.h"
+#include "tandem/SeasAdapterBase.h"
+#include "tensor/Managed.h"
+#include "tensor/Utility.h"
+
+
 #include <algorithm>
 #include <array>
 #include <cstddef>
@@ -48,7 +59,7 @@ public:
                        std::array<double, Dim> const& ref_normal);
 
     /** 
-     * Sette function for the boundary functional
+     * Set the function for the boundary functional
      * @param fun functional to be set
      */
     void set_boundary(time_functional_t fun) { fun_boundary = std::move(fun); }
@@ -80,6 +91,55 @@ public:
     }
 
     /**
+     * Solve the DG problem, with a unit vector to set up the Jacobian
+     * @param state unit vector e 
+     * @param result contains A^{-1}e
+     */
+    template <typename BlockVector> void solveUnitVector(BlockVector& state, BlockVector& result) {
+        auto in_handle = state.begin_access_readonly();
+
+        // set the unit vector as slip and transform to quadrature points
+        dgop_->lop().set_slip(
+            [this, &state, &in_handle](std::size_t fctNo, Matrix<double>& f_q, bool) {
+                auto faultNo = this->faultMap_.bndNo(fctNo);
+                auto state_block = state.get_block(in_handle, faultNo);
+                this->slip(faultNo, state_block, f_q);
+            });
+
+        // solve
+        linear_solver_.update_rhsOnlySlip(*dgop_);
+        linear_solver_.solve();
+        state.end_access_readonly(in_handle);
+
+        // transform values in the solution vector x_ from size Nbf to nq
+        BlockVector x_nq(nq_, this->numLocalElements(), topo_->comm());
+        dgop_->transform_Nbf_to_nq(linear_solver_.x(), x_nq); 
+
+        // extract values on fault and write to solution vector
+        auto handleWrite = result.begin_access();
+        auto handleRead = x_nq.begin_access_readonly();
+        for (int faultNo = 0; faultNo < faultMap_.size(); faultNo++){
+            auto fctNo = faultMap_.fctNo(faultNo);
+            auto const& info = dgop_->topo().info(fctNo);
+            auto u0 = x_nq.get_block(handleRead, info.up[0]);
+            auto u1 = x_nq.get_block(handleRead, info.up[1]);
+            auto slip = result.get_block(handleWrite, faultNo);
+            int nbf = 0.5 * slip.shape()[0];
+            // transform uX from quadrature to nodal basis (manual matrix vector product)
+            // ?? is e_q the correct transform ?? 
+            for (int i = 0; i < nbf; i++){
+                for (int  j = 0; j < nq_; j++){
+                    slip(i) -= e_q(i,j) * u0(j);                
+                    slip(i) -= e_q(i,j) * u1(j);
+                }
+            }
+        }
+        result.end_access(handleWrite); 
+        x_nq.end_access_readonly(handleRead); 
+    }
+
+
+    /**
      * prepares the tensor of the traction
      * @return the tensor has nbf rows (number of base functions in one fault element) and 2 columns (sigma=0, tau)
      */
@@ -107,7 +167,7 @@ public:
     void traction(std::size_t faultNo, Matrix<double>& traction, LinearAllocator<double>&) const;
 
     /**
-     * terminate access handler for the state vector
+     * terminate access handler for the solution of the linear system
      */
     void end_traction() { linear_solver_.x().end_access_readonly(handle_); }
 
@@ -124,15 +184,25 @@ public:
     auto& getSolutionLinearSystem(){ return linear_solver_.x();}
 
     /**
-     * get number of fault elements
+     * get number of elements in the mesh
      * @return this
      */
     std::size_t numLocalElements() const { return dgop_->numLocalElements(); }
 
+    /**
+     * get the dimensions of the matrix dtau/dU to assemble the Jacobian
+     * @return Tensor base of Dtau/DU in one element [nbf, nbf]
+     */
+        TensorBase<Matrix<double>> getBaseDtauDu(){
+            TensorBase<Matrix<double>> tensorBase(poisson_adapter::tensor::dtau_du::Shape[0],
+                                          poisson_adapter::tensor::dtau_du::Shape[1]);
+            return tensorBase;
+        }
+
     /** 
      * calculate the derivative of the traction w.r.t the displacement
-     * @param faultNo index if the fault
-     * @param dtau_du result tensor with dimensions (nbf, nbf)
+     * @param faultNo index of the fault
+     * @param dtau_du result tensor with dimensions (nbf, 2*nbf)
      * @param . this scratch thingy
      */
     void dtau_du(std::size_t faultNo, Matrix<double>& dtau_du, LinearAllocator<double>&) const;

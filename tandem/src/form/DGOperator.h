@@ -7,6 +7,8 @@
 #include "tensor/Reshape.h"
 #include "tensor/Tensor.h"
 #include "util/LinearAllocator.h"
+#include "kernels/poisson/tensor.h"
+
 
 #include <cassert>
 #include <experimental/type_traits>
@@ -150,6 +152,10 @@ public:
         matrix.end_assembly();
     }
 
+    /**
+     * Evaluate the rhs of the system Au = b
+     * @param vector rhs vector b (of size very huge, bs = 2*nbf)
+     */
     template <typename BlockVector> void rhs(BlockVector& vector) {
         auto bs = lop_->block_size();
 
@@ -202,6 +208,101 @@ public:
         vector.end_access(access_handle);
     }
 
+    /**
+     * evaluate the rhs of Au = b, with u being the unit vector to construct the Jacobian
+     * @param vector rhs vector b (of size very huge, bs = 2*nbf)
+     */
+    template <typename BlockVector> void rhsOnlySlip(BlockVector& vector) {
+        auto bs = lop_->block_size();
+
+        auto a_scratch_mem_size = 2 * bs;
+        auto a_scratch_mem = std::make_unique<double[]>(a_scratch_mem_size);
+        auto a_scratch =
+            LinearAllocator<double>(a_scratch_mem.get(), a_scratch_mem.get() + a_scratch_mem_size);
+
+        auto sv = [&bs](LinearAllocator<double>& scratch) {
+            double* buffer = scratch.allocate(bs);
+            return Vector<double>(buffer, bs);
+        };
+
+        auto l_scratch = make_scratch();
+        auto access_handle = vector.begin_access();
+        if constexpr (std::experimental::is_detected_v<rhs_skeleton_t, LocalOperator> ||
+                      std::experimental::is_detected_v<rhs_boundary_t, LocalOperator>) {
+            for (std::size_t fctNo = 0; fctNo < topo_->numLocalFacets(); ++fctNo) {
+                l_scratch.reset();
+                a_scratch.reset();
+                auto const& info = topo_->info(fctNo);
+                auto ib0 = info.up[0];
+                auto ib1 = info.up[1];
+                if (info.up[0] != info.up[1]) {
+                    auto B0 = info.inside[0] ? vector.get_block(access_handle, ib0) : sv(a_scratch);
+                    auto B1 = info.inside[1] ? vector.get_block(access_handle, ib1) : sv(a_scratch);
+                    lop_->rhs_skeleton_only_slip(fctNo, info, B0, B1, l_scratch);
+                } else {
+                    if (info.inside[0]) {
+                        auto B0 = vector.get_block(access_handle, ib0);
+                        lop_->rhs_boundary_only_slip(fctNo, info, B0, l_scratch);
+                    }
+                }
+            }
+        }
+        vector.end_access(access_handle);
+    }
+
+    /**
+     * transforms all facet entries in a vector from the size Nbf to nq
+     * @param vec initial vector (of blocksize Nbf)
+     * @param res resultant vector (of blocksize nq)
+     */
+    template <typename BlockVector> void transform_Nbf_to_nq(BlockVector& vec, BlockVector& res){
+        auto access_read = vec.begin_access_readonly();
+        auto access_write = res.begin_access();
+        for (std::size_t fctNo = 0; fctNo < topo_->numLocalFacets(); ++fctNo) {
+            auto const& info = topo_->info(fctNo);
+
+            auto ib0 = info.up[0];
+           
+            auto vec0 = vec.get_block(access_read, ib0);
+            auto res0 = res.get_block(access_write, ib0);
+
+            auto E0 = lop_->get_E_q()[info.localNo[0]].data();
+
+            int sizeX = tndm::poisson::tensor::e::Shape[0][0];
+            int sizeY = tndm::poisson::tensor::e::Shape[0][1];
+            for (int i = 0; i < sizeX; i++) {
+                for (int j = 0; j < sizeY; j++) {
+                    res0(j) = E0[i * sizeY + j] * vec0(i);
+                }
+            }
+
+            auto ib1 = info.up[1];
+
+            if (ib1 != ib0){
+                auto vec1 = vec.get_block(access_read, ib1);
+                auto res1 = res.get_block(access_write, ib1);
+        
+                auto E1 = lop_->get_E_q()[info.localNo[1]].data();
+
+                sizeX = tndm::poisson::tensor::e::Shape[1][0];
+                sizeY = tndm::poisson::tensor::e::Shape[1][1];
+                for (int i = 0; i < sizeX; i++) {
+                    for (int j = 0; j < sizeY; j++) {
+                        res1(j) = E1[i * sizeY + j] * vec1(i);
+                    }
+                }
+            }
+        } 
+
+        vec.end_access_readonly(access_read);
+        res.end_access(access_write);
+    }
+
+    /**
+     * transforms a block vector to a finite element instance
+     * @param vector contains the quantities to be written
+     * @return of type FiniteElementFunction<DomainDimension>
+     */
     template <typename BlockVector> auto solution(BlockVector& vector) const {
         auto soln = lop_->solution_prototype(topo_->numLocalElements());
         auto& values = soln.values();

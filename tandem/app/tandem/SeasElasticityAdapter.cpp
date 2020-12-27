@@ -1,17 +1,5 @@
 #include "SeasElasticityAdapter.h"
 
-#include "config.h"
-#include "geometry/Curvilinear.h"
-#include "kernels/elasticity/tensor.h"
-#include "kernels/elasticity_adapter/init.h"
-#include "kernels/elasticity_adapter/kernel.h"
-#include "kernels/elasticity_adapter/tensor.h"
-
-#include "form/FacetInfo.h"
-#include "form/RefElement.h"
-#include "localoperator/Elasticity.h"
-#include "tensor/Managed.h"
-
 #include <cassert>
 
 namespace tndm {
@@ -84,5 +72,34 @@ void SeasElasticityAdapter::traction(std::size_t faultNo, Matrix<double>& tracti
     krnl.w = dgop_->lop().facetQuadratureRule().weights().data();
     krnl.execute();
 }
+
+void SeasElasticityAdapter::dtau_du(std::size_t faultNo, Matrix<double>& dtau_du, 
+                                LinearAllocator<double>&) const {
+
+    double Dgrad_u_Du_raw[elasticity::tensor::Dgrad_u_Du::Size];
+    auto tensorBase =  TensorBase<Tensor3<double>>(elasticity::tensor::Dgrad_u_Du::Shape[0], elasticity::tensor::Dgrad_u_Du::Shape[1], elasticity::tensor::Dgrad_u_Du::Shape[2]);
+    auto Dgrad_u_Du = Tensor3<double>(Dgrad_u_Du_raw, tensorBase);
+
+    assert(Dgrad_u_Du.size() == elasticity::tensor::Dgrad_u_Du::Size);
+
+    auto fctNo = faultMap_.fctNo(faultNo);
+    auto const& info = dgop_->topo().info(fctNo);
+    auto u0 = linear_solver_.x().get_block(handle_, info.up[0]);
+    auto u1 = linear_solver_.x().get_block(handle_, info.up[1]);
+    if (info.up[0] == info.up[1]) {
+        dgop_->lop().derivative_traction_boundary(fctNo, info, Dgrad_u_Du);    
+    } else {
+        dgop_->lop().derivative_traction_skeleton(fctNo, info, Dgrad_u_Du);    
+    }
+    elasticity_adapter::kernel::evaluate_derivative_traction krnl;
+    krnl.e_q_T = e_q_T.data();
+    krnl.Dgrad_u_Du = Dgrad_u_Du_raw;
+    krnl.minv = minv.data();
+    krnl.dtau_du = &dtau_du(0, 0);
+    krnl.n_unit_q = fault_[faultNo].template get<UnitNormal>().data()->data();
+    krnl.w = dgop_->lop().facetQuadratureRule().weights().data();
+    krnl.execute(); 
+}
+
 
 } // namespace tndm
