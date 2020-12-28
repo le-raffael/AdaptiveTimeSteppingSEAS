@@ -210,7 +210,6 @@ bool Poisson::bc_skeleton(std::size_t fctNo, BC bc, double f_q_raw[]) const {
     }
     return true;
 }
-
 bool Poisson::bc_boundary(std::size_t fctNo, BC bc, double f_q_raw[]) const {
     assert(tensor::f_q::size() == fctRule.size());
     auto f_q = Matrix<double>(f_q_raw, 1, tensor::f_q::Shape[0]);
@@ -260,45 +259,6 @@ bool Poisson::rhs_skeleton(std::size_t fctNo, FacetInfo const& info, Vector<doub
     return true;
 }
 
-bool Poisson::rhs_skeleton_only_slip(std::size_t fctNo, FacetInfo const& info, Vector<double>& B0,
-                           Vector<double>& B1, LinearAllocator<double>& scratch) const {
-    double f_q_raw[tensor::f_q::size()];
-
-    // only apply slip (no forces, no Dirichlet BC)
-    assert(tensor::f_q::size() == fctRule.size());
-    auto f_q = Matrix<double>(f_q_raw, 1, tensor::f_q::Shape[0]);
-    if (info.bc == BC::Fault) {
-        fun_slip(fctNo, f_q, false);
-    } else {
-        return false;
-    }
-
-    kernel::rhsFacet rhs;
-    rhs.b = B0.data();
-    rhs.c10 = 0.5 * epsilon;
-    rhs.c20 = penalty(info);
-    rhs.f_q = f_q_raw;
-    rhs.n = fct[fctNo].get<Normal>().data()->data();
-    rhs.nl = fct[fctNo].get<NormalLength>().data();
-    rhs.w = fctRule.weights().data();
-    rhs.d_xi(0) = Dxi_q[info.localNo[0]].data();
-    rhs.e(0) = E_q[info.localNo[0]].data();
-    rhs.em(0) = matE_q_T[info.localNo[0]].data();
-    rhs.g(0) = fct[fctNo].get<JInv0>().data()->data();
-    rhs.K = material[info.up[0]].get<K>().data();
-    rhs.execute();
-
-    rhs.b = B1.data();
-    rhs.c20 *= -1.0;
-    rhs.d_xi(0) = Dxi_q[info.localNo[1]].data();
-    rhs.e(0) = E_q[info.localNo[1]].data();
-    rhs.em(0) = matE_q_T[info.localNo[1]].data();
-    rhs.g(0) = fct[fctNo].get<JInv1>().data()->data();
-    rhs.K = material[info.up[1]].get<K>().data();
-    rhs.execute();
-    return true;
-}
-
 bool Poisson::rhs_boundary(std::size_t fctNo, FacetInfo const& info, Vector<double>& B0,
                            LinearAllocator<double>& scratch) const {
     double f_q_raw[tensor::f_q::size()];
@@ -306,42 +266,6 @@ bool Poisson::rhs_boundary(std::size_t fctNo, FacetInfo const& info, Vector<doub
         return false;
     }
 
-/*
-    auto& e = E_q[info.localNo[0]];
-    auto& em = matE_q_T[info.localNo[0]];
-    auto& E = E_Q;
-    auto& Em = matE_Q_T;
-
-
-    std::cout<<"e: "<<e.shape()[0]<<"; "<<e.shape()[1]<<std::endl;
-
-    std::cout<<"e = \t" << e(0,0)  << ",\t" << e(0,1)  << ",\t" << e(0,2)  << std::endl <<
-                   "\t" << e(1,0)  << ",\t" << e(1,1)  << ",\t" << e(1,2)  << std::endl <<
-                   "\t" << e(2,0)  << ",\t" << e(2,1)  << ",\t" << e(2,2)  << std::endl <<
-                   "\t" << e(3,0)  << ",\t" << e(3,1)  << ",\t" << e(3,2)  << std::endl <<
-                   "\t" << e(4,0)  << ",\t" << e(4,1)  << ",\t" << e(4,2)  << std::endl <<
-                   "\t" << e(5,0)  << ",\t" << e(5,1)  << ",\t" << e(5,2)  << std::endl;
-
-    std::cout<<"em = \t" << em(0,0) << ",\t" << em(0,1) << ",\t" << em(0,2) << ",\t" << em(0,3) << ",\t" << em(0,4) << ",\t" << em(0,5) << std::endl <<
-                    "\t" << em(1,0) << ",\t" << em(1,1) << ",\t" << em(1,2) << ",\t" << em(1,3) << ",\t" << em(1,4) << ",\t" << em(1,5) << std::endl <<
-                    "\t" << em(2,0) << ",\t" << em(2,1) << ",\t" << em(2,2) << ",\t" << em(2,3) << ",\t" << em(2,4) << ",\t" << em(2,5) << std::endl;
-
-
-    std::cout<<"E = \t" << E(0,0) << ",\t" << E(0,1) << ",\t" << E(0,2) << ",\t" << E(0,3) << ",\t" << E(0,4) << ",\t" << E(0,5) << std::endl <<
-                   "\t" << E(1,0) << ",\t" << E(1,1) << ",\t" << E(1,2) << ",\t" << E(1,3) << ",\t" << E(1,4) << ",\t" << E(1,5) << std::endl <<
-                   "\t" << E(2,0) << ",\t" << E(2,1) << ",\t" << E(2,2) << ",\t" << E(2,3) << ",\t" << E(2,4) << ",\t" << E(2,5) << std::endl <<
-                   "\t" << E(3,0) << ",\t" << E(3,1) << ",\t" << E(3,2) << ",\t" << E(3,3) << ",\t" << E(3,4) << ",\t" << E(3,5) << std::endl <<
-                   "\t" << E(4,0) << ",\t" << E(4,1) << ",\t" << E(4,2) << ",\t" << E(4,3) << ",\t" << E(4,4) << ",\t" << E(4,5) << std::endl <<
-                   "\t" << E(5,0) << ",\t" << E(5,1) << ",\t" << E(5,2) << ",\t" << E(5,3) << ",\t" << E(5,4) << ",\t" << E(5,5) << std::endl;
-
-    std::cout<<"Em = \t" << Em(0,0) << ",\t" << Em(0,1) << ",\t" << Em(0,2) << ",\t" << Em(0,3) << ",\t" << Em(0,4) << ",\t" << Em(0,5) << std::endl <<
-                    "\t" << Em(1,0) << ",\t" << Em(1,1) << ",\t" << Em(1,2) << ",\t" << Em(1,3) << ",\t" << Em(1,4) << ",\t" << Em(1,5) << std::endl <<
-                    "\t" << Em(2,0) << ",\t" << Em(2,1) << ",\t" << Em(2,2) << ",\t" << Em(2,3) << ",\t" << Em(2,4) << ",\t" << Em(2,5) << std::endl <<
-                    "\t" << Em(3,0) << ",\t" << Em(3,1) << ",\t" << Em(3,2) << ",\t" << Em(3,3) << ",\t" << Em(3,4) << ",\t" << Em(3,5) << std::endl <<
-                    "\t" << Em(4,0) << ",\t" << Em(4,1) << ",\t" << Em(4,2) << ",\t" << Em(4,3) << ",\t" << Em(4,4) << ",\t" << Em(4,5) << std::endl <<
-                    "\t" << Em(5,0) << ",\t" << Em(5,1) << ",\t" << Em(5,2) << ",\t" << Em(5,3) << ",\t" << Em(5,4) << ",\t" << Em(5,5) << std::endl;
-*/
-
     kernel::rhsFacet rhs;
     rhs.b = B0.data();
     rhs.c10 = epsilon;
@@ -358,40 +282,6 @@ bool Poisson::rhs_boundary(std::size_t fctNo, FacetInfo const& info, Vector<doub
     rhs.execute();
     return true;
 }
-
-bool Poisson::rhs_boundary_only_slip(std::size_t fctNo, FacetInfo const& info, Vector<double>& B0,
-                           LinearAllocator<double>& scratch) const {
-    double f_q_raw[tensor::f_q::size()];
-
-    //  calculate b only for the slip at the fault
-    assert(tensor::f_q::size() == fctRule.size());
-    auto f_q = Matrix<double>(f_q_raw, 1, tensor::f_q::Shape[0]);
-    if (info.bc == BC::Fault) {
-        fun_slip(fctNo, f_q, true);
-        for (std::size_t q = 0; q < tensor::f_q::Shape[0]; ++q) {
-            f_q(0, q) *= 0.5;
-        }
-    } else {
-        return false;
-    }
-
-    kernel::rhsFacet rhs;
-    rhs.b = B0.data();
-    rhs.c10 = epsilon;
-    rhs.c20 = penalty(info);
-    rhs.f_q = f_q_raw;
-    rhs.n = fct[fctNo].get<Normal>().data()->data();
-    rhs.nl = fct[fctNo].get<NormalLength>().data();
-    rhs.w = fctRule.weights().data();
-    rhs.d_xi(0) = Dxi_q[info.localNo[0]].data();
-    rhs.e(0) = E_q[info.localNo[0]].data();
-    rhs.em(0) = matE_q_T[info.localNo[0]].data();
-    rhs.g(0) = fct[fctNo].get<JInv0>().data()->data();
-    rhs.K = material[info.up[0]].get<K>().data();
-    rhs.execute();
-    return true;    
-}
-
 
 void Poisson::coefficients_volume(std::size_t elNo, Matrix<double>& C,
                                   LinearAllocator<double>&) const {
@@ -424,6 +314,7 @@ void Poisson::traction_skeleton(std::size_t fctNo, FacetInfo const& info, Vector
         krnl.em(side) = matE_q_T[info.localNo[side]].data();
     }
     krnl.e(0) = E_q[info.localNo[0]].data();
+    krnl.e(1) = E_q[info.localNo[1]].data();
     krnl.f_q = f_q_raw;
     krnl.g(0) = fct[fctNo].get<JInv0>().data()->data();
     krnl.g(1) = fct[fctNo].get<JInv1>().data()->data();
@@ -456,50 +347,6 @@ void Poisson::traction_boundary(std::size_t fctNo, FacetInfo const& info, Vector
     krnl.k(0) = material[info.up[0]].get<K>().data();
     krnl.n_unit_q = fct[fctNo].get<UnitNormal>().data()->data();
     krnl.u(0) = u0.data();
-    krnl.execute();
-}
-
-void Poisson::derivative_traction_skeleton(std::size_t fctNo, FacetInfo const& info, Tensor3<double>& result) const {
-    assert(result.size() == tensor::Dgrad_u_Du::size());
-
-    double Dx_q0[tensor::d_x::size(0)];
-    double Dx_q1[tensor::d_x::size(1)];
-
-    kernel::Dgrad_u_Du krnl;
-    krnl.c00 = -penalty(info);
-    krnl.d_x(0) = Dx_q0;
-    krnl.d_x(1) = Dx_q1;
-    for (std::size_t side = 0; side < 2; ++side) {
-        krnl.d_xi(side) = Dxi_q[info.localNo[side]].data();
-        krnl.em(side) = matE_q_T[info.localNo[side]].data();
-    }
-    krnl.e(0) = E_q[info.localNo[0]].data();
-    krnl.e(1) = E_q[info.localNo[1]].data();
-    krnl.g(0) = fct[fctNo].get<JInv0>().data()->data();
-    krnl.g(1) = fct[fctNo].get<JInv1>().data()->data();
-    krnl.Dgrad_u_Du = result.data();
-    krnl.k(0) = material[info.up[0]].get<K>().data();
-    krnl.k(1) = material[info.up[1]].get<K>().data();
-    krnl.n_unit_q = fct[fctNo].get<UnitNormal>().data()->data();
-    krnl.execute();
-}
-
-
-void Poisson::derivative_traction_boundary(std::size_t fctNo, FacetInfo const& info, Tensor3<double>& result) const {
-    assert(result.size() == tensor::Dgrad_u_Du::size());
-
-    double Dx_q0[tensor::d_x::size(0)];
-
-    kernel::Dgrad_u_Du_bnd krnl;
-    krnl.c00 = -penalty(info);
-    krnl.d_x(0) = Dx_q0;
-    krnl.d_xi(0) = Dxi_q[info.localNo[0]].data();
-    krnl.em(0) = matE_q_T[info.localNo[0]].data();
-    krnl.e(0) = E_q[info.localNo[0]].data();
-    krnl.g(0) = fct[fctNo].get<JInv0>().data()->data();
-    krnl.Dgrad_u_Du = result.data();
-    krnl.k(0) = material[info.up[0]].get<K>().data();
-    krnl.n_unit_q = fct[fctNo].get<UnitNormal>().data()->data();
     krnl.execute();
 }
 

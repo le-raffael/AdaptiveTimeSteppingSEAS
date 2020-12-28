@@ -11,8 +11,6 @@
 
 #include <mpi.h>
 
-#include <fstream>
-#include <iostream>
 #include <cstddef>
 #include <memory>
 #include <string>
@@ -30,16 +28,8 @@ public:
           adapter_(std::move(cl), seasop_->adapter().numLocalElements()), degree_(degree),
           fault_base_(baseName), base_(baseName), V_ref_(V_ref), t_min_(t_min), t_max_(t_max),
           strategy_(strategy) {
-        
-        timeAnalysis.open("timeAnalysis.csv");
-        timeAnalysis << "time,Vmax,count_rhs" << std::endl;
-
         fault_base_ += "-fault";
         MPI_Comm_rank(seasop_->comm(), &rank_);
-    }
-
-    ~SeasWriter(){
-        timeAnalysis.close();
     }
 
     double output_interval(double VMax) const {
@@ -61,12 +51,6 @@ public:
     }
 
     template <class BlockVector> void monitor(double time, BlockVector const& state) {
-
-        
-        double Vmax = seasop_->VMax();
-        timeAnalysis <<std::setprecision(18)<< time << "," << Vmax << "," << seasop_->rhs_count() << std::endl;
-        seasop_->reset_rhs_count();
-        
         auto interval = output_interval(seasop_->VMax());
         if (time - last_output_time_ >= interval) {
             auto fault_writer = VTUWriter<D - 1u>(degree_, true, seasop_->comm());
@@ -110,8 +94,6 @@ private:
     PVDWriter pvd_;
     PVDWriter pvd_fault_;
     int rank_;
-
-    std::ofstream timeAnalysis;
 
     std::string fault_base_;
     std::string base_;

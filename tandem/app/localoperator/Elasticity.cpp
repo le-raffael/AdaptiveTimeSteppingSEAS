@@ -19,7 +19,7 @@ namespace init = tndm::elasticity::init;
 namespace kernel = tndm::elasticity::kernel;
 
 namespace tndm {
- 
+
 Elasticity::Elasticity(std::shared_ptr<Curvilinear<DomainDimension>> cl, functional_t<1> lam,
                        functional_t<1> mu)
     : DGCurvilinearCommon<DomainDimension>(std::move(cl), MinQuadOrder()), space_(PolynomialDegree),
@@ -435,6 +435,7 @@ void Elasticity::traction_skeleton(std::size_t fctNo, FacetInfo const& info,
     krnl.Dx_q(0) = Dx_q0;
     krnl.Dx_q(1) = Dx_q1;
     krnl.E_q(0) = E_q[info.localNo[0]].data();
+    krnl.E_q(1) = E_q[info.localNo[1]].data();
     krnl.f_q = f_q_raw;
     krnl.lam_q(0) = fctPre[fctNo].get<lam_q_0>().data();
     krnl.lam_q(1) = fctPre[fctNo].get<lam_q_1>().data();
@@ -476,51 +477,5 @@ void Elasticity::traction_boundary(std::size_t fctNo, FacetInfo const& info,
     krnl.u(0) = u0.data();
     krnl.execute();
 }
-
-
-void Elasticity::derivative_traction_skeleton(std::size_t fctNo, FacetInfo const& info, Tensor3<double>& result) const {
-    assert(result.size() == tensor::Dgrad_u_Du::size());
-
-    double Dx_q0[tensor::d_x::size(0)];
-    double Dx_q1[tensor::d_x::size(1)];
-
-    kernel::Dgrad_u_Du krnl;
-    krnl.c00 = -penalty(info);
-    krnl.d_x(0) = Dx_q0;
-    krnl.d_x(1) = Dx_q1;
-    for (std::size_t side = 0; side < 2; ++side) {
-        krnl.d_xi(side) = Dxi_q[info.localNo[side]].data();
-        krnl.em(side) = matE_q_T[info.localNo[side]].data();
-    }
-    krnl.e(0) = E_q[info.localNo[0]].data();
-    krnl.e(1) = E_q[info.localNo[1]].data();
-    krnl.g(0) = fct[fctNo].get<JInv0>().data()->data();
-    krnl.g(1) = fct[fctNo].get<JInv1>().data()->data();
-    krnl.Dgrad_u_Du = result.data();
-    krnl.k(0) = 0;                          // review that
-    krnl.k(1) = 0;                          // review that
-    krnl.n_unit_q = fct[fctNo].get<UnitNormal>().data()->data();
-    krnl.execute();
-}
-
-
-void Elasticity::derivative_traction_boundary(std::size_t fctNo, FacetInfo const& info, Tensor3<double>& result) const {
-    assert(result.size() == tensor::Dgrad_u_Du::size());
-
-    double Dx_q0[tensor::d_x::size(0)];
-
-    kernel::Dgrad_u_Du_bnd krnl;
-    krnl.c00 = -penalty(info);
-    krnl.d_x(0) = Dx_q0;
-    krnl.d_xi(0) = Dxi_q[info.localNo[0]].data();
-    krnl.em(0) = matE_q_T[info.localNo[0]].data();
-    krnl.e(0) = E_q[info.localNo[0]].data();
-    krnl.g(0) = fct[fctNo].get<JInv0>().data()->data();
-    krnl.Dgrad_u_Du = result.data();
-    krnl.k(0) = 0;                          // review that
-    krnl.n_unit_q = fct[fctNo].get<UnitNormal>().data()->data();
-    krnl.execute();
-}
-
 
 } // namespace tndm

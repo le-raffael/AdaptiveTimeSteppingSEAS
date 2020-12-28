@@ -1,20 +1,21 @@
-final_time = 94608000000
-mesh_file = "bp1_sym.msh"
+final_time = 47304000000
+mesh_file = "bp3.msh"
 
 [seas]
-type = "poisson"
-lib = "bp1_sym.lua"
+type = "elasticity"
+lib = "bp3.lua"
 boundary = "boundary"
+lam = "lam"
 mu = "mu"
-ref_normal = [1, 0]
 
 [friction]
-lib = "bp1_sym.lua"
+lib = "bp3.lua"
 a = "a"
 eta = "eta"
 sn_pre = "sn_pre"
 tau_pre = "tau_pre"
 Vinit = "Vinit"
+Sinit = "Sinit"
     [friction.constant]
     b = 0.015
     V0 = 1.0e-6
@@ -22,7 +23,7 @@ Vinit = "Vinit"
     f0 = 0.6
 
 [output]
-prefix = "bp1_sym"
+prefix = "bp3"
 V_ref = 0.001
 t_min = 0.05
 t_max = 9460800

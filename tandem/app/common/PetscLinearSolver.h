@@ -9,7 +9,6 @@
 #include <petscsys.h>
 #include <petscsystypes.h>
 
-#include<iostream>
 #include <cstddef>
 #include <memory>
 #include <utility>
@@ -20,7 +19,6 @@ class PetscLinearSolver {
 public:
     template <typename DGOp> PetscLinearSolver(DGOp& dgop) {
         auto const& topo = dgop.topo();
-
         A_ = std::make_unique<PetscBlockMatrix>(dgop.block_size(), topo.numLocalElements(),
                                                 topo.numLocalNeighbours(),
                                                 topo.numGhostNeighbours(), topo.comm());
@@ -42,16 +40,7 @@ public:
         b_->set_zero();
         dgop.rhs(*b_);
     }
-
-    template <typename DGOp> void update_rhsOnlySlip(DGOp& dgop) {
-        b_->set_zero();
-        dgop.rhsOnlySlip(*b_);
-    }
-
-
-    void solve() { 
-        CHKERRTHROW(KSPSolve(ksp_, b_->vec(), x_->vec())); 
-}
+    void solve() { CHKERRTHROW(KSPSolve(ksp_, b_->vec(), x_->vec())); }
 
     auto& x() { return *x_; }
     auto const& x() const { return *x_; }
