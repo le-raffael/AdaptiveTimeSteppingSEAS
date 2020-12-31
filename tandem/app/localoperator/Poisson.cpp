@@ -301,7 +301,7 @@ bool Poisson::rhs_skeleton_only_slip(std::size_t fctNo, FacetInfo const& info, V
 
 bool Poisson::rhs_boundary(std::size_t fctNo, FacetInfo const& info, Vector<double>& B0,
                            LinearAllocator<double>& scratch) const {
-    double f_q_raw[tensor::f_q::size()];
+    double f_q_raw[tensor::f_q::size()]; 
     if (!bc_boundary(fctNo, info.bc, f_q_raw)) {
         return false;
     }
@@ -424,6 +424,7 @@ void Poisson::traction_skeleton(std::size_t fctNo, FacetInfo const& info, Vector
         krnl.em(side) = matE_q_T[info.localNo[side]].data();
     }
     krnl.e(0) = E_q[info.localNo[0]].data();
+    krnl.e(1) = E_q[info.localNo[1]].data();
     krnl.f_q = f_q_raw;
     krnl.g(0) = fct[fctNo].get<JInv0>().data()->data();
     krnl.g(1) = fct[fctNo].get<JInv1>().data()->data();

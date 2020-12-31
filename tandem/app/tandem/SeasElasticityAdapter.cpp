@@ -1,5 +1,18 @@
 #include "SeasElasticityAdapter.h"
 
+#include "config.h"
+#include "geometry/Curvilinear.h"
+#include "kernels/elasticity/tensor.h"
+#include "kernels/elasticity_adapter/init.h"
+#include "kernels/elasticity_adapter/kernel.h"
+#include "kernels/elasticity_adapter/tensor.h"
+
+#include "form/FacetInfo.h"
+#include "form/RefElement.h"
+#include "localoperator/Elasticity.h"
+#include "tensor/Managed.h"
+
+
 #include <cassert>
 
 namespace tndm {
@@ -27,16 +40,6 @@ void SeasElasticityAdapter::slip(std::size_t faultNo, Vector<double const>& stat
     krnl.slip_q = slip_q.data();
     krnl.execute();
 
-    for (std::size_t i = 0; i < nq_; ++i) {
-        /* Slip in the Elasticity solver is defined as [[u]] := u^- - u^+.
-         * In the friction solver the sign of slip S is flipped, that is, S = -[[u]].
-         */
-        if (!fault_[faultNo].template get<SignFlipped>()[i]) {
-            for (std::size_t d = 0; d < DomainDimension; ++d) {
-                slip_q(d, i) = -slip_q(d, i);
-            }
-        }
-    }
 }
 
 TensorBase<Matrix<double>> SeasElasticityAdapter::traction_info() const {

@@ -1,4 +1,4 @@
-final_time = 5000
+final_time = 31536000000
 mesh_file = "bp1.msh"
 
 [seas]

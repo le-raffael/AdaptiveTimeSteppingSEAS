@@ -71,8 +71,7 @@ def add(generator, dim, nbf, Nbf, nq, Nq):
         d_x[0]['kiq'] <= k[0]['m'] * em[0]['qm'] * g[0]['eiq'] * d_xi[0]['keq'],
         d_x[1]['kiq'] <= k[1]['m'] * em[1]['qm'] * g[1]['eiq'] * d_xi[1]['keq'],
         grad_u['pq'] <= 0.5 * (d_x[0]['lpq'] * u[0]['l'] + d_x[1]['lpq'] * u[1]['l']) +
-                        c0[0] * (e[0]['lq'] * (u[0]['l'] - u[1]['l']) - f_q['q']) * n_unit_q['pq']
-    ])
+                       c0[0] * (e[0]['lq'] * u[0]['l'] - e[1]['lq'] * u[1]['l'] - f_q['q']) * n_unit_q['pq']    ])
 
     generator.add('grad_u_bnd', [
         d_x[0]['kiq'] <= k[0]['m'] * em[0]['qm'] * g[0]['eiq'] * d_xi[0]['keq'],
@@ -81,20 +80,18 @@ def add(generator, dim, nbf, Nbf, nq, Nq):
     ])
 
     # derivative of the gradient
-    # what is dim ???
-    Dgrad_u_Du = Tensor('Dgrad_u_Du', (dim, nq, Nbf))
+    Dgrad_u_Du = Tensor('Dgrad_u_Du', (nq, dim, nq))
     generator.add('Dgrad_u_Du', [
         d_x[0]['kiq'] <= k[0]['m'] * em[0]['qm'] * g[0]['eiq'] * d_xi[0]['keq'],
         d_x[1]['kiq'] <= k[1]['m'] * em[1]['qm'] * g[1]['eiq'] * d_xi[1]['keq'],
-        Dgrad_u_Du['pqk'] <= 0.5 * (d_x[0]['kpq'] + d_x[1]['kpq']) +
-                       c0[0] * (e[0]['kq'] - e[1]['kq']) * n_unit_q['pq']
+        Dgrad_u_Du['opq'] <= 0.5 * (em[0]['ok'] * d_x[0]['kpq'] + em[1]['ok'] * d_x[1]['kpq']) +
+                       c0[0] * (e[0]['ko'] * e[0]['kq'] - e[1]['ko'] * e[1]['kq']) * n_unit_q['pq']
     ])
 
-    Dgrad_u_Du_bnd = Tensor('Dgrad_u_Du_bnd', (dim, nq, Nbf))
     generator.add('Dgrad_u_Du_bnd', [
         d_x[0]['kiq'] <= k[0]['m'] * em[0]['qm'] * g[0]['eiq'] * d_xi[0]['keq'],
-        Dgrad_u_Du['pqk'] <= d_x[0]['kpq'] +
-                       c0[0] * e[0]['kq'] * n_unit_q['pq']
+        Dgrad_u_Du['opq'] <= em[0]['ok'] * d_x[0]['kpq'] +
+                       c0[0] * e[0]['ko'] * e[0]['kq'] * n_unit_q['pq']
     ])
  
 

@@ -17,8 +17,8 @@ def add(generator, dim, nbf_fault, nq):
                                                         grad_u['kq'] * n_unit_q['kq'])
 
 
-    dtau_du = Tensor('dtau_du', (nbf_fault, 2*nbf_fault))
-    Dgrad_u_Du = Tensor('Dgrad_u_Du', (dim, nq, 2*nbf_fault))
+    dtau_du = Tensor('dtau_du', (nbf_fault, nbf_fault))
+    Dgrad_u_Du = Tensor('Dgrad_u_Du', (nq, dim, nq))
     generator.add('evaluate_derivative_traction', dtau_du['pl'] <= minv['rp'] * e_q_T['qr'] * w['q'] * \
-                                                        Dgrad_u_Du['kql'] * n_unit_q['kq'])
+                                                        e_q_T['ol'] * Dgrad_u_Du['okq'] * n_unit_q['kq'])
 

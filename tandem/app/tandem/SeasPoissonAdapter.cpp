@@ -1,5 +1,15 @@
 #include "SeasPoissonAdapter.h"
 
+#include "kernels/poisson/tensor.h"
+#include "kernels/poisson_adapter/kernel.h"
+#include "kernels/poisson_adapter/tensor.h"
+
+#include "form/FacetInfo.h"
+#include "form/RefElement.h"
+#include "tandem/SeasAdapterBase.h"
+#include "tensor/Managed.h"
+#include "tensor/Utility.h"
+
 #include <cassert>
 
 namespace tndm {
@@ -19,10 +29,11 @@ void SeasPoissonAdapter::slip(std::size_t faultNo, Vector<double const>& state,
     assert(slip_q.shape(0) == 1);
     assert(slip_q.shape(1) == poisson_adapter::tensor::slip_q::size());
     poisson_adapter::kernel::evaluate_slip krnl;
+
     krnl.e_q_T = e_q_T.data();
     krnl.slip = state.data();
     krnl.slip_q = slip_q.data();
-    krnl.execute();
+    krnl.execute();    
 
     /* Slip in the Poisson solver is defined as [[u]] := u^- - u^+.
      * In the friction solver the sign of slip S is flipped, that is, S = -[[u]].

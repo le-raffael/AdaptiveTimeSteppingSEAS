@@ -25,6 +25,7 @@
 #include "tensor/Managed.h"
 #include "tensor/Utility.h"
 
+#include <iomanip>
 
 #include <algorithm>
 #include <array>
@@ -40,6 +41,7 @@ public:
     using local_operator_t = Poisson;
     constexpr static std::size_t Dim = local_operator_t::Dim;
     constexpr static std::size_t NumQuantities = local_operator_t::NumQuantities;
+
     using time_functional_t =
         std::function<std::array<double, NumQuantities>(std::array<double, Dim + 1u> const&)>;
 
@@ -96,6 +98,7 @@ public:
      * @param result contains A^{-1}e
      */
     template <typename BlockVector> void solveUnitVector(BlockVector& state, BlockVector& result) {
+        std::size_t NumNodesFault = space_->numBasisFunctions();
         auto in_handle = state.begin_access_readonly();
 
         // set the unit vector as slip and transform to quadrature points
@@ -115,6 +118,7 @@ public:
         BlockVector x_nq(nq_, this->numLocalElements(), topo_->comm());
         dgop_->transform_Nbf_to_nq(linear_solver_.x(), x_nq); 
 
+
         // extract values on fault and write to solution vector
         auto handleWrite = result.begin_access();
         auto handleRead = x_nq.begin_access_readonly();
@@ -124,11 +128,11 @@ public:
             auto u0 = x_nq.get_block(handleRead, info.up[0]);
             auto u1 = x_nq.get_block(handleRead, info.up[1]);
             auto slip = result.get_block(handleWrite, faultNo);
-            int nbf = 0.5 * slip.shape()[0];
+
             // transform uX from quadrature to nodal basis (manual matrix vector product)
             // ?? is e_q the correct transform ?? 
-            for (int i = 0; i < nbf; i++){
-                for (int  j = 0; j < nq_; j++){
+            for (int i = 0; i < NumNodesFault; i++){
+                for (int j = 0; j < nq_; j++){
                     slip(i) -= e_q(i,j) * u0(j);                
                     slip(i) -= e_q(i,j) * u1(j);
                 }
@@ -202,7 +206,7 @@ public:
     /** 
      * calculate the derivative of the traction w.r.t the displacement
      * @param faultNo index of the fault
-     * @param dtau_du result tensor with dimensions (nbf, 2*nbf)
+     * @param dtau_du result tensor with dimensions (nbf, nbf)
      * @param . this scratch thingy
      */
     void dtau_du(std::size_t faultNo, Matrix<double>& dtau_du, LinearAllocator<double>&) const;

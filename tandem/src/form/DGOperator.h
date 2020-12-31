@@ -154,7 +154,7 @@ public:
 
     /**
      * Evaluate the rhs of the system Au = b
-     * @param vector rhs vector b (of size very huge, bs = 2*nbf)
+     * @param vector rhs vector b (AllElements, bs)
      */
     template <typename BlockVector> void rhs(BlockVector& vector) {
         auto bs = lop_->block_size();

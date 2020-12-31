@@ -23,9 +23,10 @@ namespace tndm {
 
 class RateAndStateBase {
 public:
-    constexpr static std::size_t NumQuantities = 2;
-    constexpr static std::size_t NumInternalQuantities = 5;
-
+    constexpr static std::size_t NumQuantities = DomainDimension + 1u;      // why + 1??? what does the last component correspond to? 
+    static constexpr std::size_t TangentialComponents = DomainDimension - 1u;
+    constexpr static std::size_t NumInternalQuantities = 2 + 3 * TangentialComponents;
+    
     RateAndStateBase(std::shared_ptr<Curvilinear<DomainDimension>> cl);
 
     std::size_t block_size() const { return space_.numBasisFunctions() * NumQuantities; }

@@ -120,7 +120,8 @@ void solve_Jacobian(LocalSimplexMesh<DomainDimension> const& mesh, Config const&
 //        }
 //    }
 
-    std::cout<<J<<std::endl;
+    std::cout<<"First columns of the Jacobian (corresponds to fault element 1): "<<std::endl;
+    std::cout<<J.block(0, 0, totalSize, blockSize)<<std::endl;
 
     // difference to the previous iteration step
     VectorXd dx_n(totalSize);

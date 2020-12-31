@@ -91,7 +91,7 @@ void solve_seas_problem(LocalSimplexMesh<DomainDimension> const& mesh, Config co
     if (cfg.output) {
         writer = std::make_unique<seas_writer_t>(cfg.output->prefix, mesh, cl, seasop,
                                                  PolynomialDegree, cfg.output->V_ref,
-                                                 cfg.output->t_min, cfg.output->t_max);
+                                                 cfg.output->t_min, cfg.output->t_max, ts);
         ts.set_monitor(*writer);
     }
 

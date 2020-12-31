@@ -103,8 +103,10 @@ public:
 
         auto scratch = make_scratch();
         auto in_handle = state.begin_access_readonly();
+
+
         auto out_handle = result.begin_access();
-        PetscBlockVector resultDerivatives(block_size() * 1.5, numLocalElements(), comm());
+        PetscBlockVector resultDerivatives(3 * lop_->space().numBasisFunctions(), numLocalElements(), comm());
         auto outDer_handle = resultDerivatives.begin_access();
         auto traction = Managed<Matrix<double>>(adapter_->traction_info());
         adapter_->begin_traction([&state, &in_handle](std::size_t faultNo) {
@@ -134,7 +136,7 @@ public:
 
     /**
      * write solution vector to Finite difference format (see state() in rate and state)
-     * @param solution vector in block format
+     * @param vector vector in block format
      * @return finite difference object with the solution
      */
     template <typename BlockVector> auto state(BlockVector& vector) {
@@ -181,7 +183,7 @@ public:
     
     std::size_t numLocalElements() const { return adapter_->faultMap().size(); }
 
-    SeasAdapter& adapter() const { return *adapter_; }
+    SeasAdapter const& adapter() const { return *adapter_; }
 
     size_t rhs_count() {return evaluation_rhs_count; };
 
@@ -210,8 +212,8 @@ public:
         // general parameters
         size_t blockSize = this->block_size();
         size_t numFaultElements = this->numLocalElements();
+        size_t nbf = lop_->space().numBasisFunctions();
         size_t totalSize = blockSize * numFaultElements;
-        size_t nbf = 0.5 * blockSize;
 
         // initialize Jacobian matix to 0
         Jacobian_ = MatrixXd::Zero(totalSize, totalSize);
@@ -239,33 +241,41 @@ public:
                 // copy u = A^{-1} * e to the columns of du/dS
                 auto solutionVectorAccess = solutionVector.begin_access_readonly();  
                 for (int j = 0; j < totalSize; j++){
-                    du_dS_Eigen(j, noFault * nbf + i) = solutionVectorAccess[j];            
+                    du_dS_Eigen(j, noFault * blockSize + i) = solutionVectorAccess[j];            
                 }
                 solutionVector.end_access_readonly(solutionVectorAccess);
             }
         }
-        std::cout<<"First column of du/dS: "<<std::endl;
-        std::cout<<du_dS_Eigen.col(0)<<std::endl;
+//        std::cout<<"First columns of du/dS (corresponds to fault element 1): "<<std::endl;
+//        std::cout<<du_dS_Eigen.block(0, 0, totalSize, blockSize)<<std::endl;
 
         // calculate dtau/dU 
         MatrixXd dtau_du_Eigen = MatrixXd::Zero(totalSize, totalSize);
         auto scratch = this->make_scratch();
         TensorBase<Matrix<double>> tensorBase = adapter_->getBaseDtauDu();
         auto dtau_du = Managed<Matrix<double>>(tensorBase);
+        assert(dtau_du.shape()[0] == nbf);
+        assert(dtau_du.shape()[1] == nbf);
 
 
         for (int noFault = 0; noFault < numFaultElements; noFault++){
             this->adapter().dtau_du(noFault, dtau_du, scratch);
 
-            for(int i = 0; i<nbf; i++){ // copy to Eigen matrix - why has dtau_du the shape [nbf, bs]??
-                for(int j = 0; j<blockSize; j++){
+            for(int i = 0; i<nbf; i++){
+                for(int j = 0; j<nbf; j++){
                     dtau_du_Eigen(noFault * blockSize + i, noFault * blockSize + j) = dtau_du(i, j);
                 }
             }
         }
+//        std::cout<<"First columns of dtau/du (corresponds to fault element 1): "<<std::endl;
+//        std::cout<<dtau_du_Eigen.block(0, 0, totalSize, blockSize)<<std::endl;
 
         // df/dS = dtau/dS = dU/dS * dtau/dU
         df_dS_ = du_dS_Eigen * dtau_du_Eigen;      
+
+//        std::cout<<"First columns of df/dS (corresponds to fault element 1): "<<std::endl;
+//        std::cout<<df_dS_.block(0, 0, totalSize, blockSize)<<std::endl;
+
     }
 
 
@@ -282,29 +292,30 @@ public:
         size_t blockSize = this->block_size();
         size_t numFaultElements = this->numLocalElements();
         size_t totalSize = blockSize * numFaultElements;
-        size_t nbf = 0.5 * blockSize;
+        size_t nbf = lop_->space().numBasisFunctions();
 
-        // fill df/dV, df/dpsi and dg/dpsi -> diagonal matrices of half size        
-        VectorXd df_dV(totalSize / 2);                             
-        VectorXd df_dpsi(totalSize / 2);
-        VectorXd dg_dpsi(totalSize / 2);
+        // fill df/dV, df/dpsi and dg/dpsi     
+        VectorXd df_dV(nbf * numFaultElements);                             
+        VectorXd df_dpsi(nbf * numFaultElements);
+        VectorXd dg_dpsi(nbf * numFaultElements);
 
-        auto AccessHandle = derivatives.begin_access_readonly();
+        auto accessRead = derivatives.begin_access_readonly();
         for (int noFault = 0; noFault < numFaultElements; noFault++){
-            auto localBlock = derivatives.get_block(AccessHandle, noFault);    
+            auto derBlock = derivatives.get_block(accessRead, noFault);    
             for(int i = 0; i<nbf; i++){ 
-                df_dV(noFault * nbf + i) = localBlock.data()[i];
-                df_dpsi(noFault * nbf + i) = localBlock.data()[i + nbf];
-                dg_dpsi(noFault * nbf + i) = localBlock.data()[i + 2 * nbf];
+                df_dV(noFault * nbf + i) = derBlock(i);
+                df_dpsi(noFault * nbf + i) = derBlock(nbf + i);
+                dg_dpsi(noFault * nbf + i) = derBlock(2 * nbf + i);
             }
         }
-        derivatives.end_access_readonly(AccessHandle);
+        derivatives.end_access_readonly(accessRead);
 
         // fill the Jacobian
         for (int noFault = 0; noFault < numFaultElements; noFault++){
             for (int i = 0; i < nbf; i++){
                 int JacobianIndexV = noFault * blockSize + i;
-                int JacobianIndexPSI = noFault * blockSize + i + nbf;
+                int JacobianIndexPSI = noFault * blockSize + 
+                                       RateAndStateBase::TangentialComponents * nbf + i;
 
                 int VectorIndex = noFault * nbf + i;
 
@@ -315,10 +326,14 @@ public:
                 // fill non-diagonal components
                 for (int noFault2 = 0; noFault2 < numFaultElements; noFault2++){
                     for(int j = 0; j < nbf; j++){
-                        double df_dS_local = df_dS_(JacobianIndexV, noFault2 * blockSize + j);
-                        Jacobian_(JacobianIndexV, noFault2 * blockSize + j) = -df_dS_local / df_dV(VectorIndex); // dV/dS
-                        Jacobian_(JacobianIndexPSI, noFault2 * blockSize + j) = df_dS_local / 
-                            (df_dV(VectorIndex) * lop_->getLaw().getV0());                                       // dV/dS
+                        int JacobianIndexV2 = noFault2 * blockSize + j;
+                        int JacobianIndexPSI2 = noFault2 * blockSize + 
+                                                RateAndStateBase::TangentialComponents * nbf + j;
+
+                        double df_dS_local = df_dS_(JacobianIndexV2, JacobianIndexV);
+                        Jacobian_(JacobianIndexV2, JacobianIndexV) = -df_dS_local / df_dV(VectorIndex);          // dV/dS
+                        Jacobian_(JacobianIndexPSI2, JacobianIndexV) = df_dS_local / 
+                            (df_dV(VectorIndex) * lop_->getLaw().getV0());                                       // dg/dS
                     }
                 }
             }

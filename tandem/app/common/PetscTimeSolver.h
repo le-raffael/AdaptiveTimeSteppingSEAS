@@ -7,6 +7,7 @@
 #include <petscsystypes.h>
 #include <petscts.h>
 #include <petscvec.h>
+
 #include <iostream>
 
 #include <memory>
@@ -36,6 +37,8 @@ public:
 
     auto& state() { return *state_; }
     auto const& state() const { return *state_; }
+
+    auto getTS() {return ts_; }
 
     template <class Monitor> void set_monitor(Monitor& monitor) {
         CHKERRTHROW(TSMonitorSet(ts_, &MonitorFunction<Monitor>, &monitor, nullptr));
