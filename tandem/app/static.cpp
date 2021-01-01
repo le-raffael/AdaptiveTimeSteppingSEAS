@@ -40,7 +40,7 @@
 
 using namespace tndm;
 
-struct Config {
+struct ConfigStatic {
     std::optional<double> resolution;
     std::optional<std::string> output;
     std::optional<std::string> mesh_file;
@@ -120,22 +120,22 @@ int main(int argc, char** argv) {
     auto makePathRelativeToConfig =
         MakePathRelativeToOtherPath([&program]() { return program.get("config"); });
 
-    TableSchema<Config> schema;
-    schema.add_value("resolution", &Config::resolution)
+    TableSchema<ConfigStatic> schema;
+    schema.add_value("resolution", &ConfigStatic::resolution)
         .validator([](auto&& x) { return x > 0; })
         .help("Non-negative resolution parameter");
-    schema.add_value("output", &Config::output).help("Output file name");
-    schema.add_value("mesh_file", &Config::mesh_file)
+    schema.add_value("output", &ConfigStatic::output).help("Output file name");
+    schema.add_value("mesh_file", &ConfigStatic::mesh_file)
         .converter(makePathRelativeToConfig)
         .validator(PathExists());
-    auto& poissonSchema = schema.add_table("poisson", &Config::poisson);
+    auto& poissonSchema = schema.add_table("poisson", &ConfigStatic::poisson);
     PoissonScenarioConfig::setSchema(poissonSchema, makePathRelativeToConfig);
-    auto& elasticitySchema = schema.add_table("elasticity", &Config::elasticity);
+    auto& elasticitySchema = schema.add_table("elasticity", &ConfigStatic::elasticity);
     ElasticityScenarioConfig::setSchema(elasticitySchema, makePathRelativeToConfig);
-    auto& genMeshSchema = schema.add_table("generate_mesh", &Config::generate_mesh);
+    auto& genMeshSchema = schema.add_table("generate_mesh", &ConfigStatic::generate_mesh);
     GenMeshConfig<DomainDimension>::setSchema(genMeshSchema);
 
-    std::optional<Config> cfg = readFromConfigurationFileAndCmdLine(schema, program, argc, argv);
+    std::optional<ConfigStatic> cfg = readFromConfigurationFileAndCmdLine(schema, program, argc, argv);
     if (!cfg) {
         return -1;
     }

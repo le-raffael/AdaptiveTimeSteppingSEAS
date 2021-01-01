@@ -26,6 +26,7 @@
 #include "tensor/Utility.h"
 
 #include <iomanip>
+#include <petscksp.h>
 
 #include <algorithm>
 #include <array>
@@ -53,6 +54,7 @@ public:
      * @param local_operator solves DG problem (together with the three previous params)
      * @param up some characteristic of the fault elements
      * @param ref_normal normal vector on each node 
+     * @param ksp_type type of the linear solver
      */
     SeasPoissonAdapter(std::shared_ptr<Curvilinear<Dim>> cl, std::shared_ptr<DGOperatorTopo> topo,
                        std::unique_ptr<RefElement<Dim - 1u>> space,
@@ -197,11 +199,17 @@ public:
      * get the dimensions of the matrix dtau/dU to assemble the Jacobian
      * @return Tensor base of Dtau/DU in one element [nbf, nbf]
      */
-        TensorBase<Matrix<double>> getBaseDtauDu(){
-            TensorBase<Matrix<double>> tensorBase(poisson_adapter::tensor::dtau_du::Shape[0],
-                                          poisson_adapter::tensor::dtau_du::Shape[1]);
-            return tensorBase;
-        }
+    TensorBase<Matrix<double>> getBaseDtauDu(){
+        TensorBase<Matrix<double>> tensorBase(poisson_adapter::tensor::dtau_du::Shape[0],
+                                        poisson_adapter::tensor::dtau_du::Shape[1]);
+        return tensorBase;
+    }
+
+    /**
+     * return the PETSc object of the ksp system solver
+     * @return ksp object
+     */
+    KSP& getKSP() { return linear_solver_.ksp(); }
 
     /** 
      * calculate the derivative of the traction w.r.t the displacement

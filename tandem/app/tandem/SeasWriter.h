@@ -28,6 +28,19 @@ namespace tndm {
 
 template <std::size_t D, class SeasOperator> class SeasWriter {
 public:
+    /**
+     * Initialize the monitor
+     * @param baseName name of the ouput file
+     * @param mesh reference to the local simplex mesh (to set up the fault adapter)
+     * @param cl pointer to the curvilinear description (to set up the fault adapter)
+     * @param seasop pointer to the SEAS operator instance
+     * @param degree ???
+     * @param V_ref reference velocity
+     * @param t_min minimum simulation time between two writing operations
+     * @param t_max maximum simulation time between two writing operations
+     * @param ts reference to the PETSC time solver instance (use ts_.getTS() for the TS object)
+     * @param strategy method to calculate the interval between two writing operations (available: Threshold, Exponential)
+     */
     SeasWriter(std::string_view baseName, LocalSimplexMesh<D> const& mesh,
                std::shared_ptr<Curvilinear<D>> cl, std::shared_ptr<SeasOperator> seasop,
                unsigned degree, double V_ref, double t_min, double t_max, PetscTimeSolver& ts,
@@ -45,10 +58,17 @@ public:
         MPI_Comm_rank(seasop_->comm(), &rank_);
     }
 
+    /**
+     * Destructor
+     */
     ~SeasWriter(){
         timeAnalysis.close();
     }
 
+    /**
+     * calculate the interval between two writing operations
+     * @param VMax current maximum velocity on the fault
+     */
     double output_interval(double VMax) const {
         double interval = 0.0;
         switch (strategy_) {
@@ -67,6 +87,11 @@ public:
         return interval;
     }
 
+    /**
+     * write operation
+     * called after each timestep, only writes if the output interval is smaller 
+     * than the passed simulated time since the last write operation
+     */
     template <class BlockVector> void monitor(double time, BlockVector const& state) {
 
         calculateMaxErrors(state);
@@ -108,6 +133,11 @@ public:
     }
 
 private:
+    /**
+     * creates the file name of the step output file
+     * @param base file name base string
+     * @return string with the output file name
+     */
     std::string name(std::string const& base) const {
         std::stringstream ss;
         ss << base << "_" << output_step_;
@@ -174,7 +204,8 @@ private:
         CHKERRTHROW(DMRestoreGlobalVector(dm, &embeddedSolution));
 
     } 
-    
+
+    // geometric parameters   
     std::shared_ptr<SeasOperator> seasop_;
     CurvilinearBoundaryVTUAdapter<D> fault_adapter_;
     CurvilinearVTUAdapter<D> adapter_;
@@ -182,19 +213,23 @@ private:
     PVDWriter pvd_fault_;
     int rank_;
 
+    // file name of the csv output file
     std::ofstream timeAnalysis;
 
+    // output parametes
     std::string fault_base_;
     std::string base_;
     unsigned degree_;
     std::size_t output_step_ = 0;
     double last_output_time_ = std::numeric_limits<double>::lowest();
 
+    // adaptive output writing parameters
     double V_ref_;
     double t_min_;
     double t_max_;
     AdaptiveOutputStrategy strategy_;
 
+    // error evaluation parameters
     PetscTimeSolver& ts_;
     double errorVrel_;    
     double errorPSIrel_;    

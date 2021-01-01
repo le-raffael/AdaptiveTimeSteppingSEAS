@@ -9,6 +9,8 @@
 #include <petscsys.h>
 #include <petscsystypes.h>
 
+#include "tandem/Config.h"
+
 #include<iostream>
 #include <cstddef>
 #include <memory>
@@ -31,11 +33,14 @@ public:
         dgop.rhs(*b_);
 
         CHKERRTHROW(KSPCreate(topo.comm(), &ksp_));
-        CHKERRTHROW(KSPSetType(ksp_, KSPCG));
+
+        CHKERRTHROW(KSPSetType(ksp_, KSPCG)); 
         CHKERRTHROW(KSPSetOperators(ksp_, A_->mat(), A_->mat()));
         CHKERRTHROW(KSPSetTolerances(ksp_, 1.0e-12, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT));
         CHKERRTHROW(KSPSetFromOptions(ksp_));
     }
+
+
     ~PetscLinearSolver() { KSPDestroy(&ksp_); }
 
     template <typename DGOp> void update_rhs(DGOp& dgop) {
@@ -56,7 +61,7 @@ public:
     auto& x() { return *x_; }
     auto const& x() const { return *x_; }
 
-    KSP ksp() { return ksp_; }
+    KSP& ksp() { return ksp_; }
 
 private:
     std::unique_ptr<PetscBlockMatrix> A_;

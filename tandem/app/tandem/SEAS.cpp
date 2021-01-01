@@ -20,6 +20,7 @@
 
 #include <mpi.h>
 #include <petscsys.h>
+#include <petscksp.h>
 
 #include <algorithm>
 #include <array>
@@ -74,7 +75,7 @@ void solve_seas_problem(LocalSimplexMesh<DomainDimension> const& mesh, Config co
     auto fop = std::make_unique<fault_op_t>(cl);
     auto topo = std::make_shared<DGOperatorTopo>(mesh, PETSC_COMM_WORLD);
     auto adapt = adapter<type>::make(cfg, scenario, cl, topo, fop->space().clone());
-
+    KSP& ksp = adapt->getKSP();
     auto seasop = std::make_shared<seas_op_t>(std::move(fop), std::move(adapt));
     seasop->lop().set_constant_params(friction_scenario.constant_params());
     seasop->lop().set_params(friction_scenario.param_fun());
@@ -85,7 +86,8 @@ void solve_seas_problem(LocalSimplexMesh<DomainDimension> const& mesh, Config co
         seasop->set_boundary(*scenario.boundary());
     } 
 
-    auto ts = PetscTimeSolver(*seasop);
+
+    auto ts = PetscTimeSolver(*seasop, cfg.solver, ksp);
 
     std::unique_ptr<seas_writer_t> writer;
     if (cfg.output) {

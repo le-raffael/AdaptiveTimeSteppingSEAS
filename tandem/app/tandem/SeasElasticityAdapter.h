@@ -145,6 +145,12 @@ public:
 
     auto& getSolutionLinearSystem(){ return linear_solver_.x();}
 
+    /**
+     * return the PETSc object of the ksp system solver
+     * @return ksp object
+     */
+    KSP& getKSP() { return linear_solver_.ksp(); }
+
 
 private:
     void slip(std::size_t faultNo, Vector<double const>& state, Matrix<double>& s_q) const;

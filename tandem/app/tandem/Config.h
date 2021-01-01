@@ -19,6 +19,20 @@ struct OutputConfig {
     AdaptiveOutputStrategy strategy;
 };
 
+struct SolverConfig {
+    bool use_monitor;
+    std::string ts_type;
+    std::string ts_rk_type;
+    std::string ts_adapt_wnormtype;    
+    double psi_rtol;
+    double V_rtol;
+    double psi_atol;
+    double V_atol;
+    std::string ksp_type;
+    std::string pc_type;
+    std::string pc_factor_mat_solver_type;
+};
+
 struct Config {
     std::optional<double> resolution;
     double final_time;
@@ -27,6 +41,7 @@ struct Config {
     DieterichRuinaAgeingConfig friction;
     std::optional<GenMeshConfig<DomainDimension>> generate_mesh;
     std::optional<OutputConfig> output;
+    std::optional<SolverConfig> solver;
 };
 
 } // namespace tndm

@@ -95,6 +95,41 @@ int main(int argc, char** argv) {
         .validator([](AdaptiveOutputStrategy const& type) {
             return type != AdaptiveOutputStrategy::Unknown;
         });
+    auto& solverSchema = schema.add_table("solver", &Config::solver);
+    solverSchema.add_value("ts_type", &SolverConfig::ts_type)
+        .default_value("rk")
+        .help("type of the time integration scheme (use Petsc standard)");
+    solverSchema.add_value("ts_rk_type", &SolverConfig::ts_rk_type)
+        .default_value("5dp")
+        .help("type unge-Kutta scheme (use Petsc standard). Does not need to be provided if no Runge-Kutta scheme is used");
+    solverSchema.add_value("ts_adapt_wnormtype", &SolverConfig::ts_adapt_wnormtype)
+        .default_value("infinity")
+        .help("norm to estimate the local truncation error");
+    solverSchema.add_value("psi_rtol", &SolverConfig::psi_rtol)
+        .validator([](auto&& x) { return x > 0; })
+        .default_value(1e-7)
+        .help("relative tolerance for the state variable psi");
+    solverSchema.add_value("V_rtol", &SolverConfig::V_rtol)
+        .validator([](auto&& x) { return x > 0; })
+        .default_value(1e-7)
+        .help("relative tolerance for the slip rate");
+    solverSchema.add_value("psi_atol", &SolverConfig::psi_atol)
+        .validator([](auto&& x) { return x > 0; })
+        .default_value(1e-7)
+        .help("absolute tolerance for the state variable psi");
+    solverSchema.add_value("V_atol", &SolverConfig::V_atol)
+        .validator([](auto&& x) { return x > 0; })
+        .default_value(1e-7)
+        .help("absolute tolerance for the slip rate");
+    solverSchema.add_value("ksp_type", &SolverConfig::ksp_type)
+        .default_value("preonly")
+        .help("type of the ksp matrix-vector multiplication procedure");
+    solverSchema.add_value("pc_type", &SolverConfig::pc_type)
+        .default_value("lu")
+        .help("type of the preconditioner");
+    solverSchema.add_value("pc_factor_mat_solver_type", &SolverConfig::pc_factor_mat_solver_type)
+        .default_value("mumps")
+        .help("type of the matrix solver procedure in the preconditioner");
 
     std::optional<Config> cfg = readFromConfigurationFileAndCmdLine(schema, program, argc, argv);
     if (!cfg) {
