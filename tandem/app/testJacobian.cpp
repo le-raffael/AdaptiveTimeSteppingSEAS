@@ -89,6 +89,18 @@ int main(int argc, char** argv) {
             return type != AdaptiveOutputStrategy::Unknown;
         });
 
+    auto& solverSchema = schema.add_table("solver", &Config::solver);
+    solverSchema.add_value("ksp_type", &SolverConfig::ksp_type)
+        .default_value("preonly")
+        .help("type of the ksp matrix-vector multiplication procedure");
+    solverSchema.add_value("pc_type", &SolverConfig::pc_type)
+        .default_value("lu")
+        .help("type of the preconditioner");
+    solverSchema.add_value("pc_factor_mat_solver_type", &SolverConfig::pc_factor_mat_solver_type)
+        .default_value("mumps")
+        .help("type of the matrix solver procedure in the preconditioner");
+
+
     std::optional<Config> cfg = readFromConfigurationFileAndCmdLine(schema, program, argc, argv);
     if (!cfg) {
         return -1;

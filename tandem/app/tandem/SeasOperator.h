@@ -128,7 +128,7 @@ public:
         result.end_access(out_handle);
         result.end_access(outDer_handle);
 
-        // update the Jacobian
+        //update the Jacobian
         updateJacobian(resultDerivatives);
 
         evaluation_rhs_count++;
@@ -226,6 +226,7 @@ public:
         zeroVector.set_zero();
 
         for (int noFault = 0; noFault < numFaultElements; noFault++){
+            std::cout<<"Calculate dU/dS for element "<<noFault<<std::endl;
             for (int i = 0; i < blockSize; i++){
                 // set up unit vector e
                 PetscBlockVector unitVector(zeroVector);
@@ -246,8 +247,8 @@ public:
                 solutionVector.end_access_readonly(solutionVectorAccess);
             }
         }
-//        std::cout<<"First columns of du/dS (corresponds to fault element 1): "<<std::endl;
-//        std::cout<<du_dS_Eigen.block(0, 0, totalSize, blockSize)<<std::endl;
+        std::cout<<"First columns of du/dS (corresponds to fault element 1): "<<std::endl;
+        std::cout<<du_dS_Eigen.block(0, 0, totalSize, blockSize)<<std::endl;
 
         // calculate dtau/dU 
         MatrixXd dtau_du_Eigen = MatrixXd::Zero(totalSize, totalSize);
@@ -259,6 +260,7 @@ public:
 
 
         for (int noFault = 0; noFault < numFaultElements; noFault++){
+            std::cout<<"Calculate dtau/du for element "<<noFault<<std::endl;
             this->adapter().dtau_du(noFault, dtau_du, scratch);
 
             for(int i = 0; i<nbf; i++){
@@ -267,14 +269,14 @@ public:
                 }
             }
         }
-//        std::cout<<"First columns of dtau/du (corresponds to fault element 1): "<<std::endl;
-//        std::cout<<dtau_du_Eigen.block(0, 0, totalSize, blockSize)<<std::endl;
+        std::cout<<"First columns of dtau/du (corresponds to fault element 1): "<<std::endl;
+        std::cout<<dtau_du_Eigen.block(0, 0, totalSize, blockSize)<<std::endl;
 
         // df/dS = dtau/dS = dU/dS * dtau/dU
         df_dS_ = du_dS_Eigen * dtau_du_Eigen;      
 
-//        std::cout<<"First columns of df/dS (corresponds to fault element 1): "<<std::endl;
-//        std::cout<<df_dS_.block(0, 0, totalSize, blockSize)<<std::endl;
+        std::cout<<"First columns of df/dS (corresponds to fault element 1): "<<std::endl;
+        std::cout<<df_dS_.block(0, 0, totalSize, blockSize)<<std::endl;
 
     }
 

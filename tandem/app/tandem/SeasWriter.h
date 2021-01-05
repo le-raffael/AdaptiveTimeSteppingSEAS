@@ -52,7 +52,7 @@ public:
         
 
         timeAnalysis.open("timeAnalysis.csv");
-        timeAnalysis << "time,Vmax,count_rhs,errorVrel,errorPSIrel,errorVabs,errorPSIabs" << std::endl;
+        timeAnalysis << "time,Vmax,count_rhs,errorSrel,errorPSIrel,errorSabs,errorPSIabs,maxPSI,minPSI,maxS,minS" << std::endl;
 
         fault_base_ += "-fault";
         MPI_Comm_rank(seasop_->comm(), &rank_);
@@ -99,7 +99,8 @@ public:
         double Vmax = seasop_->VMax();
         timeAnalysis <<std::setprecision(18)<< time << "," << Vmax << "," << 
         seasop_->rhs_count() << ","  << 
-        errorVrel_ << "," << errorPSIrel_ << "," << errorVabs_ << "," << errorPSIabs_ << std::endl;
+        errorSrel_ << "," << errorPSIrel_ << "," << errorSabs_ << "," << errorPSIabs_ << "," <<
+        maxPSI_ << "," << minPSI_ << "," << maxS_ << "," << minS_ << std::endl;
         seasop_->reset_rhs_count();
         
         auto interval = output_interval(seasop_->VMax());
@@ -150,10 +151,14 @@ private:
      */
     template <class BlockVector> void calculateMaxErrors( BlockVector const& state){
         // reset error values 
-        errorVrel_ = 0;
+        errorSrel_ = 0;
         errorPSIrel_ = 0;
-        errorVabs_ = 0;
+        errorSabs_ = 0;
         errorPSIabs_ = 0;
+        maxS_ = 0;
+        maxPSI_ = 0;
+        minS_ = 10;
+        minPSI_ = 1;
 
         // create embeded solution vector
         Vec embeddedSolution;
@@ -177,7 +182,7 @@ private:
         const double* e;
         CHKERRTHROW(VecGetArrayRead(embeddedSolution, &e));     // can I avoid that with the DM ???
 
-        // calculate relative and absolute errors in V and PSI
+        // calculate relative and absolute errors in S and PSI
         for (int noFault = 0; noFault < seasop_->numLocalElements(); noFault++){
             auto eB = e + noFault * seasop_->block_size();
             auto sB = state.get_block(s, noFault);
@@ -185,13 +190,17 @@ private:
             for (int component = 0; component < RateAndStateBase::TangentialComponents; component++){
                 for (int node = 0; node < nbf; node++){
                     int i = component * nbf + node;
-                    errorVabs_ = std::max(errorVabs_, abs(sB(i) - eB[i]));
-                    errorVrel_ = std::max(errorVrel_, 
+                    maxS_ = std::max(maxS_,sB(i));
+                    minS_ = std::min(minS_,sB(i));
+                    errorSabs_ = std::max(errorSabs_, abs(sB(i) - eB[i]));
+                    errorSrel_ = std::max(errorSrel_, 
                         (sB(i) != 0) ? abs((sB(i) - eB[i]) / sB(i)) : 0);
                 }
             }
             for (int node = 0; node < nbf; node++){
                 int i = PsiIndex + node;
+                maxPSI_ = std::max(maxPSI_,sB(i));
+                minPSI_ = std::min(minPSI_,sB(i));
                 errorPSIabs_ = std::max(errorPSIabs_, abs(sB(i) - eB[i]));
                 errorPSIrel_ = std::max(errorPSIrel_, 
                     (sB(i) != 0) ? abs((sB(i) - eB[i]) / sB(i)) : 0);
@@ -227,14 +236,18 @@ private:
     double V_ref_;
     double t_min_;
     double t_max_;
+    double maxS_;
+    double minS_;
     AdaptiveOutputStrategy strategy_;
 
     // error evaluation parameters
     PetscTimeSolver& ts_;
-    double errorVrel_;    
+    double errorSrel_;    
     double errorPSIrel_;    
-    double errorVabs_;    
+    double errorSabs_;    
     double errorPSIabs_;    
+    double maxPSI_;
+    double minPSI_;
 };
 
 } // namespace tndm
