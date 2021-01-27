@@ -1,0 +1,24 @@
+\begin{thebibliography}{Rap97}
+
+\bibitem[Bro65]{BroydenIteration}
+C.~Broyden.
+\newblock A class of methods for solving nonlinear simultaneous equations.
+\newblock {\em Mathematics of Computation}, 19:577--593, 1965.
+
+\bibitem[Rap97]{NewtonRaphsonMethod}
+Joseph Raphson.
+\newblock {\em Numerical Initial Value Problems in Ordinary Differential
+  Equations}.
+\newblock Th. Braddyll, 1697.
+
+\bibitem[Roa01]{10.1115/1.1436090}
+Patrick~J. Roache.
+\newblock {Code Verification by the Method of Manufactured Solutions }.
+\newblock {\em Journal of Fluids Engineering}, 124(1):4--10, 11 2001.
+
+\bibitem[S\"02]{AutomControlAdaptTS}
+Gustaf S\"oderlind.
+\newblock Automatic control and adaptive time-stepping.
+\newblock 31(1-4):281--310, 2002.
+
+\end{thebibliography}

@@ -2,7 +2,7 @@ from yateto import *
 from yateto.memory import CSCMemoryLayout
 
 
-def add(generator, dim, nbf_fault, nq):
+def add(generator, dim, nbf_fault, Nbf_element, nq):
     e_q = Tensor('e_q', (nbf_fault, nq))
     e_q_T = Tensor('e_q_T', (nq, nbf_fault))
     fault_basis_q = Tensor('fault_basis_q', (dim, dim, nq))
@@ -26,8 +26,9 @@ def add(generator, dim, nbf_fault, nq):
                                                          traction_q['oq'] * fault_basis_q['opq'])
 
     n_unit_q = Tensor('n_unit_q', (dim, nq))
-    dtau_du = Tensor('dtau_du', (nbf_fault, 2*nbf_fault))
-    Dgrad_u_Du = Tensor('Dgrad_u_Du', (dim, nq, 2*nbf_fault))
+
+    dtau_du = Tensor('dtau_du', (nbf_fault, Nbf_element))
+    Dgrad_u_Du = Tensor('Dgrad_u_Du', (Nbf_element, dim, nq))
     generator.add('evaluate_derivative_traction', dtau_du['pl'] <= minv['rp'] * e_q_T['qr'] * w['q'] * \
-                                                        Dgrad_u_Du['kql'] * n_unit_q['kq'])
+                                                        Dgrad_u_Du['lkq'] * n_unit_q['kq'])
 

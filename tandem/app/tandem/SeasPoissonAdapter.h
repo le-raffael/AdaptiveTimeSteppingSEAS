@@ -100,7 +100,8 @@ public:
      * @param result contains A^{-1}e
      */
     template <typename BlockVector> void solveUnitVector(BlockVector& state, BlockVector& result) {
-        std::size_t NumNodesFault = space_->numBasisFunctions();
+        std::size_t nbf = space_->numBasisFunctions();
+        std::size_t Nbf = dgop_->block_size();
         auto in_handle = state.begin_access_readonly();
 
         // set the unit vector as slip and transform to quadrature points
@@ -116,32 +117,30 @@ public:
         linear_solver_.solve();
         state.end_access_readonly(in_handle);
 
-        // transform values in the solution vector x_ from size Nbf to nq
-        BlockVector x_nq(nq_, this->numLocalElements(), topo_->comm());
-        dgop_->transform_Nbf_to_nq(linear_solver_.x(), x_nq); 
-
-
         // extract values on fault and write to solution vector
         auto handleWrite = result.begin_access();
-        auto handleRead = x_nq.begin_access_readonly();
+        auto handleRead = linear_solver_.x().begin_access_readonly();
         for (int faultNo = 0; faultNo < faultMap_.size(); faultNo++){
             auto fctNo = faultMap_.fctNo(faultNo);
             auto const& info = dgop_->topo().info(fctNo);
-            auto u0 = x_nq.get_block(handleRead, info.up[0]);
-            auto u1 = x_nq.get_block(handleRead, info.up[1]);
             auto slip = result.get_block(handleWrite, faultNo);
 
-            // transform uX from quadrature to nodal basis (manual matrix vector product)
-            // ?? is e_q the correct transform ?? 
-            for (int i = 0; i < NumNodesFault; i++){
-                for (int j = 0; j < nq_; j++){
-                    slip(i) -= e_q(i,j) * u0(j);                
-                    slip(i) -= e_q(i,j) * u1(j);
+            if (info.up[0] == info.up[1]) {
+                for (int i = 0; i < Nbf; i++){
+                    auto u0 = linear_solver_.x().get_block(handleRead, info.up[0]);
+                    slip(i) = -u0(i);
+                }
+            } else {
+                for (int i = 0; i < Nbf; i++){
+                    auto u0 = linear_solver_.x().get_block(handleRead, info.up[0]);
+                    auto u1 = linear_solver_.x().get_block(handleRead, info.up[1]);
+                    slip(i) = -u0(i);
+                    slip(i) += u1(i);
                 }
             }
         }
         result.end_access(handleWrite); 
-        x_nq.end_access_readonly(handleRead); 
+        linear_solver_.x().end_access_readonly(handleRead); 
     }
 
 
@@ -219,6 +218,12 @@ public:
      */
     void dtau_du(std::size_t faultNo, Matrix<double>& dtau_du, LinearAllocator<double>&) const;
 
+
+    /**
+     * returns the block Size of the vectors in the DG solver 
+     * @return block size = Nbf (number of element basis functions )
+     */
+    std::size_t block_size_rhsDG() const { return dgop_->block_size(); } 
 private:
     /**
     * transform the slip from the nodes to the quadrature points 

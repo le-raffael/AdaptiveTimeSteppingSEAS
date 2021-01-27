@@ -24,10 +24,14 @@ struct SolverConfig {
     std::string ts_type;
     std::string ts_rk_type;
     std::string ts_adapt_wnormtype;    
+    bool bdf_manual_error_evaluation;
+    bool bdf_manual_Newton_iteration;
+    double S_rtol;
+    double S_atol;
     double psi_rtol;
-    double V_rtol;
-    double psi_atol;
-    double V_atol;
+    double psi_atol_eq;
+    double psi_atol_as;
+    int ts_bdf_order;
     std::string ksp_type;
     std::string pc_type;
     std::string pc_factor_mat_solver_type;

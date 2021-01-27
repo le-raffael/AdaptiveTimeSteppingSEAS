@@ -201,7 +201,7 @@ private:
 
     // Matrices
     Managed<Matrix<double>> E_Q;
-    Managed<Tensor<double, 3u>> Dxi_Q;
+    Managed<Tensor<double, 3u>> Dxi_Q; 
     std::vector<Managed<Matrix<double>>> E_q;
     std::vector<Managed<Tensor<double, 3u>>> Dxi_q;
 

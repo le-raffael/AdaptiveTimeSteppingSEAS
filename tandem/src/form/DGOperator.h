@@ -210,7 +210,7 @@ public:
 
     /**
      * evaluate the rhs of Au = b, with u being the unit vector to construct the Jacobian
-     * @param vector rhs vector b (of size very huge, bs = 2*nbf)
+     * @param vector rhs vector b (of size very huge)
      */
     template <typename BlockVector> void rhsOnlySlip(BlockVector& vector) {
         auto bs = lop_->block_size();
@@ -248,54 +248,6 @@ public:
             }
         }
         vector.end_access(access_handle);
-    }
-
-    /**
-     * transforms all facet entries in a vector from the size Nbf to nq
-     * @param vec initial vector (of blocksize Nbf)
-     * @param res resultant vector (of blocksize nq)
-     */
-    template <typename BlockVector> void transform_Nbf_to_nq(BlockVector& vec, BlockVector& res){
-        auto access_read = vec.begin_access_readonly();
-        auto access_write = res.begin_access();
-        for (std::size_t fctNo = 0; fctNo < topo_->numLocalFacets(); ++fctNo) {
-            auto const& info = topo_->info(fctNo);
-
-            auto ib0 = info.up[0];
-           
-            auto vec0 = vec.get_block(access_read, ib0);
-            auto res0 = res.get_block(access_write, ib0);
-
-            auto E0 = lop_->get_E_q()[info.localNo[0]].data();
-
-            int sizeX = tndm::poisson::tensor::e::Shape[0][0];
-            int sizeY = tndm::poisson::tensor::e::Shape[0][1];
-            for (int i = 0; i < sizeX; i++) {
-                for (int j = 0; j < sizeY; j++) {
-                    res0(j) = E0[i * sizeY + j] * vec0(i);
-                }
-            }
-
-            auto ib1 = info.up[1];
-
-            if (ib1 != ib0){
-                auto vec1 = vec.get_block(access_read, ib1);
-                auto res1 = res.get_block(access_write, ib1);
-        
-                auto E1 = lop_->get_E_q()[info.localNo[1]].data();
-
-                sizeX = tndm::poisson::tensor::e::Shape[1][0];
-                sizeY = tndm::poisson::tensor::e::Shape[1][1];
-                for (int i = 0; i < sizeX; i++) {
-                    for (int j = 0; j < sizeY; j++) {
-                        res1(j) = E1[i * sizeY + j] * vec1(i);
-                    }
-                }
-            }
-        } 
-
-        vec.end_access_readonly(access_read);
-        res.end_access(access_write);
     }
 
     /**

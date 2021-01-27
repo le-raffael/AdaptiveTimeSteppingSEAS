@@ -144,18 +144,18 @@ def add(generator, dim, nbf, Nbf, nq, Nq):
     e = [Tensor('e({})'.format(x), (Nbf, nq)) for x in range(2)]
     em = [Tensor('em({})'.format(x), (nq, Nbf)) for x in range(2)]
     n_unit_q = Tensor('n_unit_q', (dim, nq))
-    Dgrad_u_Du = Tensor('Dgrad_u_Du', (dim, nq, Nbf))
+    # derivative of the gradient
+    Dgrad_u_Du = Tensor('Dgrad_u_Du', (Nbf, dim, nq))
     generator.add('Dgrad_u_Du', [
         d_x[0]['kiq'] <= k[0]['m'] * em[0]['qm'] * g[0]['eiq'] * d_xi[0]['keq'],
         d_x[1]['kiq'] <= k[1]['m'] * em[1]['qm'] * g[1]['eiq'] * d_xi[1]['keq'],
-        Dgrad_u_Du['pqk'] <= 0.5 * (d_x[0]['kpq'] + d_x[1]['kpq']) +
+        Dgrad_u_Du['kpq'] <= 0.5 * (d_x[0]['kpq'] + d_x[1]['kpq']) +
                        c0[0] * (e[0]['kq'] - e[1]['kq']) * n_unit_q['pq']
     ])
 
-    Dgrad_u_Du_bnd = Tensor('Dgrad_u_Du_bnd', (dim, nq, Nbf))
     generator.add('Dgrad_u_Du_bnd', [
         d_x[0]['kiq'] <= k[0]['m'] * em[0]['qm'] * g[0]['eiq'] * d_xi[0]['keq'],
-        Dgrad_u_Du['pqk'] <= d_x[0]['kpq'] +
+        Dgrad_u_Du['kpq'] <= d_x[0]['kpq'] +
                        c0[0] * e[0]['kq'] * n_unit_q['pq']
     ])
 

@@ -99,14 +99,25 @@ public:
 
     /**
      * calculate the derivative dg/dpsi of the algebraic equation g(V,psi)=0 w.r.t to the state variable
-     * @param index of the current node
+     * @param delta Dirac delta, 0 if off-diagonal, 1 if on diagonal
      * @param psi state variable at the current node
      * @param dV_dpsi the derivative dV/dPSI
      * @return deriviative dg/dpsi
      * */
-    double dg_dpsi(std::size_t index, double psi, double dV_dpsi) const {
-        return -cp_.V0 / cp_.L * (exp((cp_.f0 - psi) / cp_.b) - dV_dpsi / cp_.V0);
+    double dg_dpsi(int delta, double psi, double dV_dpsi) const {
+        return -cp_.V0 / cp_.L * exp((cp_.f0 - psi) / cp_.b) * delta - dV_dpsi * cp_.b / cp_.L;
     }
+
+    /**
+     * calculate the derivative dg/dpsi of the algebraic equation g(V,psi)=0 w.r.t to the slip
+     * @param psi state variable at the current node
+     * @param dV_dpsi the derivative dV/dPSI
+     * @return deriviative dg/dpsi
+     * */
+    double dg_dS(double psi, double dV_dS, double dpsi_dS) const {
+        return -cp_.V0 / cp_.L * dpsi_dS * exp((cp_.f0 - psi) / cp_.b) - dV_dS * cp_.b / cp_.L;
+    }
+
 
     /**
      * calculate the derivative df/dpsi of the algebraic equation f(V,psi)=0 w.r.t to the state variable
@@ -117,10 +128,9 @@ public:
      * @return deriviative df/dpsi
      * */
     double df_dpsi(std::size_t index, double sn, double V, double psi) const {
-        auto eta = p_[index].get<Eta>();
         auto a = p_[index].get<A>();
         double snAbs = sn + p_[index].get<SnPre>();
-        return -snAbs * asinh(V / (2.0 * cp_.V0)) * exp(psi / a) - eta;
+        return -snAbs * asinh(V / (2.0 * cp_.V0)) * exp(psi / a);
     }
 
     /**
@@ -133,9 +143,10 @@ public:
      * */
     double df_dV(std::size_t index, double sn, double V, double psi) const {
         auto a = p_[index].get<A>();
+        auto eta = p_[index].get<Eta>();
         double snAbs = sn + p_[index].get<SnPre>();
         double twoV0 = 2.0 * cp_.V0;
-        return -snAbs * a / (twoV0 * sqrt(V * V / (twoV0 * twoV0) + 1)) * exp(psi / a);
+        return -snAbs * a / (twoV0 * sqrt(V * V / (twoV0 * twoV0) + 1)) * exp(psi / a) - eta;
     }
 
     /**
@@ -162,7 +173,7 @@ public:
             return tauAbs - this->F(index, snAbs, V, psi) - eta * V;
         };
         double V = zeroIn(a, b, fF);
-        return (V / (F(index, snAbs, V, psi) + eta * V)) * tauAbsVec;
+        return (V / (F(index, snAbs, V, psi) + eta * V)) * tauAbsVec; // == V * tauAbsVec / tauAbs
     }
 
     /**
@@ -181,6 +192,20 @@ public:
      * @return the velocity
      */
     double getV0() const {return cp_.V0;}
+
+    /**
+     * evaluate the denominator of the ratio between absolute errors in slip and state variable
+     * @param sn maximal value
+     * @param psi_max maximal value
+     * @param V_max maximal value
+     */
+    double evaluateErrorRatioDenominator(double sn, double psi_max, double V_max) const {
+        double snAbs = -sn + p_[0].get<SnPre>();
+        double a_min = 0.01;    // from Lua file
+        V_max = 1e-6;
+        std::cout << "sn: "<<snAbs<<", a: "<<p_[0].get<A>()<<", V0: "<<cp_.V0<<", asinh: "<<asinh(V_max / (2.0 * cp_.V0))<<std::endl;
+        return abs(snAbs * asinh(V_max / (2.0 * cp_.V0)) * exp(psi_max / a_min));
+    }
 
 private:
     /**

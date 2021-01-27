@@ -46,6 +46,13 @@ namespace tndm::detail {
     void writeBlockToEigen(PetscBlockVector& BlockVector, VectorXd& EigenVector);
     void writeEigenToBlock(VectorXd& EigenVector, PetscBlockVector& BlockVector);
 
+    /**
+     * Calculates the Jacobi matrix for the implicit Euler
+     * @param J Jacobian of the rhs
+     * @param dt timestep size
+     */
+    MatrixXd JacobianImplicitEuler(Mat& J, double dt);
+
     /********
      * right hand side of the implicit Euler method F = -x_n + x_n_1 + dt * f(x_n)
      * ******/

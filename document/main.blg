@@ -1,0 +1,48 @@
+This is BibTeX, Version 0.99d (TeX Live 2017/Debian)
+Capacity: max_strings=100000, hash_size=100000, hash_prime=85009
+The top-level auxiliary file: main.aux
+The style file: alpha.bst
+Database file #1: literature.bib.bib
+Warning--empty journal in AutomControlAdaptTS
+You've used 4 entries,
+            2543 wiz_defined-function locations,
+            590 strings with 5004 characters,
+and the built_in function-call counts, 1327 in all, are:
+= -- 130
+> -- 32
+< -- 4
++ -- 9
+- -- 8
+* -- 91
+:= -- 224
+add.period$ -- 12
+call.type$ -- 4
+change.case$ -- 19
+chr.to.int$ -- 4
+cite$ -- 5
+duplicate$ -- 61
+empty$ -- 112
+format.name$ -- 16
+if$ -- 265
+int.to.chr$ -- 1
+int.to.str$ -- 0
+missing$ -- 5
+newline$ -- 23
+num.names$ -- 12
+pop$ -- 20
+preamble$ -- 1
+purify$ -- 24
+quote$ -- 0
+skip$ -- 42
+stack$ -- 0
+substring$ -- 91
+swap$ -- 3
+text.length$ -- 4
+text.prefix$ -- 4
+top$ -- 0
+type$ -- 28
+warning$ -- 1
+while$ -- 13
+width$ -- 7
+write$ -- 52
+(There was 1 warning)

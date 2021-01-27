@@ -48,11 +48,13 @@ elif cmdLineArgs.app == 'poisson_adapter':
     poisson_adapter.add(g,
             options['dim'],
             options['numFaultBasisFunctions'],
+            options['numElementBasisFunctions'],
             options['numFacetQuadPoints'])
 elif cmdLineArgs.app == 'elasticity_adapter':
     elasticity_adapter.add(g,
             options['dim'],
             options['numFaultBasisFunctions'],
+            options['numElementBasisFunctions'],
             options['numFacetQuadPoints'])
 
 # Generate code

@@ -94,7 +94,7 @@ public:
      */
     template <class BlockVector> void monitor(double time, BlockVector const& state) {
 
-        calculateMaxErrors(state);
+//        calculateMaxErrors(state);
 
         double Vmax = seasop_->VMax();
         timeAnalysis <<std::setprecision(18)<< time << "," << Vmax << "," << 

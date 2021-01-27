@@ -101,24 +101,37 @@ int main(int argc, char** argv) {
         .help("type of the time integration scheme (use Petsc standard)");
     solverSchema.add_value("ts_rk_type", &SolverConfig::ts_rk_type)
         .default_value("5dp")
-        .help("type unge-Kutta scheme (use Petsc standard). Does not need to be provided if no Runge-Kutta scheme is used");
+        .help("type of the Runge-Kutta scheme (use Petsc standard). Does not need to be provided if no Runge-Kutta scheme is used");
+    solverSchema.add_value("ts_bdf_order", &SolverConfig::ts_bdf_order)
+        .default_value(4)
+        .help("Order of the BDF scheme. Does not need to be provided if no Runge-Kutta scheme is used");
+    solverSchema.add_value("bdf_manual_error_evaluation", &SolverConfig::bdf_manual_error_evaluation)
+        .default_value(false)
+        .help("false to use the default (explicit) error estimate. true for a manual (implicit) evaluation");
+    solverSchema.add_value("bdf_manual_Newton_iteration", &SolverConfig::bdf_manual_Newton_iteration)
+        .default_value(false)
+        .help("false to use the default Newton iteration. true for a manual implementation (used for debugging)");
     solverSchema.add_value("ts_adapt_wnormtype", &SolverConfig::ts_adapt_wnormtype)
         .default_value("infinity")
         .help("norm to estimate the local truncation error");
     solverSchema.add_value("psi_rtol", &SolverConfig::psi_rtol)
-        .validator([](auto&& x) { return x > 0; })
+        .validator([](auto&& x) { return x >= 0; })
         .default_value(1e-7)
         .help("relative tolerance for the state variable psi");
-    solverSchema.add_value("V_rtol", &SolverConfig::V_rtol)
-        .validator([](auto&& x) { return x > 0; })
+    solverSchema.add_value("S_rtol", &SolverConfig::S_rtol)
+        .validator([](auto&& x) { return x >= 0; })
         .default_value(1e-7)
         .help("relative tolerance for the slip rate");
-    solverSchema.add_value("psi_atol", &SolverConfig::psi_atol)
-        .validator([](auto&& x) { return x > 0; })
+    solverSchema.add_value("psi_atol_as", &SolverConfig::psi_atol_as)
+        .validator([](auto&& x) { return x >= 0; })
         .default_value(1e-7)
-        .help("absolute tolerance for the state variable psi");
-    solverSchema.add_value("V_atol", &SolverConfig::V_atol)
-        .validator([](auto&& x) { return x > 0; })
+        .help("absolute tolerance for the state variable psi during the aseismic slip");
+    solverSchema.add_value("psi_atol_eq", &SolverConfig::psi_atol_eq)
+        .validator([](auto&& x) { return x >= 0; })
+        .default_value(1e-7)
+        .help("absolute tolerance for the state variable psi during the erthquake");
+    solverSchema.add_value("S_atol", &SolverConfig::S_atol)
+        .validator([](auto&& x) { return x >= 0; })
         .default_value(1e-7)
         .help("absolute tolerance for the slip rate");
     solverSchema.add_value("ksp_type", &SolverConfig::ksp_type)
