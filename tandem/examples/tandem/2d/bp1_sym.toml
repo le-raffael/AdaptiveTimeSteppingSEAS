@@ -30,14 +30,14 @@ t_max = 9460800
 [solver]
 ts_type = "bdf"
 ts_rk_type = "5dp"
-ts_bdf_order = 4
+ts_bdf_order = 5
 bdf_manual_error_evaluation = false
 bdf_manual_Newton_iteration = false
 ts_adapt_wnormtype = "infinity"
 S_rtol = 0
-S_atol = 1.0e-3
+S_atol = 1.0e-7
 psi_rtol = 0
-psi_atol_as = 1.0e-3
+psi_atol_as = 1.0e-7
 psi_atol_eq = 1.0e-7
 ksp_type = "preonly"
 pc_type = "lu"

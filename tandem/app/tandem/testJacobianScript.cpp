@@ -127,7 +127,7 @@ void solve_Jacobian(LocalSimplexMesh<DomainDimension> const& mesh, Config const&
     // VectorXd intermediate = x + 0.5 * dt * rhs(x);
     // VectorXd x_n = x + dt * rhs(intermediate);
 
-    dt = 1e7;
+    dt = 1e8;
 
     VectorXd x_n = x_init;
 
@@ -161,6 +161,7 @@ void solve_Jacobian(LocalSimplexMesh<DomainDimension> const& mesh, Config const&
         J = JacobianImplicitEuler(seasop->getJacobian(), dt);
     }
     std::cout << "final norm: "<<fx_n.norm()<<std::endl;
+    std::cout << "final Jacobian: "<<std::endl<< J << std::endl;
     VectorXd solutionDirect = x_n;
 
 

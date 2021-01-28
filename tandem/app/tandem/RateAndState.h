@@ -107,30 +107,14 @@ public:
 
     /**
      * Calculate derivatives of the ageing law dg/dpsi and dg/dS
-     * @param i row index of the treated entry of the Jacobi
-     * @param j column index of the treated entry of the Jacobi
+     * @param delta Evaluation of the Dirac delta
      * @param psi state variable (provide 0 if an off-diagonal element is considered)
      * @param dV_dpsi derivative dV/dpsi with all matrix elements
      * @param dV_dS derivative dV/dS with all matrix elements
-     * @param dpsi_dS derivative dpsi/dS (provide 0 if an off-diagonal element is considered)
      * @param dg_dS return value of dg/dS - the corresponding matrix entry
      * @param dg_dpsi return value of dg/dpsi - the corresponding matrix entry
      */
-    void getAgeingDerivatives(int i, int j, double psi, double dV_dpsi, double dV_dS, double dpsi_dS, double& dg_dS, double& dg_dpsi);
-
-    /**
-     * Calculate derivatives of the slip dS/dpsi and dSS/dS
-     * @param i row index of the treated entry of the Jacobi
-     * @param j column index of the treated entry of the Jacobi
-     * @param df_dV derivative df/dV of the current row
-     * @param df_dS derivative df/dS with all matrix elements
-     * @param df_dpsi derivative df/dpsi of the current row
-     * @param dpsi_dS derivative dpsi/dS of the current row
-     * @param dS_dpsi derivative dS/dpsi of the current row
-     * @param dV_dS return value of dV/dS - the corresponding matrix entry
-     * @param dV_dpsi return value of dV/dpsi - the corresponding matrix entry
-     */
-    void getSlipDerivatives(int i, int j, double df_dV, double df_dS, double df_dpsi, double dpsi_dS, double dS_dpsi, double& dV_dS, double& dV_dpsi);
+    void getAgeingDerivatives(double delta, double psi, double dV_dS, double dV_dpsi, double& dg_dS, double& dg_dpsi);
 
     /**
      * Extract some values from the current state
@@ -256,27 +240,10 @@ void RateAndState<Law>::getJacobianQuantities(std::size_t faultNo, double time, 
 }
 
 template <class Law>
-void RateAndState<Law>::getAgeingDerivatives(int i, int j, double psi, double dV_dpsi, double dV_dS, double dpsi_dS, double& dg_dS, double& dg_dpsi){    
-    if (i == j) {
-        dg_dpsi = law_.dg_dpsi(1, psi, dV_dpsi);
-        dg_dS = law_.dg_dS(psi, dV_dS, dpsi_dS);
-    } else {
-        dg_dpsi = law_.dg_dpsi(0, psi, dV_dpsi);
-        dg_dS = law_.dg_dS(psi, dV_dS, dpsi_dS);
-    }
+void RateAndState<Law>::getAgeingDerivatives(double delta, double psi, double dV_dS, double dV_dpsi, double& dg_dS, double& dg_dpsi) {    
+    dg_dS = law_.dg_dS(psi, dV_dS);
+    dg_dpsi = law_.dg_dpsi(delta, psi, dV_dpsi);
 }
-
-template <class Law>
-void RateAndState<Law>::getSlipDerivatives(int i, int j, double df_dV, double df_dS, double df_dpsi, double dpsi_dS, double dS_dpsi, double& dV_dS, double& dV_dpsi){    
-    if (i == j) {
-        dV_dpsi = -(df_dpsi + dS_dpsi * df_dS) / df_dV;
-        dV_dS = -(df_dS + dpsi_dS * df_dpsi) / df_dV;
-    } else {
-        dV_dpsi = -dS_dpsi * df_dS / df_dV;
-        dV_dS = -df_dS / df_dV;
-    }
-}
-
 
 template <class Law>
 void RateAndState<Law>::state(std::size_t faultNo, Matrix<double> const& traction,

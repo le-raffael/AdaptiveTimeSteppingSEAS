@@ -104,7 +104,7 @@ public:
      * @param dV_dpsi the derivative dV/dPSI
      * @return deriviative dg/dpsi
      * */
-    double dg_dpsi(int delta, double psi, double dV_dpsi) const {
+    double dg_dpsi(double delta, double psi, double dV_dpsi) const {
         return -cp_.V0 / cp_.L * exp((cp_.f0 - psi) / cp_.b) * delta - dV_dpsi * cp_.b / cp_.L;
     }
 
@@ -114,8 +114,8 @@ public:
      * @param dV_dpsi the derivative dV/dPSI
      * @return deriviative dg/dpsi
      * */
-    double dg_dS(double psi, double dV_dS, double dpsi_dS) const {
-        return -cp_.V0 / cp_.L * dpsi_dS * exp((cp_.f0 - psi) / cp_.b) - dV_dS * cp_.b / cp_.L;
+    double dg_dS(double psi, double dV_dS) const {
+        return - dV_dS * cp_.b / cp_.L;
     }
 
 

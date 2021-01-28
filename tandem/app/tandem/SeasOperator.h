@@ -9,6 +9,8 @@
 #include "tensor/Tensor.h"
 #include "util/LinearAllocator.h"
 
+#include <Eigen/Dense>
+
 #include <mpi.h>
 
 #include <cstddef>
@@ -149,6 +151,7 @@ public:
             auto state_block = state.get_block(in_handle, faultNo);
             auto result_block = result.get_block(out_handle, faultNo);
             auto JacobianQuantities_block = JacobianQuantities.get_block(outJac_handle, faultNo);
+            
             double VMax = lop_->rhs(faultNo, time, traction, state_block, result_block, scratch);
 
             lop_->getJacobianQuantities(faultNo, time, traction, state_block, result_block, JacobianQuantities_block, scratch);
@@ -314,7 +317,8 @@ public:
         double* x;
         double* f_n;
         double* f;
-        double* J;
+        double* J_a;
+        const double* J;
 
         int m;
         int n;
@@ -325,23 +329,36 @@ public:
         CHKERRTHROW(VecGetArray(x_prev_, &x));
         CHKERRTHROW(VecGetArray(rhs_new_pbv.vec(), &f_n));
         CHKERRTHROW(VecGetArray(rhs_prev_, &f));
-        CHKERRTHROW(MatDenseGetArrayWrite(Jacobian_approx_, &J));
+
+        CHKERRTHROW(MatDenseGetArrayWrite(Jacobian_approx_, &J_a));
+        CHKERRTHROW(MatDenseGetArrayRead(Jacobian_, &J));
 
         std::cout << "approximate Jacobian is: "<<std::endl << "[ ";  
         for (int i = 0; i < m; i++){
             for (int j = 0; j < n; j++){
-                J[i + j*m] = (f_n[i] - f[i]) / (x_n[j] - x[j]);
+                J_a[i + j*m] = (f_n[i] - f[i]) / (x_n[j] - x[j]);
+                std::cout << J_a[i + j*m] << " ";
+            }
+            (i < m-1) ? std::cout <<  ";" << std::endl : std::cout <<  "]" << std::endl;
+        }
+        std::cout << std::endl << std::endl;
+
+        std::cout << "analytic Jacobian is: "<<std::endl << "[ ";  
+        for (int i = 0; i < m; i++){
+            for (int j = 0; j < n; j++){
                 std::cout << J[i + j*m] << " ";
             }
             (i < m-1) ? std::cout <<  ";" << std::endl : std::cout <<  "]" << std::endl;
         }
         std::cout << std::endl << std::endl;
 
+
         CHKERRTHROW(VecRestoreArray(x_new, &x_n));
         CHKERRTHROW(VecRestoreArray(x_prev_, &x));
         CHKERRTHROW(VecRestoreArray(rhs_new_pbv.vec(), &f_n));
         CHKERRTHROW(VecRestoreArray(rhs_prev_, &f));
-        CHKERRTHROW(MatDenseRestoreArrayWrite(Jacobian_approx_, &J));
+        CHKERRTHROW(MatDenseRestoreArrayWrite(Jacobian_approx_, &J_a));
+        CHKERRTHROW(MatDenseRestoreArrayRead(Jacobian_, &J));
 
         setPreviousSolution(x_new, rhs_new_pbv.vec());         
     }
@@ -480,41 +497,76 @@ public:
 
         derivatives.end_access_readonly(accessRead);
 
-        // fill helper matrices
-        MatrixXd A(numFaultNodes, numFaultNodes);
-        MatrixXd B(numFaultNodes, numFaultNodes);
-        MatrixXd C(numFaultNodes, numFaultNodes);  // = dpsi_dS
-        MatrixXd D(numFaultNodes, numFaultNodes);  // = dS_dpsi
-        MatrixXd I_CD(numFaultNodes, numFaultNodes);
-        MatrixXd I_DC(numFaultNodes, numFaultNodes);
+        // fill helper matrices (all are transposed)
+        MatrixXd dS_dS_T(numFaultNodes, numFaultNodes);
+        MatrixXd dS_dpsi_T(numFaultNodes, numFaultNodes);
+        MatrixXd dpsi_dS_T(numFaultNodes, numFaultNodes);
+        MatrixXd dpsi_dpsi_T(numFaultNodes, numFaultNodes);
+        MatrixXd A_T(numFaultNodes, numFaultNodes);
+        MatrixXd B_T(numFaultNodes, numFaultNodes);
+        MatrixXd C_T(numFaultNodes, numFaultNodes);  
+        MatrixXd D_T(numFaultNodes, numFaultNodes);  
+        MatrixXd I_CD_T(numFaultNodes, numFaultNodes); // = (I - CD)^T
+        MatrixXd I_DC_T(numFaultNodes, numFaultNodes); // = (I - DC)^T
 
         for (int i = 0; i < numFaultNodes; i++){
             for (int j = 0; j < numFaultNodes; j++){
-                C(i,j) = g_vec(i) / V_vec(j);
-                D(i,j) = V_vec(i) / g_vec(j);
-                I_CD(i,j) = delta(i,j) - numFaultNodes * g_vec(i) / g_vec(j);
-                I_DC(i,j) = delta(i,j) - numFaultNodes * V_vec(i) / V_vec(j);
+                dS_dS_T(i,j) = V_vec(j) / V_vec(i);
+                dS_dpsi_T(i,j) = V_vec(j) / g_vec(i);                
+                dpsi_dS_T(i,j) = g_vec(j) / V_vec(i);
+                dpsi_dpsi_T(i,j) = g_vec(j) / g_vec(i);                
             }
+        }        
+
+        FullPivLU<MatrixXd> dS_dS_T_lu(dS_dS_T);
+        FullPivLU<MatrixXd> dpsi_dpsi_T_lu(dpsi_dpsi_T);
+        for (int i = 0; i < numFaultNodes; ++i){    
+            C_T.col(i) = dS_dS_T_lu.solve(dpsi_dS_T.col(i));        // C^T = dS/dS^-T . dpsi/dS^T
+            D_T.col(i) = dpsi_dpsi_T_lu.solve(dS_dpsi_T.col(i));    // D^T = dpsi/dpsi^-T . dS/dpsi^T
         }
+        std::cout << "dS/dS^T = " << std::endl << dS_dS_T << std::endl << std::endl;
+        std::cout << "dpsi/dpsi^T = " << std::endl << dpsi_dpsi_T << std::endl << std::endl;
+        std::cout << "dS/dS^T * C^T = dpsi/dS^T" << std::endl << dS_dS_T * C_T << std::endl << std::endl;
+        std::cout << "dS/dpsi^T = " << std::endl << dS_dpsi_T << std::endl << std::endl;
+        std::cout << "dpsi/dS^T = " << std::endl << dpsi_dS_T << std::endl << std::endl;
+        std::cout << "C^T = " << std::endl << C_T << std::endl << std::endl;
+        std::cout << "D^T = " << std::endl << D_T << std::endl << std::endl;
 
         const double* df_dS;
         CHKERRTHROW(MatDenseGetArrayRead(df_dS_, &df_dS));
         for (int i = 0; i < numFaultNodes; i++){
             for (int j = 0; j < numFaultNodes; j++){
-                A(i,j) = (df_dS[i + j * numFaultNodes] + C(i,j) * df_dpsi_vec(j)) / df_dV_vec(j);
-                B(i,j) = df_dpsi_vec(j) * delta(i,j);
+                // A^T = (df/dS^T + C^T . df/dpsi^T) . df/dV^-T
+                A_T(i,j) = (df_dS[j + i * numFaultNodes] + C_T(i,j) * df_dpsi_vec(i)) / df_dV_vec(j);
+
+                // B^T = (df/dpsi^T + D^T . df/dS^T) . df/dV^-T
+                B_T(i,j) = df_dpsi_vec(i) * delta(i,j);
                 for  (int k = 0; k < numFaultNodes; k++){
-                    B(i,j) += df_dS[i + k * numFaultNodes] * D(k,j);
+                    B_T(i,j) += D_T(i,k) * df_dS[j + k * numFaultNodes];
                 }
-                B(i,j) /= df_dV_vec(j);
+                B_T(i,j) /= df_dV_vec(j);
             }
         }
         CHKERRTHROW(MatDenseRestoreArrayRead(df_dS_, &df_dS));
 
+        // (I - CD)^T = I - D^T . C^T
+        I_CD_T = MatrixXd::Identity(numFaultNodes, numFaultNodes) - D_T * C_T;
+        // (I - DC)^T = I - C^T . D^T
+        I_DC_T = MatrixXd::Identity(numFaultNodes, numFaultNodes) - C_T * D_T;
 
-       MatrixXd dV_dS   = (A * D - B) * I_DC.inverse();
-       MatrixXd dV_dpsi = (B * C - A) * I_CD.inverse();
+        MatrixXd CB_A = C_T * B_T - A_T; // = C^T * B^T - A^T
+        MatrixXd DA_B = D_T * A_T - B_T; // = D^T * A^T - B^T
+       
+        FullPivLU<MatrixXd> I_CD_T_lu(I_CD_T);
+        FullPivLU<MatrixXd> I_DC_T_lu(I_DC_T);
 
+        MatrixXd dV_dS(numFaultNodes, numFaultNodes);   // = (I - DC)^-T . (C^T . B^T - A^T)
+        MatrixXd dV_dpsi(numFaultNodes, numFaultNodes); // = (I - CD)^-T . (D^T . A^T - B^T)
+
+        for (int i = 0; i < numFaultNodes; ++i){    // fill all rows of the matrices
+            dV_dS.row(i) = I_DC_T_lu.solve(CB_A.col(i));
+            dV_dpsi.row(i) = I_CD_T_lu.solve(DA_B.col(i));
+        }
 
         // fill the Jacobian
         int V_i;
@@ -547,32 +599,32 @@ public:
                                                 RateAndStateBase::TangentialComponents * nbf + j;
                         n_j = noFault2 * nbf + j;
 
-
                         // column major in df_dS and J!                        
-                        lop_->getAgeingDerivatives(V_i, V_j, psi_vec(V_i), 
-                                                  dV_dpsi(n_i,n_j), dV_dS(n_i,n_j), 
-                                                  C(n_i,n_j), dg_dS, dg_dpsi);
+                        lop_->getAgeingDerivatives(delta(n_i, n_j), psi_vec(n_i), 
+                                                  dV_dS(n_i,n_j), dV_dpsi(n_i,n_j), 
+                                                  dg_dS, dg_dpsi);
 
-                        J[V_j * totalSize   + V_i] = dV_dS(n_i, n_j);
-                        J[PSI_j * totalSize + V_i] = dg_dS;
-                        J[V_j * totalSize   + PSI_i] = dV_dpsi(n_i, n_j);
-                        J[PSI_j * totalSize + PSI_i] = dg_dpsi;
+                        J[V_i   + V_j * totalSize  ] = dV_dS(n_i, n_j);
+                        J[V_i   + PSI_j * totalSize] = dV_dpsi(n_i, n_j);
+                        J[PSI_i + V_j * totalSize  ] = dg_dS;
+                        J[PSI_i + PSI_j * totalSize] = dg_dpsi;
                     }
                 }
             }
         }
-        int m;
-        int n;
-        CHKERRTHROW(MatGetSize(Jacobian_, &m, &n));
 
-        std::cout << "Jacobian is: "<<std::endl << "[ ";  
-        for (int i = 0; i < m; i++){
-            for (int j = 0; j < n; j++){
-                std::cout << J[i + j*m] << " ";
-            }
-            (i < m-1) ? std::cout <<  ";" << std::endl : std::cout <<  "]" << std::endl;
-        }
-        std::cout << std::endl << std::endl;
+        // int m;
+        // int n;
+        // CHKERRTHROW(MatGetSize(Jacobian_, &m, &n));
+
+        // std::cout << "Jacobian is: "<<std::endl << "[ ";  
+        // for (int i = 0; i < m; i++){
+        //     for (int j = 0; j < n; j++){
+        //         std::cout << J[i + j*m] << " ";
+        //     }
+        //     (i < m-1) ? std::cout <<  ";" << std::endl : std::cout <<  "]" << std::endl;
+        // }
+        // std::cout << std::endl << std::endl;
 
 
         CHKERRTHROW(MatDenseRestoreArrayWrite(Jacobian_, &J));

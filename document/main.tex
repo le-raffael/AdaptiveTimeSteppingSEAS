@@ -396,89 +396,105 @@ The Jacobian $J_{\psi,S}(F)$ consists of four block matrices, which each contain
 To calculate the partial derivatives of $V_i(\psi_i,S_i)$, we need to consider the friction law $f(U, \psi,V)$. For any chosen values for $\psi$ and $S$, V is evaluated in a way that $f(U(S), \psi, V(\psi,S))$ vanishes. Therefore, we can state that $df/d\psi = 0$ and $df/dS = 0$. With the expression of the total derivative, we can calculate the partial derivatives of the velocity. 
 \begin{align}
     0 &= \frac{df_k}{dS_j} =     
-	\frac{\partial f_k}{\partial S_j} + 
-	\frac{d V_i}{d S_j}\frac{\partial f_k}{\partial V_i} + 
-	\frac{d \psi_i}{d S_j}\frac{\partial f_k}{\partial \psi_i} 
+	\frac{\partial f_k}{\partial S_i}\frac{d S_i}{d S_j} + 
+	\frac{\partial f_k}{\partial V_i}\frac{d V_i}{d S_j} + 
+	\frac{\partial f_k}{\partial \psi_i}\frac{d \psi_i}{d S_j} 
 	\qquad\Leftrightarrow\qquad
-	\frac{d V_i}{d S_j} = -\left(\frac{\partial f_k}{\partial S_j} + \frac{d \psi_l}{d S_j}\frac{\partial f_k}{\partial \psi_l} \right)\left(\frac{\partial f}{\partial V}\right)_{ki}^{-1} 
+	\frac{d V_i}{d S_j} = -\left(\frac{\partial f_k}{\partial V_i}\right)^{-1}\left(\frac{\partial f_k}{\partial S_l}\frac{d S_l}{d S_j} + \frac{\partial f_k}{\partial \psi_l}\frac{d \psi_l}{d S_j} \right) 
 	\label{eq:SEASDAE_partialdV_dS} \\
     0 &= \frac{df_k}{d\psi_j} = 
-    \frac{\partial f_k}{\partial \psi_j} + 
-    \frac{d V_i}{d \psi_j}\frac{\partial f_k}{\partial V_i} + 
-    \frac{d S_i}{d \psi_j}\frac{\partial f_k}{\partial S_i}
+    \frac{\partial f_k}{\partial \psi_i}\frac{d \psi_i}{d \psi_j} + 
+    \frac{\partial f_k}{\partial V_i}\frac{d V_i}{d \psi_j} + 
+    \frac{\partial f_k}{\partial S_i}\frac{d S_i}{d \psi_j}
     \qquad\Leftrightarrow\qquad
-    \frac{d V_i}{d \psi_j} = -\left(\frac{\partial f_k}{\partial \psi_j}  + 
-    \frac{d S_l}{d \psi_j}\frac{\partial f_k}{\partial S_l}\right)\left(\frac{\partial f}{\partial V}\right)_{ki}^{-1} \label{eq:SEASDAE_partialdV_dpsi}
+    \frac{d V_i}{d \psi_j} = -\left(\frac{\partial f_k}{\partial V_i}\right)^{-1}\left(\frac{\partial f_k}{\partial \psi_l}\frac{d \psi_l}{d \psi_j}  + 
+    \frac{\partial f_k}{\partial S_l} \frac{d S_l}{d \psi_j}\right)
+    \label{eq:SEASDAE_partialdV_dpsi}
 \end{align}
 The derivatives of the slip rate with respect to the state variable and the slip can be reformulated as: 
 \begin{align}
-	\frac{dV_i}{dS_j} &= \frac{\partial V_i}{\partial S_j} + \frac{d\psi_l}{dS_j} \frac{\partial V_i}{\partial \psi_l} 
+	\frac{dV_i}{dS_l} &= \frac{\partial V_i}{\partial S_j}\frac{d S_j}{d S_l} + \frac{\partial V_i}{\partial \psi_k}\frac{d\psi_k}{dS_l} 
 	\qquad\Leftrightarrow\qquad
-	\frac{\partial V_i}{\partial S_j} = \frac{dV_i}{dS_j} - \frac{d\psi_l}{dS_j} \frac{\partial V_i}{\partial \psi_l} \\
-	\frac{dV_i}{d\psi_j} &= \frac{\partial V_i}{\partial \psi_j} + \frac{dS_l}{d\psi_j} \frac{\partial V_i}{\partial S_l} 
+	\frac{\partial V_i}{\partial S_j} = \left(\frac{dV_i}{dS_l} - \frac{\partial V_i}{\partial \psi_k} \frac{d\psi_k}{dS_l}\right)\left(\frac{d S_j}{d S_l}\right)^{-1} \\
+	\frac{dV_i}{d\psi_l} &= \frac{\partial V_i}{\partial \psi_j}\frac{d \psi_j}{d \psi_l} +  \frac{\partial V_i}{\partial S_k}\frac{dS_k}{d\psi_l} 
 	\qquad\Leftrightarrow\qquad
-	\frac{\partial V_i}{\partial \psi_j} = \frac{dV_i}{dS_j} - \frac{dS_l}{d\psi_j} \frac{\partial V_i}{\partial S_l}	
+	\frac{\partial V_i}{\partial \psi_j} = \left(\frac{dV_i}{dS_l} - \frac{\partial V_i}{\partial S_k}\frac{dS_k}{d\psi_l} \right)\left(\frac{d \psi_j}{d \psi_l}\right)^{-1}	
 \end{align}
 As such, the two upper block matrices in the full Jacobian from \autoref{eq:BlockMatricesJacobian} are obtained by solving the following system. 
 \begin{equation}
 \label{eq:systemJacobianSlipRate}
 \begin{cases}
-	\frac{\partial V_i}{\partial S_j} = -\left(\frac{\partial f_k}{\partial S_j} + \frac{d \psi_l}{d S_j}\frac{\partial f_k}{\partial \psi_l} \right)\left(\frac{\partial f}{\partial V}\right)_{ki}^{-1} - \frac{d\psi_l}{dS_j} \frac{\partial V_i}{\partial \psi_l} \\
-	\frac{\partial V_i}{\partial \psi_j} = -\left(\frac{\partial f_k}{\partial \psi_j}  + 
-	\frac{d S_l}{d \psi_j}\frac{\partial f_k}{\partial S_l}\right)\left(\frac{\partial f}{\partial V}\right)_{ki}^{-1} - \frac{dS_l}{d\psi_j} \frac{\partial V_i}{\partial S_l}	
+	\frac{\partial V_i}{\partial S_j} = -\left(\frac{\partial f_k}{\partial V_i}\right)^{-1}\left(\frac{\partial f_k}{\partial S_j} + \frac{\partial f_k}{\partial \psi_l}\frac{d \psi_l}{d S_m}\left(\frac{d S_j}{d S_m}\right)^{-1} \right) 
+	-\frac{\partial V_i}{\partial \psi_l} \frac{d\psi_l}{dS_m} \left(\frac{d S_j}{d S_m}\right)^{-1} \\
+	\frac{\partial V_i}{\partial \psi_j} = -\left(\frac{\partial f_k}{\partial V_i}\right)^{-1}\left(\frac{\partial f_k}{\partial \psi_j} + 
+	\frac{\partial f_k}{\partial S_l}\frac{d S_l}{d \psi_m}\left(\frac{d \psi_j}{d \psi_m}\right)^{-1} \right) 
+	-\frac{\partial V_i}{\partial S_l}\frac{dS_l}{d\psi_m}\left(\frac{d \psi_j}{d \psi_m}\right)^{-1}
 \end{cases}
 \end{equation}
 This problem can be put in a matrix-vector form using block matrices. Let us define the following matrices to describe the problem:
 \begin{align}
-	\mathbf{A}_{ij} &= \left(\frac{\partial f_k}{\partial S_j} + \frac{d \psi_l}{d S_j}\frac{\partial f_k}{\partial \psi_l} \right)\left(\frac{\partial f}{\partial V}\right)_{ki}^{-1} &
-	\mathbf{B}_{ij} &= \left(\frac{\partial f_k}{\partial \psi_j}  + \frac{d S_l}{d \psi_j}\frac{\partial f_k}{\partial S_l}\right)\left(\frac{\partial f}{\partial V}\right)_{ki}^{-1}
+	\mathbf{X}_{ij} &= \frac{\partial V_i}{\partial S_j} &
+	\mathbf{Y}_{ij} &= \frac{\partial V_i}{\partial \psi_j} &
+	\mathbf{C}_{ij} &= \frac{d\psi_i}{dS_k}\left(\frac{d S_j}{d S_k}\right)^{-1} &
+	\mathbf{D}_{ij} &= \frac{dS_i}{d\psi_k}\left(\frac{d \psi_j}{d \psi_k}\right)^{-1} 
 \end{align}
 \begin{align}
-	\mathbf{C}_{ij} &= \frac{d\psi_i}{dS_j} &
-	\mathbf{D}_{ij} &= \frac{dS_i}{d\psi_j} &
-	\mathbf{X}_{ij} &= \frac{\partial V_i}{\partial \psi_j} &
-	\mathbf{Y}_{ij} &= \frac{\partial V_i}{\partial S_j} 
+	\mathbf{A}_{ij} &= \left(\frac{\partial f_k}{\partial V_i}\right)^{-1}\left(\frac{\partial f_k}{\partial S_j} + \frac{\partial f_k}{\partial \psi_l}\mathbf{C}_{lj} \right) &
+	\mathbf{B}_{ij} &= \left(\frac{\partial f_k}{\partial V_i}\right)^{-1}\left(\frac{\partial f_k}{\partial \psi_j} + \frac{\partial f_k}{\partial S_l}\mathbf{D}_{lj} \right)
 \end{align}
-The system in \autoref{eq:systemJacobianSlipRate} is equivalent to following block matrix system, with $\mathbf{I}$ being the identity matrix, which has to be solved for all rows $X^{(i)}$ and $Y^{(i)}$ of the respective matrices $\mathbf{X}$ and $\mathbf{Y}$. Note that the matrices are multiplied from the right because of the formulation of the problem, so the system is solved for row vector and not column vectors as it is usual.
-\begin{equation}
+The system in \autoref{eq:systemJacobianSlipRate} is equivalent to following block matrix system, with $\mathbf{I}$ being the identity matrix, which has to be solved for all rows $X^{(i)}$ and $Y^{(i)}$ of the respective matrices $\mathbf{X}$ and $\mathbf{Y}$. Note that the matrices are multiplied from the right because of the formulation of the problem, so the system is solved for row vector and not column vectors as it is usual. It can be easily transformed to a column format with the transpose of all matrices and vectors.
+\begin{align}
 	\begin{pmatrix}
 		X^{(i)} & Y^{(i)}
 	\end{pmatrix} \begin{pmatrix}
 					  \mathbf{I} & \mathbf{D} \\
 					  \mathbf{C} & \mathbf{I} 
-				  \end{pmatrix}  = \begin{pmatrix}
+				  \end{pmatrix}  &= \begin{pmatrix}
 									  -A^{(i)} & -B^{(i)}
-								   \end{pmatrix}
-\end{equation}
-With block matrix arithmetic, the solution of this system is calculated as: 
-\begin{equation}
+								   \end{pmatrix} \\
+	\Leftrightarrow
 	\begin{pmatrix}
-		X^{(i)} & Y^{(i)}
-	\end{pmatrix} = \begin{pmatrix}
-						-A^{(i)} & -B^{(i)}
+		\mathbf{I} & \mathbf{C}^T \\
+		\mathbf{D}^T & \mathbf{I} 
+	\end{pmatrix} 	\begin{pmatrix}
+						X^{(i)T} \\ Y^{(i)T}
+					\end{pmatrix} &= \begin{pmatrix}
+										-A^{(i)T} \\ -B^{(i)T}
+									 \end{pmatrix} 
+\end{align}
+With block matrix arithmetic, the solution of this system is calculated as: 
+\begin{align}
+	\begin{pmatrix}
+		X^{(i)T} \\ Y^{(i)T}
+	\end{pmatrix} &= \begin{pmatrix}
+						 \left(\mathbf{I} - \mathbf{C}^T\mathbf{D}^T\right)^{-1} & 
+						-\left(\mathbf{I} - \mathbf{C}^T\mathbf{D}^T\right)^{-1}\mathbf{C}^T \\
+						-\left(\mathbf{I} - \mathbf{D}^T\mathbf{C}^T\right)^{-1}\mathbf{D}^T & 
+						 \left(\mathbf{I} - \mathbf{D}^T\mathbf{C}^T\right)^{-1} 
 					\end{pmatrix} \begin{pmatrix}
-									  (\mathbf{I} - \mathbf{D}\mathbf{C})^{-1} & 
-									 -\mathbf{D}(\mathbf{I} - \mathbf{C}\mathbf{D})^{-1} \\
-									 -\mathbf{C}(\mathbf{I} - \mathbf{D}\mathbf{C})^{-1} & 
-									  (\mathbf{I} - \mathbf{C}\mathbf{D})^{-1} 
-								  \end{pmatrix}
-\end{equation}
-The two arising inverse matrices are relatively easy to calculate, as it will be shown later. In index notation, the entries of the Jacobian matrices are:
-\begin{align}
-	\frac{\partial V_i}{\partial \psi_j} &= \left(\mathbf{B}_{im}\mathbf{C}_{mn}-\mathbf{A}_{in}\right)\left(\delta_{kl} - \mathbf{C}_{km}\mathbf{D}_{ml}\right)_{nj}^{-1} \\
-	\frac{\partial V_i}{\partial S_j} &= \left(\mathbf{A}_{im}\mathbf{D}_{mn}-\mathbf{B}_{in}\right)\left(\delta_{kl} - \mathbf{D}_{km}\mathbf{C}_{ml}\right)_{nj}^{-1}
+										-A^{(i)T} \\ -B^{(i)T}
+									\end{pmatrix} \\ 
+\Leftrightarrow
+	\begin{pmatrix}
+		X^{(i)T} \\ Y^{(i)T}
+	\end{pmatrix} &= \begin{pmatrix}
+		\left(\mathbf{I} - \mathbf{DC}\right)^{-T}\left(-A^{(i)T} + \mathbf{C}^TB^{(i)T}\right) \\
+		\left(\mathbf{I} - \mathbf{CD}\right)^{-T}\left( \mathbf{D}^TA^{(i)T} - B^{(i)T}\right) 
+					\end{pmatrix}
 \end{align}
-The mutual dependency of the two solution components, described by the variations $\frac{\partial S}{\partial \psi}$ and $\frac{\partial \psi}{\partial S}$ can be obtained using the respective time derivatives.
+To construct the Jacobian, two systems of size $n/2$ have to be solved for each column of the matrix, so each system $n/2$ times. This operation can be quite costly for large systems, even if the LU-decomposition has to be computed only once. In index notation, the entries of the Jacobian matrices are:
 \begin{align}
-\frac{d\psi_i}{dt} &= \frac{dS_j}{dt}\frac{d\psi_i}{dS_j} \qquad\Leftrightarrow\qquad g_i(\psi, V) = V_j \frac{d\psi_i}{dS_j} \qquad\Leftrightarrow\qquad \frac{d\psi_i}{dS_j} = \frac{g_i(\psi, V)}{V_j} \\
-\frac{dS_i}{dt} &= \frac{d\psi_j}{dt}\frac{dS_i}{d\psi_j} \qquad\Leftrightarrow\qquad V_i = g_j(\psi, V) \frac{dS_i}{d\psi_j} \qquad\Leftrightarrow\qquad  \frac{dS_i}{d\psi_j} = \frac{V_i}{g_j(\psi, V)}
+	 \frac{\partial V_i}{\partial S_j} &= \left(\delta_{jk} - \mathbf{D}_{jl}\mathbf{C}_{lk}\right)^{-1}\left(\mathbf{C}_{kl}\mathbf{B}_{li}-\mathbf{A}_{ki}\right) \\
+	\frac{\partial V_i}{\partial \psi_j} &=\left(\delta_{jk} - \mathbf{C}_{jl}\mathbf{D}_{lk}\right)^{-1}\left(\mathbf{D}_{kl}\mathbf{A}_{li}-\mathbf{B}_{ki}\right) 
 \end{align}
-This simplifies the evaluation of the inverse matrix terms, with $n$ the total number of nodes on the fault: 
+The mutual dependency of the solution components, described by the variations $\frac{d S_i}{d S_j}$,$\frac{d \psi_i}{d \psi_j}$, $\frac{d S_i}{d \psi_j}$ and $\frac{d \psi_i}{d S_j}$ can be obtained using the respective time derivatives and the chain rule. In this context, the index $j$ does not represent the sum of element, but indicates that the equality is true for each component referenced to by $j$.   
 \begin{align}
-	\delta_{kl} - \mathbf{C}_{km}\mathbf{D}_{ml} &= \delta_{kl} - \frac{d\psi_k}{dS_m}\frac{dS_m}{d\psi_l} = \delta_{kl} - n\frac{g_i(\psi,V)}{g_j(\psi,V)}\\
-	\delta_{kl} - \mathbf{D}_{km}\mathbf{C}_{ml} &= \delta_{kl} - \frac{dS_k}{d\psi_m}\frac{d\psi_m}{dS_l} = \delta_{kl} - n\frac{V_i}{V_j}
+\frac{dS_i}{dt} &= \frac{dS_j}{dt}\frac{dS_i}{dS_j} \quad\forall i,j \quad&&\Leftrightarrow& V_i &= V_j \frac{dS_i}{dS_j} \quad\forall i,j \quad&&\Leftrightarrow& \frac{dS_i}{dS_j} &= \frac{V_i}{V_j} \quad\forall i,j \\
+\frac{d\psi_i}{dt} &= \frac{d\psi_j}{dt}\frac{d\psi_i}{d\psi_j} \quad\forall i,j \quad&&\Leftrightarrow& g_i(\psi, V) &= g_j(\psi, V) \frac{d\psi_i}{d\psi_j} \quad\forall i,j \quad&&\Leftrightarrow& \frac{d\psi_i}{d\psi_j} &= \frac{g_i(\psi, V)}{g_j(\psi, V)} \quad\forall i,j \\
+\frac{d\psi_i}{dt} &= \frac{dS_j}{dt}\frac{d\psi_i}{dS_j} \quad\forall i,j \quad&&\Leftrightarrow& g_i(\psi, V) &= V_j \frac{d\psi_i}{dS_j} \quad\forall i,j \quad&&\Leftrightarrow& \frac{d\psi_i}{dS_j} &= \frac{g_i(\psi, V)}{V_j} \quad\forall i,j \\
+\frac{dS_i}{dt} &= \frac{d\psi_j}{dt}\frac{dS_i}{d\psi_j} \quad\forall i,j\quad&&\Leftrightarrow& V_i &= g_j(\psi, V) \frac{dS_i}{d\psi_j} \quad\forall i,j\quad&&\Leftrightarrow& \frac{dS_i}{d\psi_j} &= \frac{V_i}{g_j(\psi, V)}\quad\forall i,j
 \end{align}
-To calculate the Jacobian terms in \autoref{eq:SEASDAE_partialdV_dS} and \autoref{eq:SEASDAE_partialdV_dpsi}, the partial derivatives have to be determined. Two of them are straightforward to calculate and only generate values on their diagonal. This is especially beneficial for $\frac{\partial f_i}{\partial V_j}$, since its inverse is much easier to calculate if the matrix is diagonal. 
+To calculate the Jacobian terms in \autoref{eq:SEASDAE_partialdV_dS} and \autoref{eq:SEASDAE_partialdV_dpsi}, the partial derivatives now have to be determined. Two of them are straightforward to calculate and only generate values on their diagonal. This is especially beneficial for $\frac{\partial f_i}{\partial V_j}$, since its inverse is much easier to calculate if the matrix is diagonal. 
 \begin{align}
     \frac{\partial f_i}{\partial V_j} &= \left( -\frac{\sigma_na}{2V_0} \frac{e^{\frac{\psi_i}{a}}}{\sqrt{\frac{V_i^2}{4V_0^2}+1}}-\eta\right)\delta_{ij} \\
     \frac{\partial f_i}{\partial \psi_j} &= \left(-\sigma_n\text{arsinh}\left(\frac{V_i}{2V_0}\right)e^{\frac{\psi_i}{a}}\right)\delta_{ij}
@@ -517,7 +533,7 @@ And further we get:
 This derivative term does not depend on the current displacement anymore but only on the geometry of the discretization, so it can be calculated once at the beginning of the simulation. Now, all components are available to calculate the partial derivative of the friction law with respect to the slip in \autoref{eq:partialDerivative_df_dS} and further to evaluate the two Jacobian matrices of the slip rate $\frac{\partial V}{\partial S}$ and $\frac{\partial V}{\partial \psi}$. To obtain the full expression of the Jacobian matrix in \autoref{eq:BlockMatricesJacobian}, the partial derivatives of the ageing law $g(\psi, V(\psi,S))$ with respect to $\psi$ and $S$ are still required.
 \begin{align}
     \frac{\partial g_i(\psi,V)}{\partial\psi_j} &= -\frac{V_0}{L}e^{\frac{f_0-\psi_i}{b}}\delta_{ij} - \frac{b}{L}\frac{\partial V_i}{\partial \psi_j} \\
-    \frac{\partial g_i(\psi,V)}{\partial S_j} &= -\frac{V_0}{L}\frac{\partial\psi_i}{\partial S_j}e^{\frac{f_0-\psi_i}{b}} - \frac{b}{L}\frac{\partial V_i}{\partial S_j}
+    \frac{\partial g_i(\psi,V)}{\partial S_j} &=  - \frac{b}{L}\frac{\partial V_i}{\partial S_j}
 \end{align}
 
 \subsection{Verification of the Jacobian}

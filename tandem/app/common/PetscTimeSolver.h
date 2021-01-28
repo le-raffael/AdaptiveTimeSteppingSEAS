@@ -80,7 +80,7 @@ public:
                 double atol = 1e-50;    // absolute tolerance (default = 1e-50) 
                 double rtol = 1e-8;    // relative tolerance (default = 1e-8)  
                 double stol = 1e-8;    // relative tolerance (default = 1e-8)  
-                int maxit = 10000;      // absolute tolerance (default = 50)    
+                int maxit = 50;      // absolute tolerance (default = 50)    
                 int maxf = -1;       // absolute tolerance (default = 1000)  
                 CHKERRTHROW(SNESSetTolerances(snes, atol, rtol, stol, maxit, maxf));
                 CHKERRTHROW(SNESSetFromOptions(snes));
@@ -114,7 +114,7 @@ public:
 
             // Overwrite settings by command line options
             CHKERRTHROW(TSSetFromOptions(ts_));
-            //adapt->ops->choose = TSAdaptChoose_Custom;            
+            // adapt->ops->choose = TSAdaptChoose_Custom;            
 
         } else {
             // read petsc options from command line
@@ -332,11 +332,11 @@ private:
             std::cout << "Exit earthquake phase" << std::endl;
         }
 
-        // double time; 
-        // Vec new_x;
-        // CHKERRTHROW(TSGetTime(ts, &time));
-        // CHKERRTHROW(TSGetSolution(ts, &new_x));        
-        // seasop->calculateApproximateJacobian(time, new_x);
+        double time; 
+        Vec new_x;
+        CHKERRTHROW(TSGetTime(ts, &time));
+        CHKERRTHROW(TSGetSolution(ts, &new_x));        
+        seasop->calculateApproximateJacobian(time, new_x);
 
 
 
@@ -469,7 +469,8 @@ private:
 
         // solve nonlinear system
         CHKERRTHROW(VecDuplicate(X, &Z));    
-        CHKERRTHROW(VecCopy(bdf->work[1], Z));     // initial guess is previous time step
+        CHKERRTHROW(VecCopy(X, Z));     // initial guess is previous time step
+//        CHKERRTHROW(VecCopy(bdf->work[1], Z));     // initial guess is previous time step
         SNESSolve(ts->snes,nullptr,Z);
 
         // calculate the error between both solutions
