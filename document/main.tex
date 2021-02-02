@@ -337,7 +337,7 @@ Ageing law:
 \end{equation}
 Friction law: 
 \begin{equation}
-    0 = \tau(U) - a\sigma_n(U) \text{arsinh}\left(\frac{V}{2V_0}\right)e^{\frac{\psi}{a}} - \eta V
+    0 = \tau(U) - a\sigma_n(U) \text{arsinh}\left(\frac{V}{2V_0}e^{\frac{\psi}{a}}\right) - \eta V
 \end{equation}
 
 
@@ -367,174 +367,267 @@ To solve the Poisson equation, it is necessary to evaluate the integral over the
 \section{Formulation of the DAE}
 The problem stated in \autoref{ssec:physicalDescriptionSEAS2D} can be written in the form of a DAE:
 \begin{align}
-    0 &= AU - b(S) \label{eq:SEASDAE_AU-b(S)}  \\
-    0 &= f(U_i,\psi_i,V_i) = \tau(U_i) - \sigma_n(U_i)a\text{arsinh}\left(\frac{V_i}{2V_0}\right)e^{\frac{\psi}{a}} - \eta V_i \label{eq:SEASDAE_frictionLaw}\\
-    \dot{\psi_i} &= g(\psi_i, V_i) = \frac{bV_0}{L}\left(e^{\frac{f_0-\psi_i}{b}} - \frac{V_i}{V_0}\right) \label{eq:SEASDAE_dpsi_dt} \\
-    \dot{S_i} &= V_i \label{eq:SEASDAE_dV_dt}
+    \dot{S_i} &= V_i \label{eq:SEASDAE_dV_dt} \\
+	\dot{\psi_i} &= g(\psi_i, V_i) =\frac{bV_0}{L}\left(e^{\frac{f_0-\psi_i}{b}} - \frac{V_i}{V_0}\right) \label{eq:SEAS_DAE_ageing_law} \\
+	0 &= f_i(U,\psi,V) = \tau_i(U) - a\sigma_n\text{arsinh}\left(\frac{V_i}{2V_0}e^{\frac{\psi_i}{a}}\right) -\eta V_i \label{eq:SEASDAE_frictionLaw}\\
+    0 &= AU - b(S) \label{eq:SEAS_DAE_AU=b}  
 \end{align}
-The index $i$ refers to all interpolation points of the elements located on the fault, meaning that $S_i$, $V_i$ and $\psi_i$ are respectively the displacement, the velocity and the value of the state variable on the fault. In the two-dimensional case, the displacement $S_i$ at the fault is related to $U_i$ by $\llbracket U_i \rrbracket = U_i^+ - U_i^- = -S_i$. The displacements $U_i^+$ and $U_i^-$ correspond to the displacements on the two sides of the fault, for the current symmetric problem, they have the same magnitude with opposite signs. 
+The index $i$ refers to all interpolation points of the elements located on the fault, meaning that $S_i$, $V_i$ and $\psi_i$ are respectively the displacement, the velocity and the value of the state variable on the fault. In the two-dimensional case, the displacement $S_i$ at the fault is related to $U_i$ by $\llbracket U_i \rrbracket = U_i^+ - U_i^- = -S_i$. The displacements $U_i^+$ and $U_i^-$ correspond to the displacements on the two sides of the fault, for the current symmetric problem, they have the same magnitude with opposite signs.\\
+ 
+
+\subsection{Formulation as an ODE}
+The first approach to solve the problem is to formulate the system as a classical ODE. The solution vector contains the values for the slip and for the state variable, and at each timestep, the the slip rate $V$ is calculated from \autoref{eq:SEASDAE_frictionLaw} from the state with an iterative solver.
+\begin{align}
+	\label{eq:ODE_formulation_SEAS}
+	x &= \begin{pmatrix}
+		S \\ \psi
+	\end{pmatrix} & \dot{x} &= \begin{pmatrix}
+								  \dot{S} \\ \dot{\psi}
+							   \end{pmatrix} = \begin{pmatrix}
+												   V(S,\psi) \\ g(\psi, V)
+											   \end{pmatrix} = F
+\end{align} 
+Such a formulation allows us to use many well-known and proved numerical schemes, both implicit and explicit. 
+
+\subsection{Formulation as DAE}
+The ODE form looks pretty and like an easy-to-tackle numerical problem, but may run into some trouble because of the implicit evaluation of the slip rate. For example, one major encountered problem is the impossibility to construct an analytic expression of the Jacobian matrix, detailed in \autoref{sssec:Jacobian_ODE}, which makes the ODE formulation of the problem less suitable for implicit numerical schemes. Alternatively, the friction law could be solved for the slip rate together with the time-variant solution components. The solution vector is then extended by one quantity, and the evaluation of the slip rate with a separate iterative does not occur anymore.
+\begin{align}
+	\label{eq:DAE_formulation_SEAS}
+	x &= \begin{pmatrix}
+			S \\ \psi \\ V
+		 \end{pmatrix} & \dot{x} &= \begin{pmatrix}
+										\dot{S} \\ \dot{\psi} \\ 0
+									\end{pmatrix} = \begin{pmatrix}
+										V \\ g(\psi, V) \\ f(S,\psi,V)
+									\end{pmatrix} = F
+\end{align}
+This system cannot be used anymore with pure explicit solvers, since no time discretization can be set up for the algebraic equation. It is however well-suited for implicit methods, which iteratively solve for the time-variant quantities $S$ and $\psi$ as well for the algebraic state $V$. A notable advantage of this formulation is that the tolerances of the numerical solver can be specified independently for $S$, $\psi$ and $V$, whereas in the ODE formulation of the problem, the error control is limited to the parameters $S$ and $\psi$. 
+
+\subsection{Compact formulation as a DAE}
+The preceding form of the DAE cannot be used directly with the DAE interface, which allows to split the problem in to functions $F$ and $G$ that have to be equal, where, in addition to time, $F$ depends on the solution vector $x$ and its time derivative $\dot{x}$ and $G$ depends only on the solution vector $x$. 
+\begin{align}
+	F(t, x,\dot{x}) = G(t,x) 
+\end{align}
+In our case, the solution vector contains as in the ODE formulation the components of the slip $S$ and of the state variable $\psi$. It is important to remember that the slip rate is the time derivative of the slip, so the variables $\dot{S}$ and $V$ are equal and can be interchanged.
+\begin{align}
+	\label{eq:DAE_compact_formulation_SEAS}
+	x &= \begin{pmatrix}
+			S \\ \psi
+	     \end{pmatrix} & F(t, x,\dot{x}) &= \begin{pmatrix}
+												f(S,\psi,V) \\ \dot{\psi} - g(\psi, V)
+											\end{pmatrix} = \begin{pmatrix}
+																0 \\ 0
+															\end{pmatrix} = G(t,x)
+\end{align}
+As in the developed DAE formulation, the friction law is solved along with time-variant quantities $S$ and $\psi$. It therefore requires an iterative solver method from an implicit time solver and is cannot be used in general only with an explicit integrator. \\
+Another class of solvers, the so called IMEX (implicit-explicit) solvers [cite IMEX], offer an interesting approach to numerically solve this problem, by mixing an implicit, iterative method for the algebraic states with an explicit method for the remaining simple time-dependent quantities. Technically, the function $F()$ is expected to be integrated implicitly, while the right-hand side function $G()$ is solved explicitly. In the given formulation, the right hand side is equal to 0, this means that the system has to be solved fully implicitly and the advantages of IMEX methods cannot be used here. 
+
+\section{Formulation of the Jacobian}
+To use implicit time solvers, the Jacobian matrix of the right-hand side of the ODE in (\ref{eq:SEAS_DAE_ageing_law}) and (\ref{eq:SEASDAE_dV_dt}) has to be computed in the Newton iteration. In general, if it is unknown, it is approximated along with the solution during the Newton iteration using for instance a Broyden iteration [cite Broyden]. However, this impairs the convergence speed of the Newton iteration compared to the analytical expression. It is especially relevant if the explicit-implicit formulation of the problem is chosen, for which an iterative solver is indispensable. 
 
 \subsection{Analytical Derivation of the Jacobian matrix}
 \label{ssec:AnalyticalDerivationOfTheJacobianMatrix}
-To use implicit time solvers, the Jacobian matrix of the right-hand side of the ODE in (\ref{eq:SEASDAE_dpsi_dt}) and (\ref{eq:SEASDAE_dV_dt}) has to be computed in the Newton iteration. In general, if it is unknown, it is approximated along with the solution during the Newton iteration using for instance a Broyden iteration [cite Broyden]. In our case, it is possible to evaluate the Jacobian analytically. If we define the solution vector $x$ and the corresponding ODE as 
+In a first step, we try to derive an analytical expression of the Jacobian for both the ODE and the DAE formulation of the problem.
+
+\subsubsection{Jacobian of the ODE system}
+\label{sssec:Jacobian_ODE}
+For the ODE formulation in \autoref{eq:ODE_formulation_SEAS}, it is impossible to calculate an analytical expression of the Jacobian matrix. In the following, it will be shown, why any attempt to calculate it would fail. The Jacobian $\mathbf{J}_{\psi,S}(F)$ consists of four block matrices, which each contains the Jacobians related to the two quantities:
 \begin{equation}
-	\label{eq:quantitiesODEForJacobian}
-    x = \begin{pmatrix} \vdots \\ \S_i \\ \psi_i \\ \vdots \end{pmatrix}
-    \qquad \text{and} \qquad 
-    \dot{x} = \begin{pmatrix} \vdots \\ \dot{S_i} \\ \dot{\psi_i} \\ \vdots \end{pmatrix} =
-    \begin{pmatrix} \vdots \\ V_i \\ g(\psi_i, V_i) \\ \vdots \end{pmatrix} = F_i(V_i, \psi_i)
+	\label{eq:Jacobian_ODE_formulation}
+	\mathbf{J}_{\psi_h,S_j}\left(F_i\left(\psi,V(\psi,S)\right)\right) = \begin{pmatrix} 
+	\frac{\partial V_i}{\partial S_j} &
+	\frac{\partial V_i}{\partial \psi_j} \\ 
+	\frac{\partial g(\psi_i,V_i)}{\partial S_j} &
+	\frac{\partial g(\psi_i,V_i)}{\partial \psi_j}  \end{pmatrix}
 \end{equation}
-The Jacobian $J_{\psi,S}(F)$ consists of four block matrices, which each contains the Jacobians: 
-\begin{equation}
-		\label{eq:BlockMatricesJacobian}
-    J_{\psi_h,S_j}\left(F\left(\psi_i,V_i(\psi_i,S_i)\right)\right) = \begin{pmatrix} 
-        \frac{\partial V_i}{\partial S_j} &
-        \frac{\partial V_i}{\partial \psi_j} \\ 
-        \frac{\partial g(\psi_i,V_i)}{\partial S_j} &
-        \frac{\partial g(\psi_i,V_i)}{\partial \psi_j}  \end{pmatrix}
-\end{equation}
-To calculate the partial derivatives of $V_i(\psi_i,S_i)$, we need to consider the friction law $f(U, \psi,V)$. For any chosen values for $\psi$ and $S$, V is evaluated in a way that $f(U(S), \psi, V(\psi,S))$ vanishes. Therefore, we can state that $df/d\psi = 0$ and $df/dS = 0$. With the expression of the total derivative, we can calculate the partial derivatives of the velocity. 
+To calculate the partial derivatives of $V_i(\psi_i,S_i)$, we need to consider the friction law $f(U, \psi,V)$. For any chosen values for $\psi$ and $S$, V is evaluated in a way that $f(U(S), \psi, V(\psi,S))$ vanishes. Therefore, we can state that $df/d\psi = 0$ and $df/dS = 0$. With the expression of the total derivative, we obtain the following equations:
 \begin{align}
-    0 &= \frac{df_k}{dS_j} =     
+	0 &= \frac{df_k}{dS_j} =     
 	\frac{\partial f_k}{\partial S_i}\frac{d S_i}{d S_j} + 
 	\frac{\partial f_k}{\partial V_i}\frac{d V_i}{d S_j} + 
 	\frac{\partial f_k}{\partial \psi_i}\frac{d \psi_i}{d S_j} 
 	\qquad\Leftrightarrow\qquad
 	\frac{d V_i}{d S_j} = -\left(\frac{\partial f_k}{\partial V_i}\right)^{-1}\left(\frac{\partial f_k}{\partial S_l}\frac{d S_l}{d S_j} + \frac{\partial f_k}{\partial \psi_l}\frac{d \psi_l}{d S_j} \right) 
-	\label{eq:SEASDAE_partialdV_dS} \\
-    0 &= \frac{df_k}{d\psi_j} = 
-    \frac{\partial f_k}{\partial \psi_i}\frac{d \psi_i}{d \psi_j} + 
-    \frac{\partial f_k}{\partial V_i}\frac{d V_i}{d \psi_j} + 
-    \frac{\partial f_k}{\partial S_i}\frac{d S_i}{d \psi_j}
-    \qquad\Leftrightarrow\qquad
-    \frac{d V_i}{d \psi_j} = -\left(\frac{\partial f_k}{\partial V_i}\right)^{-1}\left(\frac{\partial f_k}{\partial \psi_l}\frac{d \psi_l}{d \psi_j}  + 
-    \frac{\partial f_k}{\partial S_l} \frac{d S_l}{d \psi_j}\right)
-    \label{eq:SEASDAE_partialdV_dpsi}
+	\label{eq:SEASDAE_totaldV_dS} \\
+	0 &= \frac{df_k}{d\psi_j} = 
+	\frac{\partial f_k}{\partial \psi_i}\frac{d \psi_i}{d \psi_j} + 
+	\frac{\partial f_k}{\partial V_i}\frac{d V_i}{d \psi_j} + 
+	\frac{\partial f_k}{\partial S_i}\frac{d S_i}{d \psi_j}
+	\qquad\Leftrightarrow\qquad
+	\frac{d V_i}{d \psi_j} = -\left(\frac{\partial f_k}{\partial V_i}\right)^{-1}\left(\frac{\partial f_k}{\partial \psi_l}\frac{d \psi_l}{d \psi_j}  + 
+	\frac{\partial f_k}{\partial S_l} \frac{d S_l}{d \psi_j}\right)
+	\label{eq:SEASDAE_totaldV_dpsi}
 \end{align}
-The derivatives of the slip rate with respect to the state variable and the slip can be reformulated as: 
+It is allowed to take the inverse of the matrix $\frac{\partial f}{\partial V}$, whose expression is given in \autoref{eq:partial_df_dV} and is accordingly a diagonal matrix with non-zero entries. Further, the derivatives of the slip rate with respect to the state variable and the slip can also be reformulated with the formula of total derivatives: 
 \begin{align}
-	\frac{dV_i}{dS_l} &= \frac{\partial V_i}{\partial S_j}\frac{d S_j}{d S_l} + \frac{\partial V_i}{\partial \psi_k}\frac{d\psi_k}{dS_l} 
-	\qquad\Leftrightarrow\qquad
-	\frac{\partial V_i}{\partial S_j} = \left(\frac{dV_i}{dS_l} - \frac{\partial V_i}{\partial \psi_k} \frac{d\psi_k}{dS_l}\right)\left(\frac{d S_j}{d S_l}\right)^{-1} \\
-	\frac{dV_i}{d\psi_l} &= \frac{\partial V_i}{\partial \psi_j}\frac{d \psi_j}{d \psi_l} +  \frac{\partial V_i}{\partial S_k}\frac{dS_k}{d\psi_l} 
-	\qquad\Leftrightarrow\qquad
-	\frac{\partial V_i}{\partial \psi_j} = \left(\frac{dV_i}{dS_l} - \frac{\partial V_i}{\partial S_k}\frac{dS_k}{d\psi_l} \right)\left(\frac{d \psi_j}{d \psi_l}\right)^{-1}	
+\frac{dV_i}{dS_j} &= \frac{\partial V_i}{\partial S_k}\frac{d S_k}{d S_j} + \frac{\partial V_i}{\partial \psi_k}\frac{d\psi_k}{dS_j} &
+\frac{dV_i}{d\psi_j} &= \frac{\partial V_i}{\partial \psi_k}\frac{d \psi_k}{d \psi_j} +  \frac{\partial V_i}{\partial S_k}\frac{dS_k}{d\psi_j} 
 \end{align}
-As such, the two upper block matrices in the full Jacobian from \autoref{eq:BlockMatricesJacobian} are obtained by solving the following system. 
+As such, the two upper block matrices in the full Jacobian from \autoref{eq:Jacobian_ODE_formulation} are obtained by solving the following linear system: 
 \begin{equation}
 \label{eq:systemJacobianSlipRate}
 \begin{cases}
-	\frac{\partial V_i}{\partial S_j} = -\left(\frac{\partial f_k}{\partial V_i}\right)^{-1}\left(\frac{\partial f_k}{\partial S_j} + \frac{\partial f_k}{\partial \psi_l}\frac{d \psi_l}{d S_m}\left(\frac{d S_j}{d S_m}\right)^{-1} \right) 
-	-\frac{\partial V_i}{\partial \psi_l} \frac{d\psi_l}{dS_m} \left(\frac{d S_j}{d S_m}\right)^{-1} \\
-	\frac{\partial V_i}{\partial \psi_j} = -\left(\frac{\partial f_k}{\partial V_i}\right)^{-1}\left(\frac{\partial f_k}{\partial \psi_j} + 
-	\frac{\partial f_k}{\partial S_l}\frac{d S_l}{d \psi_m}\left(\frac{d \psi_j}{d \psi_m}\right)^{-1} \right) 
-	-\frac{\partial V_i}{\partial S_l}\frac{dS_l}{d\psi_m}\left(\frac{d \psi_j}{d \psi_m}\right)^{-1}
+	\frac{\partial V_i}{\partial S_k}\frac{d S_k}{d S_j} + \frac{\partial V_i}{\partial \psi_k}\frac{d\psi_k}{dS_j} = -\left(\frac{\partial f_l}{\partial V_i}\right)^{-1}\left(\frac{\partial f_l}{\partial S_k}\frac{d S_k}{d S_j} + 
+	\frac{\partial f_k}{\partial \psi_k}\frac{d \psi_l}{d S_j}\right) \\
+	\frac{\partial V_i}{\partial \psi_k}\frac{d \psi_k}{d \psi_j} + \frac{\partial V_i}{\partial S_k}\frac{dS_k}{d\psi_j} = -\left(\frac{\partial f_l}{\partial V_i}\right)^{-1}\left(\frac{\partial f_l}{\partial \psi_k}\frac{d \psi_k}{d \psi_j} + 
+	\frac{\partial f_l}{\partial S_k}\frac{d S_k}{d \psi_j}\right) 
 \end{cases}
 \end{equation}
-This problem can be put in a matrix-vector form using block matrices. Let us define the following matrices to describe the problem:
+The system in \autoref{eq:systemJacobianSlipRate} is equivalent to following block matrix system, which has to be solved to obtain the two desired Jacobian matrices $\frac{\partial V}{\partial S}$ and $\frac{\partial V}{\partial \psi}$ in the upper blocks of \autoref{eq:Jacobian_ODE_formulation}. Note that the matrices are multiplied from the right because of the formulation of the problem, so the system is solved for row vector and not column vectors as it is usual. If it was about to solve it, the system could be easily transformed to a column format with the transpose of all matrices and vectors.
 \begin{align}
-	\mathbf{X}_{ij} &= \frac{\partial V_i}{\partial S_j} &
-	\mathbf{Y}_{ij} &= \frac{\partial V_i}{\partial \psi_j} &
-	\mathbf{C}_{ij} &= \frac{d\psi_i}{dS_k}\left(\frac{d S_j}{d S_k}\right)^{-1} &
-	\mathbf{D}_{ij} &= \frac{dS_i}{d\psi_k}\left(\frac{d \psi_j}{d \psi_k}\right)^{-1} 
+\label{eq:Jacobian_ODE_matrix_system}
+\begin{pmatrix}
+	\frac{\partial V}{\partial S} & \frac{\partial V}{\partial \psi}
+\end{pmatrix} \underbrace{\begin{pmatrix}
+                \frac{d S}{d S}  & \frac{dS}{d\psi}        \\
+                \frac{d\psi}{dS} & \frac{d \psi}{d \psi} 
+              \end{pmatrix}}_{\mathbf{A}}  &= -\left(\frac{\partial f}{\partial V}\right)^{-1}
+              					\begin{pmatrix}
+   									\frac{\partial f}{\partial S} & \frac{\partial f}{\partial \psi}
+                                \end{pmatrix} \underbrace{\begin{pmatrix}
+	                                \frac{d S}{d S}  & \frac{dS}{d\psi}        \\
+	                                \frac{d\psi}{dS} & \frac{d \psi}{d \psi} 
+                                \end{pmatrix}}_{\mathbf{A}}
 \end{align}
-\begin{align}
-	\mathbf{A}_{ij} &= \left(\frac{\partial f_k}{\partial V_i}\right)^{-1}\left(\frac{\partial f_k}{\partial S_j} + \frac{\partial f_k}{\partial \psi_l}\mathbf{C}_{lj} \right) &
-	\mathbf{B}_{ij} &= \left(\frac{\partial f_k}{\partial V_i}\right)^{-1}\left(\frac{\partial f_k}{\partial \psi_j} + \frac{\partial f_k}{\partial S_l}\mathbf{D}_{lj} \right)
-\end{align}
-The system in \autoref{eq:systemJacobianSlipRate} is equivalent to following block matrix system, with $\mathbf{I}$ being the identity matrix, which has to be solved for all rows $X^{(i)}$ and $Y^{(i)}$ of the respective matrices $\mathbf{X}$ and $\mathbf{Y}$. Note that the matrices are multiplied from the right because of the formulation of the problem, so the system is solved for row vector and not column vectors as it is usual. It can be easily transformed to a column format with the transpose of all matrices and vectors.
-\begin{align}
-	\begin{pmatrix}
-		X^{(i)} & Y^{(i)}
-	\end{pmatrix} \begin{pmatrix}
-					  \mathbf{I} & \mathbf{D} \\
-					  \mathbf{C} & \mathbf{I} 
-				  \end{pmatrix}  &= \begin{pmatrix}
-									  -A^{(i)} & -B^{(i)}
-								   \end{pmatrix} \\
-	\Leftrightarrow
-	\begin{pmatrix}
-		\mathbf{I} & \mathbf{C}^T \\
-		\mathbf{D}^T & \mathbf{I} 
-	\end{pmatrix} 	\begin{pmatrix}
-						X^{(i)T} \\ Y^{(i)T}
-					\end{pmatrix} &= \begin{pmatrix}
-										-A^{(i)T} \\ -B^{(i)T}
-									 \end{pmatrix} 
-\end{align}
-With block matrix arithmetic, the solution of this system is calculated as: 
-\begin{align}
-	\begin{pmatrix}
-		X^{(i)T} \\ Y^{(i)T}
-	\end{pmatrix} &= \begin{pmatrix}
-						 \left(\mathbf{I} - \mathbf{C}^T\mathbf{D}^T\right)^{-1} & 
-						-\left(\mathbf{I} - \mathbf{C}^T\mathbf{D}^T\right)^{-1}\mathbf{C}^T \\
-						-\left(\mathbf{I} - \mathbf{D}^T\mathbf{C}^T\right)^{-1}\mathbf{D}^T & 
-						 \left(\mathbf{I} - \mathbf{D}^T\mathbf{C}^T\right)^{-1} 
-					\end{pmatrix} \begin{pmatrix}
-										-A^{(i)T} \\ -B^{(i)T}
-									\end{pmatrix} \\ 
-\Leftrightarrow
-	\begin{pmatrix}
-		X^{(i)T} \\ Y^{(i)T}
-	\end{pmatrix} &= \begin{pmatrix}
-		\left(\mathbf{I} - \mathbf{DC}\right)^{-T}\left(-A^{(i)T} + \mathbf{C}^TB^{(i)T}\right) \\
-		\left(\mathbf{I} - \mathbf{CD}\right)^{-T}\left( \mathbf{D}^TA^{(i)T} - B^{(i)T}\right) 
-					\end{pmatrix}
-\end{align}
-To construct the Jacobian, two systems of size $n/2$ have to be solved for each column of the matrix, so each system $n/2$ times. This operation can be quite costly for large systems, even if the LU-decomposition has to be computed only once. In index notation, the entries of the Jacobian matrices are:
-\begin{align}
-	 \frac{\partial V_i}{\partial S_j} &= \left(\delta_{jk} - \mathbf{D}_{jl}\mathbf{C}_{lk}\right)^{-1}\left(\mathbf{C}_{kl}\mathbf{B}_{li}-\mathbf{A}_{ki}\right) \\
-	\frac{\partial V_i}{\partial \psi_j} &=\left(\delta_{jk} - \mathbf{C}_{jl}\mathbf{D}_{lk}\right)^{-1}\left(\mathbf{D}_{kl}\mathbf{A}_{li}-\mathbf{B}_{ki}\right) 
-\end{align}
-The mutual dependency of the solution components, described by the variations $\frac{d S_i}{d S_j}$,$\frac{d \psi_i}{d \psi_j}$, $\frac{d S_i}{d \psi_j}$ and $\frac{d \psi_i}{d S_j}$ can be obtained using the respective time derivatives and the chain rule. In this context, the index $j$ does not represent the sum of element, but indicates that the equality is true for each component referenced to by $j$.   
+In this form, the same matrix $\mathbf{A}$ appears on both sides of the equation. It might be tempting to eliminate this term straight away and obviously, the expressions $\frac{\partial V}{\partial S} = -\left(\frac{\partial f}{\partial V}\right)^{-1}\frac{\partial f}{\partial S}$ and $\frac{\partial V}{\partial \psi} = -\left(\frac{\partial f}{\partial V}\right)^{-1}\frac{\partial f}{\partial \psi}$ solve the system. However, this solution is not unique, and as a matter of fact, there are infinitely many solutions to the system, because the matrix $\mathbf{A}$ is singular and is therefore not invertible.
+The components of this matrix correspond to the mutual dependency of the solution components, described by the variations $\frac{d S_i}{d S_j}$,$\frac{d \psi_i}{d \psi_j}$, $\frac{d S_i}{d \psi_j}$ and $\frac{d \psi_i}{d S_j}$. Under the assumption that the time solution of the ODE is sufficiently smooth, their expressions can be obtained using the respective time derivatives and the chain rule. In this context, the index $j$ does not represent the sum of element, but indicates that the equality is true for each component referenced to by $j$.   
 \begin{align}
 \frac{dS_i}{dt} &= \frac{dS_j}{dt}\frac{dS_i}{dS_j} \quad\forall i,j \quad&&\Leftrightarrow& V_i &= V_j \frac{dS_i}{dS_j} \quad\forall i,j \quad&&\Leftrightarrow& \frac{dS_i}{dS_j} &= \frac{V_i}{V_j} \quad\forall i,j \\
 \frac{d\psi_i}{dt} &= \frac{d\psi_j}{dt}\frac{d\psi_i}{d\psi_j} \quad\forall i,j \quad&&\Leftrightarrow& g_i(\psi, V) &= g_j(\psi, V) \frac{d\psi_i}{d\psi_j} \quad\forall i,j \quad&&\Leftrightarrow& \frac{d\psi_i}{d\psi_j} &= \frac{g_i(\psi, V)}{g_j(\psi, V)} \quad\forall i,j \\
 \frac{d\psi_i}{dt} &= \frac{dS_j}{dt}\frac{d\psi_i}{dS_j} \quad\forall i,j \quad&&\Leftrightarrow& g_i(\psi, V) &= V_j \frac{d\psi_i}{dS_j} \quad\forall i,j \quad&&\Leftrightarrow& \frac{d\psi_i}{dS_j} &= \frac{g_i(\psi, V)}{V_j} \quad\forall i,j \\
 \frac{dS_i}{dt} &= \frac{d\psi_j}{dt}\frac{dS_i}{d\psi_j} \quad\forall i,j\quad&&\Leftrightarrow& V_i &= g_j(\psi, V) \frac{dS_i}{d\psi_j} \quad\forall i,j\quad&&\Leftrightarrow& \frac{dS_i}{d\psi_j} &= \frac{V_i}{g_j(\psi, V)}\quad\forall i,j
 \end{align}
-To calculate the Jacobian terms in \autoref{eq:SEASDAE_partialdV_dS} and \autoref{eq:SEASDAE_partialdV_dpsi}, the partial derivatives now have to be determined. Two of them are straightforward to calculate and only generate values on their diagonal. This is especially beneficial for $\frac{\partial f_i}{\partial V_j}$, since its inverse is much easier to calculate if the matrix is diagonal. 
+With the entire solution vector $x$ and the right hand side vector $F$ from \autoref{eq:ODE_formulation_SEAS}, and if additionally we define the vector $G$ with the inverses of the components of $F$, thus $G_i = 1 / F_i$, this set of equations can be rewritten concisely as the outer product of two vectors.
+\begin{equation}
+	\mathbf{A} = FG^T
+\end{equation}
+From this formulation, it is trivial to conclude that $\mathbf{A}$ has rank 1. The vector $F$ and the transposed vector $G^T$ can be seen as matrices of size $n \times 1$ and a $1 \times n$, which both have rank 1, so their product also has rank 1. Even for the smallest imaginable system, with only one fault node, $\mathbf{A}$ has two entries for the slip and for the state variable, so the relation $rank(\mathbf{A})<n$ always hold and $\mathbf{A}$ is not invertible. The system in \autoref{eq:Jacobian_ODE_matrix_system} has then either none of infinitely many solutions. Since at least one trivial solution can be found, the zero solution case is eliminated and infinitely many other exist. \\
+The solution set can be obtained with the Moore-Penrose inverse \cite{MoorePenroseInverse}. The pseudoinverse $\mathbf{A}^+$ of $\mathbf{A}$ is obtained with the pseudoinverses of the two underlying non-zero vectors $F$ and $G$. Since both vectors are real, their Hermitian counterpart is the same as their transposed vectors.
 \begin{align}
-    \frac{\partial f_i}{\partial V_j} &= \left( -\frac{\sigma_na}{2V_0} \frac{e^{\frac{\psi_i}{a}}}{\sqrt{\frac{V_i^2}{4V_0^2}+1}}-\eta\right)\delta_{ij} \\
-    \frac{\partial f_i}{\partial \psi_j} &= \left(-\sigma_n\text{arsinh}\left(\frac{V_i}{2V_0}\right)e^{\frac{\psi_i}{a}}\right)\delta_{ij}
+	F^+ = \frac{F^T}{F^TF}& \qquad \text{and} \qquad G^+ = \frac{G^T}{G^TG} \\
+	\Rightarrow \mathbf{A}^+ &= \left(FG^T\right)^+ = \left(G^T\right)^+F^+ \\
+	                &= \frac{G}{G^TG}\frac{F^T}{F^TF} \\
+	                & = \frac{1}{G^TGF^TF}\mathbf{A}^T
 \end{align}
-The evaluation of the last missing partial derivative is more complex to obtain and will be one reason for a complete filling of the Jacobi matrix.
+This matrix fulfills all four criteria for a pseudoinverse: 
+\begin{align}
+	\mathbf{A}\mathbf{A}^+\mathbf{A} =&& FG^T\frac{GF^T}{F^TFG^TG}FG^T =& F\frac{G^TGF^TF}{F^TFG^TG}G^T = FG^T &&= \mathbf{A}  \\
+	\mathbf{A}^+\mathbf{A}\mathbf{A}^+ =&& \frac{GF^T}{F^TFG^TG}FG^T\frac{GF^T}{F^TFG^TG} =& G\frac{F^TFG^TG}{2F^TFG^TG}F^T = \frac{GF^T}{F^TFG^TG} &&= \mathbf{A}^+ \\
+	(\mathbf{A}\mathbf{A}^+)^T =&& \frac{\left(FG^TGF^T\right)^T}{F^TFG^TG} =& \frac{FG^TGF^T}{F^TFG^TG} &&= \mathbf{A}\mathbf{A}^+ \\
+	(\mathbf{A}^+\mathbf{A})^T =&& \frac{\left(GF^TFG^T\right)^T}{F^TFG^TG} =& \frac{GF^TFG^T}{F^TFG^TG} &&= \mathbf{A}^+\mathbf{A}
+\end{align}
+With the expression of the pseudoinverse, the set of all possible solutions to a linear system of $\mathbf{A}x=b$ is given by \cite{generalizedInverseSolutionSet}.
+\begin{align}
+	x = A^+b + \left(\mathbf{I}-\mathbf{A}^+\mathbf{A}\right)w \qquad \forall w\in\mathbb{R}^n
+\end{align}
+The components of the vector $w$ parameterize the solution. 
+
+\subsubsection{Jacobian of the DAE system}
+\label{sssec:Jacobian_DAE}
+For the DAE formulation of the system in \autoref{eq:DAE_formulation_SEAS}, another approach can be chosen to calculate the Jacobian matrix of the system. With now three different components in the solution vector, the Jacobian matrix contains the partial derivatives with respect to the slip rate in addition to the slip and to the state variable. Similarly, the function $F$ on which the Jacobian is applied is extended by the friction law. Each block $i,j$ in the structure of the Jacobian is given by:
+\begin{equation}
+	\label{eq:Jacobian_DAE_formulation}
+	\mathbf{J}_{S_j,\psi_j,V_j}F_i(S,\psi,V) = 	\begin{pmatrix}
+											\frac{\partial V_i}{\partial S_j} & \frac{\partial V_i}{\partial \psi_j} & \frac{\partial V_i}{\partial V_j} \\
+											\frac{\partial g_i(\psi,V)}{\partial S_j} & \frac{\partial g_i(\psi,V)}{\partial \psi_j} & \frac{g_i(\partial \psi,V)}{\partial V_j} \\
+											\frac{\partial f_i(S,\psi,V)}{\partial S_j} & \frac{\partial f_i(S,\psi,V)}{\partial \psi_j} & \frac{\partial f_i(S,\psi,V)}{\partial V_j}
+										\end{pmatrix}
+\end{equation}
+In the previous section, a complicated approach had to be followed to obtain the derivative for the slip rate because of the nonlinear friction law, which was indirectly solved for each evaluation of the slip rate. Since the slip rate is now obtained directly from the solution vector $x$ and not from an iterative solver for the friction law, all its partial derivatives except with each component itself vanish. 
+
+\begin{align}	
+	\frac{\partial V_i}{\partial S_j} &= 0 & \frac{\partial V_i}{\partial \psi_j} &= 0 & \frac{\partial V_i}{\partial V_j} &= \delta_{ij}
+\end{align}
+
+Similarly, the partial derivatives of the ageing law can be directly evaluated from its definition in \autoref{eq:SEAS_DAE_ageing_law}.
+\begin{align}
+	\frac{\partial g_i(\psi,V)}{\partial S_j} &=  0 &
+	\frac{\partial g_i(\psi,V)}{\partial\psi_j} &= -\frac{V_0}{L}e^{\frac{f_0-\psi_i}{b}}\delta_{ij} &	
+	\frac{\partial g_i(\psi,V)}{\partial V_j} &= -\frac{b}{L} \delta_{ij}
+\end{align}
+For the friction law, only two partial derivatives can be easily obtained:
+\begin{align}
+	\frac{\partial f_i(S,\psi,V)}{\partial \psi_j} &= \left(-\sigma_n\text{arsinh}\left(\frac{V_i}{2V_0}\right)e^{\frac{\psi_i}{a}}\right)\delta_{ij} \\	
+	\frac{\partial f_i(S,\psi,V)}{\partial V_j} &= \left( -\frac{\sigma_na}{2V_0} \frac{e^{\frac{\psi_i}{a}}}{\sqrt{\frac{e^{\frac{2\psi_i}{a}}V_i^2}{4V_0^2}+1}}-\eta\right)\delta_{ij} 
+	\label{eq:partial_df_dV}
+\end{align}
+The evaluation of the last missing partial derivative is more complex to obtain and will be one reason for a partial filling of the Jacobian matrix.
 \begin{align}
 	\label{eq:partialDerivative_df_dS}
-    \frac{\partial f_i}{\partial S_j} = \frac{\partial \tau_i(U)}{\partial S_j} = \frac{\partial \tau_i(U)}{\partial U_k}\frac{\partial U_k}{\partial S_j}
+	\frac{\partial f_i}{\partial S_j} = \frac{\partial \tau_i(U)}{\partial S_j} = \frac{\partial \tau_i(U)}{\partial U_k}\frac{\partial U_k}{\partial S_j}
 \end{align}
 The problem shifted to calculate the partial derivative $\frac{\partial U}{\partial S}$. Since $U = A^{-1}b(S)$ and the matrix $A$ does not depend on $S$, we just need to find the derivative of $b(S)$. We get, for elements on the fault:
 \begin{align}
-    \frac{\partial b_i(S)}{\partial S_j} &= \frac{\partial }{\partial S_j}\int_e \eta \{\{c_{mnkl}\epsilon_{kl}(w)\eta_n^e\}\}\llbracket U_m \rrbracket + \frac{\delta_e}{|e|^\beta}\llbracket U_m \rrbracket\llbracket w_m \rrbracket dx
+	\frac{\partial b_i(S)}{\partial S_j} &= \frac{\partial }{\partial S_j}\int_e \eta \{\{c_{mnkl}\epsilon_{kl}(w)\eta_n^e\}\}\llbracket U_m \rrbracket + \frac{\delta_e}{|e|^\beta}\llbracket U_m \rrbracket\llbracket w_m \rrbracket dx
 \end{align}
 As already stated earlier, we have $\llbracket U_i \rrbracket = -S_i$, therefore we can straight eliminate this term. On all other interpolation points not located on the fault, the right hand side $b$ does not depend on the fault displacement $S$ and the derivatives at these points consequently vanish. We then obtain:
 \begin{equation}
-    \frac{\partial b_i(S)}{\partial S_j} = -\int_e 
-    \eta  \{\{c_{jnkl}\epsilon_{kl}(w)\eta_n^e\}\} +
-    \frac{\delta_e}{|e|^\beta}\llbracket w_j \rrbracket dx
+	\frac{\partial b_i(S)}{\partial S_j} = -\int_e 
+	\eta  \{\{c_{jnkl}\epsilon_{kl}(w)\eta_n^e\}\} +
+	\frac{\delta_e}{|e|^\beta}\llbracket w_j \rrbracket dx
 \end{equation}
 This expression can be calculated by plugging the unit vector $e^i$ as argument of the right-hand side vector $b$. The Jacobian term $\frac{\partial U_i}{\partial S_j}$ is therefore evaluated by applying the solver method of the Poisson problem to the unit vectors as slips. We get:
 \begin{equation}
-    \frac{\partial U_i}{\partial S_j} = A_{ik}^{-1}b_k(e^i)
+	\frac{\partial U_i}{\partial S_j} = A_{ik}^{-1}b_k(e^i)
 \end{equation}
 The traction term $\tau(U)$ is calculated as $\tau = \mu \frac{\partial u}{\partial x_i}n_i$, and is numerically approximated on the nodal basis as $\tau_p = M_{rp}^{-1}e_{qr}^Tw_q(\nabla u)_{kq}n_{kq}$, where $M$ is the mass matrix of the fault basis, $e^T$ maps from fault to quadrature points, $w$ are the quadrature weights and $n$ is the normal at the quadrature points. The gradient of $u$ is approximated by $(\nabla u)_{pq} = \frac{1}{2}\left(D_{lpq}^0u_l^0 + D_{lpq}^1u_l^1\right) + c_0\left(E_{lq}^0u_l^0 - E_{lq}^1u_l^1 - f_q\right)n_{pq}$. The tensor $E$ maps from the quadrature points to the element basis and $D$ is its gradient and the superscripts $0$ and $1$ refer to the adjacent elements on opposite sides of the fault. The evaluation of the derivative of the traction with respect to the displacement requires to derivate the gradient of the displacement with respect to itself. We obtain: 
 \begin{align}
-    \frac{(\nabla u)_{pq}}{\partial u_k} &= \frac{1}{2}\left(D_{lpq}^0\frac{\partial u_l^0}{\partial u_k} + D_{lpq}^1\frac{\partial u_l^1}{\partial u_k}\right) + c_0\left(E_{lq}^0\frac{\partial u_l^0}{\partial u_k} - E_{lq}^1\frac{\partial u_l^1}{\partial u_k}\right)n_{pq} \\
-    &= \frac{1}{2}\left(D_{lpq}^0\delta_{lk}^0 + D_{lpq}^1\delta_{lk}^1\right) + c_0\left(E_{lq}^0\delta_{lk}^0 - E_{lq}^1\delta_{lk}^1\right)n_{pq} \\
-    &= \frac{1}{2}\left(D_{kpq}^0 + D_{kpq}^1\right) + c_0\left(E_{kq}^0 - E_{kq}^1\right)n_{pq} 
+\frac{(\nabla u)_{pq}}{\partial u_k} &= \frac{1}{2}\left(D_{lpq}^0\frac{\partial u_l^0}{\partial u_k} + D_{lpq}^1\frac{\partial u_l^1}{\partial u_k}\right) + c_0\left(E_{lq}^0\frac{\partial u_l^0}{\partial u_k} - E_{lq}^1\frac{\partial u_l^1}{\partial u_k}\right)n_{pq} \\
+&= \frac{1}{2}\left(D_{lpq}^0\delta_{lk}^0 + D_{lpq}^1\delta_{lk}^1\right) + c_0\left(E_{lq}^0\delta_{lk}^0 - E_{lq}^1\delta_{lk}^1\right)n_{pq} \\
+&= \frac{1}{2}\left(D_{kpq}^0 + D_{kpq}^1\right) + c_0\left(E_{kq}^0 - E_{kq}^1\right)n_{pq} 
 \end{align}
 And further we get: 
 \begin{equation}
-    \frac{\partial \tau_p}{\partial u_l} = M_{rp}^{-1}e_{qr}^Tw_q
-    \frac{1}{2}\left(D_{lkq}^0 + D_{lkq}^1\right) + c_0\left(E_{lq}^0 - E_{lq}^1\right)n_{kq}
-    n_{kq} 
+\frac{\partial \tau_p}{\partial u_l} = M_{rp}^{-1}e_{qr}^Tw_q
+\frac{1}{2}\left(D_{lkq}^0 + D_{lkq}^1\right) + c_0\left(E_{lq}^0 - E_{lq}^1\right)n_{kq}
+n_{kq} 
 \end{equation}
-This derivative term does not depend on the current displacement anymore but only on the geometry of the discretization, so it can be calculated once at the beginning of the simulation. Now, all components are available to calculate the partial derivative of the friction law with respect to the slip in \autoref{eq:partialDerivative_df_dS} and further to evaluate the two Jacobian matrices of the slip rate $\frac{\partial V}{\partial S}$ and $\frac{\partial V}{\partial \psi}$. To obtain the full expression of the Jacobian matrix in \autoref{eq:BlockMatricesJacobian}, the partial derivatives of the ageing law $g(\psi, V(\psi,S))$ with respect to $\psi$ and $S$ are still required.
+This derivative term does not depend on the current displacement anymore but only on the geometry of the discretization, so it can be calculated once at the beginning of the simulation. All components of the remaining partial derivative in \autoref{eq:partialDerivative_df_dS} are now available and all entries of the Jacobian matrix of the DAE in \autoref{eq:Jacobian_DAE_formulation}. \\
+This formulation of the Jacobian cannot be directly used in the Newton iteration to calculate the next timestep. Typically, the Jacobian has to be adapted to represent the time-stepping scheme. For instance, the implicit Euler method results requires to solve the nonlinear equation $0 = x_n - x_{n+1} + hF(x_{n+1})$ for the solution at the next timestep $x_{n+1}$ and the Jacobian matrix $J_N$ for the corresponding Newton iteration is constructed from $J$. 
+\begin{equation}
+	J_N = -I + hJ
+\end{equation}
+Here, the problem arises that the evolution over time is only defined for two components in the solution vector: the slip $S$ and the state variable $\psi$. The slip rate $V$ needs to be solved algebraically at every Newton iteration, but this component should not be included in the time-stepping scheme. The nonlinear equation to calculate a step of the implicit Euler has to be adapted to include properly the slip rate. 
 \begin{align}
-    \frac{\partial g_i(\psi,V)}{\partial\psi_j} &= -\frac{V_0}{L}e^{\frac{f_0-\psi_i}{b}}\delta_{ij} - \frac{b}{L}\frac{\partial V_i}{\partial \psi_j} \\
-    \frac{\partial g_i(\psi,V)}{\partial S_j} &=  - \frac{b}{L}\frac{\partial V_i}{\partial S_j}
+	0 = \begin{pmatrix} S_n \\ \psi_n \\ 0 \end{pmatrix} - 
+		\begin{pmatrix} S_{n+1} \\ \psi_{n+1} \\ 0 \end{pmatrix} + 
+		\begin{pmatrix} hV_{n+1} \\ hg(\psi_{n+1},V_{n+1}) \\ f(S_{n+1}, \psi_{n+1}, V_{n+1}) \end{pmatrix}
 \end{align}
+The Jacobian matrix to be used in a Newton iteration to solve this problem has to be changed accordingly.
+\begin{align}
+	J_N = \begin{pmatrix} -\mathbf{I} & \mathbf{0} & \mathbf{0} \\ 
+						   \mathbf{0} &-\mathbf{I} & \mathbf{0} \\ 
+						   \mathbf{0} & \mathbf{0} & \mathbf{0} \end{pmatrix} + 
+          \begin{pmatrix} h\mathbf{J}_S(S)    & h\mathbf{J}_\psi(S)    & h\mathbf{J}_V(S)    \\ 
+						  h\mathbf{J}_S(\psi) & h\mathbf{J}_\psi(\psi) & h\mathbf{J}_V(\psi) \\ 
+						   \mathbf{J}_S(V)    &  \mathbf{J}_\psi(V)    &  \mathbf{J}_V(V) \end{pmatrix} =
+		  \begin{pmatrix} -\mathbf{I}         &  \mathbf{0}            & h\mathbf{I}         \\ 
+						   \mathbf{0}         & -\mathbf{I} + h\frac{\partial g}{\partial \psi} & h\frac{\partial g}{\partial V} \\ 
+						   \frac{\partial f}{\partial S}    &  \frac{\partial f}{\partial \psi}    &  \frac{\partial f}{\partial V} \end{pmatrix}
+\end{align}
+If other implicit numerical schemes are used than the implicit Euler, such as higher order BDF methods, $J_N$ can be easily changed by multiplying the identity matrices $\mathbf{I}$ with a coefficient that depends on the chosen method. Albeit this formulation of the Jacobian matrix is perfectly valid, it is very specific to the SEAS problem and is therefore hard to implement within the PETSc framework. 
+
+\subsubsection{Jacobian of the compact DAE system}
+The compact DAE formulation of the problem in \autoref{eq:DAE_compact_formulation_SEAS} does not allow to set up one single Jacobian matrix, but it requires to set up in total three matrices, whose entries are the same as in the previous section, but in a different arrangement. The first Jacobian matrix, denoted by $\mathbf{F}_{\dot{x}}$, corresponds to the variation of the left-hand side function $F()$ with respect to the derivative of the solution vector. The second matrix $\mathbf{F}_x$ describes the variation of the same function under the actual solution vector. Finally, the third Jacobian matrix $\mathbf{G}_x$ represents the variation of the right hand side function $G()$ under the influence of $x$.
+\begin{align}
+	\mathbf{F}_{\dot{x}}&=  \begin{pmatrix}
+								\frac{\partial f}{\partial V} & \mathbf{0} \\
+							   -\frac{\partial g}{\partial V} & \mathbf{I}
+							\end{pmatrix} & 
+	\mathbf{F}_x        &=  \begin{pmatrix}
+								\frac{\partial f}{\partial S} & \frac{\partial f}{\partial \psi} \\
+								\mathbf{0}                    & \frac{\partial g}{\partial \psi}
+							\end{pmatrix} & 
+	\mathbf{G}_x        &=  \begin{pmatrix}
+								\mathbf{0} & \mathbf{0} \\
+							    \mathbf{0} & \mathbf{0}
+							\end{pmatrix}
+\end{align}
+In the Newton iteration, to solve for $F(t,x,\dot{x}) = 0$, a single Jacobian matrix $\frac{dF}{dx_n}$ has to be provided for F at every timestep $n$. To combine the two known matrices $\mathbf{F}_x$ and $\mathbf{F}_{\dot{x}}$, the chain rule can be applied.
+\begin{equation}
+	\frac{dF}{dx_n} = \mathbf{F}_{\dot{x}}\frac{d\dot{x}_n}{dx_n} + \mathbf{F}_x
+\end{equation}
+The term $\frac{d\dot{x}_n}{dx_n}$ depends only on the chosen time step scheme and can be denoted by $\sigma$. For the implicit Euler method for instance, we have $\sigma = 1/h$.
 
 \subsection{Verification of the Jacobian}
 The Jacobian matrix is needed to apply implicit numerical methods to solve the SEAS problem. Unlike explicit methods, they evaluate the right hand side of the ODE with the current solution which is not known yet. To calculate the solution vector at a given time step, a nonlinear algebraic equation of the form $\phi(x) = 0$ needs to be solved where $x$ is the solution vector to be determined. The Newton method is often used to solve the equation because of its ease to implement and its second-order convergence. 
@@ -553,7 +646,7 @@ To verify the correctness of the analytic expression of the Jacobi matrix which 
 	\phi(x) &= -x + x^{(0)} + \Delta t F(x) \\
 	J_\phi(x) &= -I + \Delta t J_F(x)
 \end{align}
-The vector $x$ contains both the components related to the slip $S$ and to the state variable $\psi$ and the right hand-side vector $F(x)$ is its time derivative as described in \autoref{eq:quantitiesODEForJacobian}. The Jacobian of the proposed Newton iteration needs the Jacobian $J_F(x)$ of the right-hand side vector, of which the correctness is evaluated here. The success of the Newton iteration, thus observable second-order convergence, indicates the correctness of the Jacobian matrix. \\
+The vector $x$ contains both the components related to the slip $S$ and to the state variable $\psi$ and the right hand-side vector $F(x)$ contains their respective time derivative. The Jacobian of the proposed Newton iteration needs the Jacobian $J_F(x)$ of the right-hand side vector, of which the correctness is evaluated here. The success of the Newton iteration, thus observable second-order convergence, indicates the correctness of the Jacobian matrix. \\
 Furthermore, the behavior of the analytic expression of the Jacobian is compared to the behavior of an iterative approximation of it. The Broyden's method \cite{BroydenIteration} provides an enhancement of the Newton method which updates the Jacobian matrix at each iteration without the need of its analytical expression. The main difficulty is to find an appropriate initial guess to achieve a fast convergence. 
 
 \begin{itemize}
@@ -605,11 +698,11 @@ To solve this problem, the time solvers of the PETSc library [cite PETSc XXXX] a
 
 For SEAS, the solution vector $u$ combines the velocity $V$ and the state variable $\psi$ for all interpolation points at the edge of the fault elements. The functional $F$ is not used and takes as value only the time derivative of the solution vector $\dot{u}$. The call of the right-hand-side function $G(u,t)$ combines the solving of the algebraic and the differential equations. At each step, following steps are performed: 
 \begin{enumerate}
-    \item The current displacement in the whole system is calculated to fulfill the Poisson or elasticity equations by solving \autoref{eq:SEASDAE_AU-b(S)} \\
+    \item The current displacement in the whole system is calculated to fulfill the Poisson or elasticity equations by solving \autoref{eq:SEAS_DAE_AU=b} \\
     \item The values of $\tau(U)$ and $\sigma_n(U)$ are calculated on the fault according to the updated displacements \\
     \item The iteration over all interpolation points on the fault is performed. At each interpolation step: \begin{itemize}
         \item the velocity $V_i$ is obtained from the friction law in \autoref{eq:SEASDAE_frictionLaw} with the bisection method,
-        \item and the actual right hand side $G(u,t)$ of the ODE is evaluated using equations \ref{eq:SEASDAE_dpsi_dt} and \ref{eq:SEASDAE_dV_dt}.
+        \item and the actual right hand side $G(u,t)$ of the ODE is evaluated using equations \ref{eq:SEAS_DAE_ageing_law} and \ref{eq:SEASDAE_dV_dt}.
     \end{itemize}
 \end{enumerate}
 
@@ -786,6 +879,28 @@ The absolute and relative errors in $\psi$ associated to the respective errors i
 	\caption{Absolute and relative error in $\psi$ in function of the error in the slip rate}
 	\label{fig:RelAbsErrorToleranceVPSI}
 \end{figure}
+
+\begin{equation*}
+	F(x,y) = 0, y(x) \qquad x\in\mathbb{R}^n, y\in\mathbb{R}^m,F\in\mathbb{R}^m\\
+\end{equation*}
+\begin{align}
+	0 &= \frac{dF_k}{dx_j} = \frac{\partial F_k}{\partial x_i}\frac{dx_i}{dx_j} + \frac{\partial F_k}{\partial y_i}\frac{dy_i}{dx_j} \\
+	\frac{dy_i}{dx_j} &= \frac{\partial y_i}{\partial x_l}\frac{dx_l}{dx_j} \\
+	\Rightarrow 0 &= \frac{\partial F_k}{\partial x_i}\frac{dx_i}{dx_j} + \frac{\partial F_k}{\partial y_i}\frac{\partial y_i}{\partial x_l}\frac{dx_l}{dx_j}
+\end{align}
+If the components of $x$ do not depend on each other (no ODE): $\frac{dx_i}{dx_j} = \delta_{ij}$ \\
+We obtain exactly the implicit function theorem:
+\begin{align}
+	0 = \frac{\partial F_k}{\partial x_j} + \frac{\partial F_k}{\partial y_i}\frac{\partial y_i}{\partial x_j} \\
+	\Rightarrow \frac{\partial y}{\partial x} = -\left(\frac{\partial F}{\partial y}\right)^{-1}\frac{\partial F}{\partial x} = -F_y^{-1}F_x
+\end{align}
+If the components of $x$ depend on each other (autonomous ODE): $\frac{dx_i}{dx_j} \neq \delta_{ij}$ is singular. The problem cannot be solved. \\
+
+
+\begin{equation}
+	\frac{dS_i}{dS_j} = \lim\limits_{h\rightarrow0}\frac{S_i(t+h) - S_i(t)}{S_j(t+h) - S_j(t)} = \lim\limits_{h\rightarrow0}\frac{\frac{S_i(t+h) - S_i(t)}{h}}{\frac{S_j(t+h) - S_j(t)}{h}} = \frac{\lim\limits_{h\rightarrow0}\frac{S_i(t+h) - S_i(t)}{h}}{\lim\limits_{h\rightarrow0}\frac{S_j(t+h) - S_j(t)}{h}} = \frac{\frac{dS_i}{dt}}{\frac{dS_j}{dt}}
+\end{equation}
+
 
 \bibliographystyle{alpha}
 \bibliography{literature.bib}

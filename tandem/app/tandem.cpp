@@ -96,22 +96,40 @@ int main(int argc, char** argv) {
             return type != AdaptiveOutputStrategy::Unknown;
         });
     auto& solverSchema = schema.add_table("solver", &Config::solver);
-    solverSchema.add_value("ts_type", &SolverConfig::ts_type)
+    solverSchema.add_value("problem_formulation", &SolverConfig::problem_formulation)
+        .validator([](auto&& x) { return ((x == "ode") || (x == "compactDAE")); })
+        .default_value("ode")
+        .help("The formulation of the SEAS problem. ['ode', 'compactDAE']");
+    solverSchema.add_value("type_eq", &SolverConfig::type_eq)
         .default_value("rk")
-        .help("type of the time integration scheme (use Petsc standard)");
-    solverSchema.add_value("ts_rk_type", &SolverConfig::ts_rk_type)
+        .help("type of the time integration scheme during the earthquake phase.  ['rk', 'bdf', ... ]");
+    solverSchema.add_value("type_as", &SolverConfig::type_as)
+        .default_value("rk")
+        .help("type of the time integration scheme during the aseismic slip.  ['rk', 'bdf', ... ]");
+    solverSchema.add_value("rk_type_eq", &SolverConfig::rk_type_eq)
         .default_value("5dp")
-        .help("type of the Runge-Kutta scheme (use Petsc standard). Does not need to be provided if no Runge-Kutta scheme is used");
-    solverSchema.add_value("ts_bdf_order", &SolverConfig::ts_bdf_order)
+        .help("type of the Runge-Kutta scheme during the earthquake phase (use Petsc standard). Does not need to be provided if no Runge-Kutta scheme is used. ['3bs', '5dp', ... ]");
+    solverSchema.add_value("rk_type_as", &SolverConfig::rk_type_as)
+        .default_value("5dp")
+        .help("type of the Runge-Kutta scheme during the aseismic slip (use Petsc standard). Does not need to be provided if no Runge-Kutta scheme is used. ['3bs', '5dp', ... ]");
+    solverSchema.add_value("bdf_order_eq", &SolverConfig::bdf_order_eq)
+        .validator([](auto&& x) { return ((x > 0) || (x <= 6)); })
         .default_value(4)
-        .help("Order of the BDF scheme. Does not need to be provided if no Runge-Kutta scheme is used");
-    solverSchema.add_value("bdf_manual_error_evaluation", &SolverConfig::bdf_manual_error_evaluation)
+        .help("Order of the BDF scheme during the earthquake phase. Does not need to be provided if no BDF scheme is used");
+    solverSchema.add_value("bdf_order_as", &SolverConfig::bdf_order_as)
+        .validator([](auto&& x) { return ((x > 0) || (x <= 6)); })
+        .default_value(4)
+        .help("Order of the BDF scheme during the aseismic slip. Does not need to be provided if no BDF scheme is used");
+    solverSchema.add_value("bdf_custom_error_evaluation", &SolverConfig::bdf_custom_error_evaluation)
         .default_value(false)
-        .help("false to use the default (explicit) error estimate. true for a manual (implicit) evaluation");
-    solverSchema.add_value("bdf_manual_Newton_iteration", &SolverConfig::bdf_manual_Newton_iteration)
+        .help("Only for BDF methods:\n  -[false] to use the default error estimate with Lagrange polynomials. \n  -[true] for a custom evaluation with an other BDF evaluation of lower order");
+    solverSchema.add_value("bdf_custom_Newton_iteration", &SolverConfig::bdf_custom_Newton_iteration)
         .default_value(false)
-        .help("false to use the default Newton iteration. true for a manual implementation (used for debugging)");
-    solverSchema.add_value("ts_adapt_wnormtype", &SolverConfig::ts_adapt_wnormtype)
+        .help("Only for BDF methods:\n  -[false] to use the default Newton iteration.\n  - [true] for a custom implementation (used for debugging)");
+    solverSchema.add_value("custom_time_step_adapter", &SolverConfig::custom_time_step_adapter)
+        .default_value(false)
+        .help("Estimation of the new time step size:\n  -[false] to use the basic PETSc built-in adapter.\n  -[true] to use a custom, implementation-dependent adapter.\n Deverloper note: this parameter is likely to be changed to string to allow the choice between different custom adapter");
+    solverSchema.add_value("adapt_wnormtype", &SolverConfig::adapt_wnormtype)
         .default_value("infinity")
         .help("norm to estimate the local truncation error");
     solverSchema.add_value("psi_rtol", &SolverConfig::psi_rtol)

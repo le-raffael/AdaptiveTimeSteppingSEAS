@@ -34,64 +34,37 @@ public:
         timeop.initial_condition(*state_);
 
         CHKERRTHROW(TSCreate(timeop.comm(), &ts_));
-        CHKERRTHROW(TSSetProblemType(ts_, TS_NONLINEAR));
-        CHKERRTHROW(TSSetSolution(ts_, state_->vec()));
-        CHKERRTHROW(TSSetRHSFunction(ts_, nullptr, RHSFunction<TimeOp>, &timeop));
-        CHKERRTHROW(TSSetRHSJacobian(ts_, timeop.getJacobian(), timeop.getJacobian(), RHSJacobian<TimeOp>, &timeop));
-        CHKERRTHROW(TSSetExactFinalTime(ts_, TS_EXACTFINALTIME_MATCHSTEP));
+
         if (cfg){
+            if (cfg->problem_formulation == "ode"){
+                std::cout << "The problem is solved as an ODE. The friction law is solved indirectly at each right-hand side evaluation"<<std::endl;
+                CHKERRTHROW(TSSetProblemType(ts_, TS_NONLINEAR));
+                CHKERRTHROW(TSSetSolution(ts_, state_->vec()));
+                CHKERRTHROW(TSSetRHSFunction(ts_, nullptr, RHSFunctionODE<TimeOp>, &timeop));
+                CHKERRTHROW(TSSetRHSJacobian(ts_, timeop.getJacobianODE(), timeop.getJacobianODE(), RHSJacobianODE<TimeOp>, &timeop));
+                CHKERRTHROW(TSSetExactFinalTime(ts_, TS_EXACTFINALTIME_MATCHSTEP));
+
+            } else if (cfg->problem_formulation == "compactDAE"){
+                std::cout << "The problem is solved with the compact DAE formulation. The friction law is solved iteratively along with the time quantities"<<std::endl;
+                CHKERRTHROW(TSSetProblemType(ts_, TS_NONLINEAR));
+                CHKERRTHROW(TSSetSolution(ts_, state_->vec()));
+                CHKERRTHROW(TSSetIFunction(ts_, nullptr, LHSFunctionCompactDAE<TimeOp>, &timeop));
+                CHKERRTHROW(TSSetIJacobian(ts_, timeop.getJacobianCompactDAE(0), timeop.getJacobianCompactDAE(0), LHSJacobianCompactDAE<TimeOp>, &timeop));
+                CHKERRTHROW(TSSetExactFinalTime(ts_, TS_EXACTFINALTIME_MATCHSTEP));
+            }
             // read petsc options from file
             std::cout<<"Read PETSc options from configuration file. Eventual PETSc command line arguments will overwrite settings from the configuration file."<<std::endl;
-
-            // integrator type
-            CHKERRTHROW(TSSetType(ts_, cfg->ts_type.c_str()));
-
-            // rk settings
-            if (cfg->ts_type == "rk"){
-                CHKERRTHROW(TSRKSetType(ts_, cfg->ts_rk_type.c_str()));
-            }
-
-            // bdf settings
-            if (cfg->ts_type == "bdf"){
-
-                CHKERRTHROW(TSBDFSetOrder(ts_, cfg->ts_bdf_order));
-
-                // set nonlinear solver settings
-                SNES snes;
-                KSP snes_ksp;
-                PC snes_cp;
-                CHKERRTHROW(TSGetSNES(ts_, &snes));
-
-                if (cfg->bdf_manual_error_evaluation)
-                    ts_->ops->evaluatewlte = evaluateEmbeddedMethodBDF;     // manual LTE evaluation
-
-                if (cfg->bdf_manual_Newton_iteration) {
-                    CHKERRTHROW(SNESSetType(snes, SNESSHELL));
-                    CHKERRTHROW(SNESShellSetContext(snes, &ts_));
-                    CHKERRTHROW(SNESShellSetSolve(snes, solveNewton));
-                }
-
-                CHKERRTHROW(SNESGetKSP(snes, &snes_ksp));
-                CHKERRTHROW(KSPGetPC(snes_ksp, &snes_cp));
-                CHKERRTHROW(KSPSetType(snes_ksp, cfg->ksp_type.c_str()));
-                CHKERRTHROW(PCSetType(snes_cp, cfg->pc_type.c_str()));
-                CHKERRTHROW(TSSetMaxSNESFailures(ts_, -1));
-
-                double atol = 1e-50;    // absolute tolerance (default = 1e-50) 
-                double rtol = 1e-8;    // relative tolerance (default = 1e-8)  
-                double stol = 1e-8;    // relative tolerance (default = 1e-8)  
-                int maxit = 50;      // absolute tolerance (default = 50)    
-                int maxf = -1;       // absolute tolerance (default = 1000)  
-                CHKERRTHROW(SNESSetTolerances(snes, atol, rtol, stol, maxit, maxf));
-                CHKERRTHROW(SNESSetFromOptions(snes));
-            }
 
             // norm type
             TSAdapt adapt;
             CHKERRTHROW(TSGetAdapt(ts_, &adapt));
-            if (cfg->ts_adapt_wnormtype == "2") {ts_->adapt->wnormtype = NormType::NORM_2; }    // this is very hacky 
-            else if (cfg->ts_adapt_wnormtype == "infinity") {ts_->adapt->wnormtype = NormType::NORM_INFINITY; }
+            if (cfg->adapt_wnormtype == "2") {ts_->adapt->wnormtype = NormType::NORM_2; }    // this is very hacky 
+            else if (cfg->adapt_wnormtype == "infinity") {ts_->adapt->wnormtype = NormType::NORM_INFINITY; }
             else {std::cerr<<"Unknown norm! use \"2\" or \"infinity\""<<std::endl; }
+
+            // set solver parameters
+            initializeSolverParametersASandEQ(timeop, cfg);
+
 
             // set ksp type
             CHKERRTHROW(KSPSetType(ksp, cfg->ksp_type.c_str()));
@@ -103,22 +76,24 @@ public:
             CHKERRTHROW(PCFactorSetMatSolverType(pc, cfg->pc_factor_mat_solver_type.c_str()));
 
 
-            // set initial tolerances
-            initializeTolerances(timeop, cfg);
-
             // Store the seas operator in the context if needed
             CHKERRTHROW(TSSetApplicationContext(ts_, &timeop));
 
-            // adapt tolerances to earthquake / not earthquake
+            // apply changes at switch between aseismic slip and eaqrthquake phases
             CHKERRTHROW(TSSetPostEvaluate(ts_, updateAfterTimeStep<TimeOp>));
 
             // Overwrite settings by command line options
             CHKERRTHROW(TSSetFromOptions(ts_));
-            // adapt->ops->choose = TSAdaptChoose_Custom;            
+            if (cfg->custom_time_step_adapter) adapt->ops->choose = TSAdaptChoose_Custom;           
 
         } else {
             // read petsc options from command line
             std::cout<<"Read PETSc options from command line"<<std::endl;
+            CHKERRTHROW(TSSetProblemType(ts_, TS_NONLINEAR));
+            CHKERRTHROW(TSSetSolution(ts_, state_->vec()));
+            CHKERRTHROW(TSSetRHSFunction(ts_, nullptr, RHSFunctionODE<TimeOp>, &timeop));
+            CHKERRTHROW(TSSetRHSJacobian(ts_, timeop.getJacobianODE(), timeop.getJacobianODE(), RHSJacobianODE<TimeOp>, &timeop));
+            CHKERRTHROW(TSSetExactFinalTime(ts_, TS_EXACTFINALTIME_MATCHSTEP));
             CHKERRTHROW(TSSetFromOptions(ts_));
         }
     }
@@ -176,16 +151,16 @@ private:
      * @param ctx pointer to Seas operator instanceTimeOp*
      */
     template <typename TimeOp>
-    static PetscErrorCode RHSFunction(TS ts, PetscReal t, Vec u, Vec F, void* ctx) {
+    static PetscErrorCode RHSFunctionODE(TS ts, PetscReal t, Vec u, Vec F, void* ctx) {
         TimeOp* self = reinterpret_cast<TimeOp*>(ctx);
         auto u_view = PetscBlockVectorView(u);
         auto F_view = PetscBlockVectorView(F);
-        self->rhs(t, u_view, F_view);
+        self->rhsODE(t, u_view, F_view, true);
         return 0;
     }
 
     /**
-     * evaluate the rhs of the ODE
+     * evaluate the Jacobian of the ODE
      * @param ts TS object
      * @param t current simulation time
      * @param u current state vector (contains V and psi on all fault nodes in block format)
@@ -194,11 +169,47 @@ private:
      * @param ctx pointer to Seas operator instance
      */
     template <typename TimeOp>
-    static PetscErrorCode RHSJacobian(TS ts, PetscReal t, Vec u, Mat A, Mat B, void *ctx){
+    static PetscErrorCode RHSJacobianODE(TS ts, PetscReal t, Vec u, Mat A, Mat B, void *ctx){
         TimeOp* self = reinterpret_cast<TimeOp*>(ctx);
-        A = self->getJacobian();
-        B = self->getJacobian();
-//	    CHKERRTHROW(MatView(A,PETSC_VIEWER_STDOUT_SELF));         
+        A = self->getJacobianODE();
+        B = self->getJacobianODE();
+        return 0;
+    }
+    /**
+     * evaluate the lhs F() of the compact DAE
+     * @param ts TS object
+     * @param t current simulation time
+     * @param u current state vector (contains S and psi on all fault nodes in block format)
+     * @param u_t current state derivative vector (contains V and dot{psi} on all fault nodes in block format)
+     * @param F first time derivative of u (solution vector to be written to)
+     * @param ctx pointer to Seas operator instanceTimeOp*
+     */
+    template <typename TimeOp>
+    static PetscErrorCode LHSFunctionCompactDAE(TS ts, PetscReal t, Vec u, Vec u_t, Vec F, void* ctx) {
+        TimeOp* self = reinterpret_cast<TimeOp*>(ctx);
+        auto u_view = PetscBlockVectorView(u);
+        auto u_t_view = PetscBlockVectorView(u_t);
+        auto F_view = PetscBlockVectorView(F);
+        self->lhsCompactDAE(t, u_view, u_t_view, F_view);
+        return 0;
+    }
+
+    /**
+     * evaluate the Jacobian of the compact DAE
+     * @param ts TS object
+     * @param t current simulation time
+     * @param u current state vector (contains S and psi on all fault nodes in block format)
+     * @param u_t current state derivative vector (contains V and dot{psi} on all fault nodes in block format)
+     * @param sigma shift dx_dot/dx, depends on the numerical scheme
+     * @param A Jacobian matrix
+     * @param B matrix for the preconditioner (take the same as A)
+     * @param ctx pointer to Seas operator instance
+     */
+    template <typename TimeOp>
+    static PetscErrorCode LHSJacobianCompactDAE(TS ts, PetscReal t, Vec u, Vec u_t, PetscReal sigma, Mat A, Mat B, void *ctx){
+        TimeOp* self = reinterpret_cast<TimeOp*>(ctx);
+        A = self->getJacobianCompactDAE(sigma);
+        B = self->getJacobianCompactDAE(sigma);
         return 0;
     }
 
@@ -245,18 +256,108 @@ private:
      * @param cfg solver configuration read from .toml file
      */
     template <typename TimeOp> 
-    void initializeTolerances(TimeOp& timeop, const std::optional<tndm::SolverConfig>& cfg){
-        auto& tolStruct = timeop.getTolerances();
-        tolStruct.S_rtol = cfg->S_rtol;
-        tolStruct.S_atol = cfg->S_atol;
-        tolStruct.psi_rtol = cfg->psi_rtol;
-        tolStruct.psi_atol_as = cfg->psi_atol_as;
-        tolStruct.psi_atol_eq = cfg->psi_atol_eq;
-        tolStruct.checkAS = true;
+    void initializeSolverParametersASandEQ(TimeOp& timeop, const std::optional<tndm::SolverConfig>& cfg){
+        auto& solverStruct = timeop.getSolverParameters();
+        solverStruct.S_rtol = cfg->S_rtol;
+        solverStruct.S_atol = cfg->S_atol;
+        solverStruct.psi_rtol = cfg->psi_rtol;
+        solverStruct.psi_atol_as = cfg->psi_atol_as;
+        solverStruct.psi_atol_eq = cfg->psi_atol_eq;
+        solverStruct.type_eq = cfg->type_eq;
+        solverStruct.type_as = cfg->type_as;
+        solverStruct.rk_type_eq = cfg->rk_type_eq;
+        solverStruct.rk_type_as = cfg->rk_type_as;
+        solverStruct.bdf_order_eq = cfg->bdf_order_eq;
+        solverStruct.bdf_order_as = cfg->bdf_order_as;
+        solverStruct.ksp_type = cfg->ksp_type;
+        solverStruct.pc_type = cfg->pc_type;
+        solverStruct.bdf_custom_error_evaluation = cfg->bdf_custom_error_evaluation;
+        solverStruct.bdf_custom_Newton_iteration = cfg->bdf_custom_Newton_iteration;
+        solverStruct.customErrorFct = &evaluateEmbeddedMethodBDF;
+        solverStruct.customNewtonFct = &solveNewton;
+        solverStruct.checkAS = true;
+        if ((cfg->type_eq == "bdf") || (cfg->type_as == "bdf")) {
+            solverStruct.JacobianNeeded = true;
+        } else {
+            solverStruct.JacobianNeeded = false;
+        }
 
-        setTolerancesSAndPSI(ts_, timeop, cfg->S_rtol, cfg->S_atol, cfg->psi_rtol, cfg->psi_atol_as);
+        switchBetweenASandEQ(ts_, timeop, false);
     }
 
+    /**
+     * Sets the absolute and relative tolerances 
+     * @param ts the TS context
+     * @param timeop instance of the seas operator
+     * @param enterEQphase direction of the switch: true for as->eq, false for eq->as
+     */
+    template <typename TimeOp> 
+    static void switchBetweenASandEQ(TS ts, TimeOp& timeop, bool enterEQphase){
+        auto& solverStruct = timeop.getSolverParameters();
+
+        std::string type;
+        std::string rk_type;
+        int bdf_order;
+
+        if (enterEQphase) {
+            setTolerancesSAndPSI(ts, timeop, solverStruct.S_rtol, solverStruct.S_atol,   
+                                 solverStruct.psi_rtol, solverStruct.psi_atol_eq);
+            type = solverStruct.type_eq;
+            rk_type = solverStruct.rk_type_eq;
+            bdf_order = solverStruct.bdf_order_eq;
+
+        } else {
+            setTolerancesSAndPSI(ts, timeop, solverStruct.S_rtol, solverStruct.S_atol,   
+                                 solverStruct.psi_rtol, solverStruct.psi_atol_as);
+            type = solverStruct.type_as;
+            rk_type = solverStruct.rk_type_as;
+            bdf_order = solverStruct.bdf_order_as;
+        }
+        // integrator type 
+        CHKERRTHROW(TSSetType(ts, type.c_str()));
+
+        // rk settings
+        if (type == "rk"){
+            CHKERRTHROW(TSRKSetType(ts, rk_type.c_str()));
+        }
+
+        // bdf settings
+        if (type == "bdf"){
+
+            CHKERRTHROW(TSBDFSetOrder(ts, bdf_order));
+
+            // set nonlinear solver settings
+            SNES snes;
+            KSP snes_ksp;
+            PC snes_pc;
+            
+            CHKERRTHROW(TSGetSNES(ts, &snes));
+
+            if (solverStruct.bdf_custom_error_evaluation)
+                ts->ops->evaluatewlte = *solverStruct.customErrorFct;     // manual LTE evaluation
+
+            if (solverStruct.bdf_custom_Newton_iteration) {
+                CHKERRTHROW(SNESSetType(snes, SNESSHELL));
+                CHKERRTHROW(SNESShellSetContext(snes, &ts));
+                CHKERRTHROW(SNESShellSetSolve(snes, *solverStruct.customNewtonFct));
+            }
+
+            CHKERRTHROW(SNESGetKSP(snes, &snes_ksp));
+            CHKERRTHROW(KSPGetPC(snes_ksp, &snes_pc));
+            CHKERRTHROW(KSPSetType(snes_ksp, solverStruct.ksp_type.c_str()));
+            CHKERRTHROW(PCSetType(snes_pc, solverStruct.pc_type.c_str()));
+            CHKERRTHROW(TSSetMaxSNESFailures(ts, -1));
+
+            double atol = 1e-50;    // absolute tolerance (default = 1e-50) 
+            double rtol = 1e-8;     // relative tolerance (default = 1e-8)  
+            double stol = 1e-8;     // relative tolerance (default = 1e-8)  
+            int maxit = 50;         // absolute tolerance (default = 50)    
+            int maxf = -1;          // absolute tolerance (default = 1000)  
+            CHKERRTHROW(SNESSetTolerances(snes, atol, rtol, stol, maxit, maxf));
+            CHKERRTHROW(SNESSetFromOptions(snes));
+        }
+    }
+    
     /**
      * Sets the absolute and relative tolerances 
      * @param ts the TS context
@@ -316,29 +417,17 @@ private:
         TimeOp* seasop;
         CHKERRTHROW(TSGetApplicationContext(ts, &seasop));
 
-        auto& tolStruct = seasop->getTolerances();
+        auto& solverStruct = seasop->getSolverParameters();
 
-        if (tolStruct.checkAS && (seasop->VMax() > seasop->getV0())){          // change from as -> eq
-            setTolerancesSAndPSI(ts, *seasop, tolStruct.S_rtol, tolStruct.S_atol,   
-                                 tolStruct.psi_rtol, tolStruct.psi_atol_eq);
-//            CHKERRTHROW(TSSetType(ts, TSRK));
-//            CHKERRTHROW(TSRKSetType(ts, TSRK5DP));
-            tolStruct.checkAS = false;
+        if (solverStruct.checkAS && (seasop->VMax() > seasop->getV0())){          // change from as -> eq
+            switchBetweenASandEQ(ts, *seasop, true);
+            solverStruct.checkAS = false;
             std::cout << "Enter earthquake phase" << std::endl;
-        } else if (!tolStruct.checkAS && (seasop->VMax() < seasop->getV0())){  // change from eq -> as
-            setTolerancesSAndPSI(ts, *seasop, tolStruct.S_rtol, tolStruct.S_atol,
-                                 tolStruct.psi_rtol, tolStruct.psi_atol_as);
-            tolStruct.checkAS = true;
+        } else if (!solverStruct.checkAS && (seasop->VMax() < seasop->getV0())){  // change from eq -> as
+            switchBetweenASandEQ(ts, *seasop, false);
+            solverStruct.checkAS = true;
             std::cout << "Exit earthquake phase" << std::endl;
         }
-
-        double time; 
-        Vec new_x;
-        CHKERRTHROW(TSGetTime(ts, &time));
-        CHKERRTHROW(TSGetSolution(ts, &new_x));        
-        seasop->calculateApproximateJacobian(time, new_x);
-
-
 
         // Vec Xx;
         // double* xx;

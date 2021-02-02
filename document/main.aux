@@ -97,49 +97,67 @@
 \newlabel{fig:mesh_BP1_200_fault_elements}{{2.1}{10}{Space discretization of the BP1 problem with 200 elements on the fault\relax }{figure.caption.8}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {2.3}Formulation of the Discontinous Galerkin}{10}{section.2.3}}
 \@writefile{toc}{\contentsline {section}{\numberline {2.4}Formulation of the DAE}{10}{section.2.4}}
-\newlabel{eq:SEASDAE_AU-b(S)}{{2.3}{10}{Formulation of the DAE}{equation.2.4.3}{}}
-\newlabel{eq:SEASDAE_frictionLaw}{{2.4}{10}{Formulation of the DAE}{equation.2.4.4}{}}
-\newlabel{eq:SEASDAE_dpsi_dt}{{2.5}{10}{Formulation of the DAE}{equation.2.4.5}{}}
-\newlabel{eq:SEASDAE_dV_dt}{{2.6}{10}{Formulation of the DAE}{equation.2.4.6}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.4.1}Analytical Derivation of the Jacobian matrix}{11}{subsection.2.4.1}}
-\newlabel{ssec:AnalyticalDerivationOfTheJacobianMatrix}{{2.4.1}{11}{Analytical Derivation of the Jacobian matrix}{subsection.2.4.1}{}}
-\newlabel{eq:quantitiesODEForJacobian}{{2.7}{11}{Analytical Derivation of the Jacobian matrix}{equation.2.4.7}{}}
-\newlabel{eq:BlockMatricesJacobian}{{2.8}{11}{Analytical Derivation of the Jacobian matrix}{equation.2.4.8}{}}
-\newlabel{eq:SEASDAE_partialdV_dS}{{2.9}{11}{Analytical Derivation of the Jacobian matrix}{equation.2.4.9}{}}
-\newlabel{eq:SEASDAE_partialdV_dpsi}{{2.10}{11}{Analytical Derivation of the Jacobian matrix}{equation.2.4.10}{}}
-\newlabel{eq:systemJacobianSlipRate}{{2.13}{11}{Analytical Derivation of the Jacobian matrix}{equation.2.4.13}{}}
-\newlabel{eq:partialDerivative_df_dS}{{2.28}{12}{Analytical Derivation of the Jacobian matrix}{equation.2.4.28}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.4.2}Verification of the Jacobian}{13}{subsection.2.4.2}}
+\newlabel{eq:SEASDAE_dV_dt}{{2.3}{10}{Formulation of the DAE}{equation.2.4.3}{}}
+\newlabel{eq:SEAS_DAE_ageing_law}{{2.4}{10}{Formulation of the DAE}{equation.2.4.4}{}}
+\newlabel{eq:SEASDAE_frictionLaw}{{2.5}{10}{Formulation of the DAE}{equation.2.4.5}{}}
+\newlabel{eq:SEAS_DAE_AU=b}{{2.6}{10}{Formulation of the DAE}{equation.2.4.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4.1}Formulation as an ODE}{11}{subsection.2.4.1}}
+\newlabel{eq:ODE_formulation_SEAS}{{2.7}{11}{Formulation as an ODE}{equation.2.4.7}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4.2}Formulation as DAE}{11}{subsection.2.4.2}}
+\newlabel{eq:DAE_formulation_SEAS}{{2.8}{11}{Formulation as DAE}{equation.2.4.8}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4.3}Compact formulation as a DAE}{11}{subsection.2.4.3}}
+\newlabel{eq:DAE_compact_formulation_SEAS}{{2.10}{11}{Compact formulation as a DAE}{equation.2.4.10}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {2.5}Formulation of the Jacobian}{12}{section.2.5}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.5.1}Analytical Derivation of the Jacobian matrix}{12}{subsection.2.5.1}}
+\newlabel{ssec:AnalyticalDerivationOfTheJacobianMatrix}{{2.5.1}{12}{Analytical Derivation of the Jacobian matrix}{subsection.2.5.1}{}}
+\@writefile{toc}{\contentsline {subsubsection}{Jacobian of the ODE system}{12}{section*.9}}
+\newlabel{sssec:Jacobian_ODE}{{2.5.1}{12}{Jacobian of the ODE system}{section*.9}{}}
+\newlabel{eq:Jacobian_ODE_formulation}{{2.11}{12}{Jacobian of the ODE system}{equation.2.5.11}{}}
+\newlabel{eq:SEASDAE_totaldV_dS}{{2.12}{12}{Jacobian of the ODE system}{equation.2.5.12}{}}
+\newlabel{eq:SEASDAE_totaldV_dpsi}{{2.13}{12}{Jacobian of the ODE system}{equation.2.5.13}{}}
+\newlabel{eq:systemJacobianSlipRate}{{2.15}{12}{Jacobian of the ODE system}{equation.2.5.15}{}}
+\citation{MoorePenroseInverse}
+\citation{generalizedInverseSolutionSet}
+\newlabel{eq:Jacobian_ODE_matrix_system}{{2.16}{13}{Jacobian of the ODE system}{equation.2.5.16}{}}
+\@writefile{toc}{\contentsline {subsubsection}{Jacobian of the DAE system}{14}{section*.10}}
+\newlabel{sssec:Jacobian_DAE}{{2.5.1}{14}{Jacobian of the DAE system}{section*.10}{}}
+\newlabel{eq:Jacobian_DAE_formulation}{{2.31}{14}{Jacobian of the DAE system}{equation.2.5.31}{}}
+\newlabel{eq:partial_df_dV}{{2.35}{14}{Jacobian of the DAE system}{equation.2.5.35}{}}
+\newlabel{eq:partialDerivative_df_dS}{{2.36}{14}{Jacobian of the DAE system}{equation.2.5.36}{}}
 \citation{BroydenIteration}
-\@writefile{lof}{\contentsline {figure}{\numberline {2.2}{\ignorespaces Evaluation of the L2 norm of the residual $\phi (x_n)$ at each iteration of the Newton and Broyden methods\relax }}{14}{figure.caption.9}}
-\newlabel{fig:convergenceNewtonAndBroyden}{{2.2}{14}{Evaluation of the L2 norm of the residual $\phi (x_n)$ at each iteration of the Newton and Broyden methods\relax }{figure.caption.9}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.4.3}Limitations of the use of the Jacobian}{15}{subsection.2.4.3}}
-\@writefile{toc}{\contentsline {section}{\numberline {2.5}Numerical treatment in SEAS}{15}{section.2.5}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.5.1}Explicit methods to solve the DAE}{16}{subsection.2.5.1}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.5.2}Implicit methods to solve the DAE}{16}{subsection.2.5.2}}
-\@writefile{toc}{\contentsline {section}{\numberline {2.6}Results}{16}{section.2.6}}
-\@writefile{lof}{\contentsline {figure}{\numberline {2.3}{\ignorespaces Evolution of the maximal slip rate $V$ on the fault for different solvers on the symmetric two-dimensional BP1 problem with 200 elements on the fault\relax }}{16}{figure.caption.10}}
-\newlabel{fig:timeEvolutionTANDEM_V}{{2.3}{16}{Evolution of the maximal slip rate $V$ on the fault for different solvers on the symmetric two-dimensional BP1 problem with 200 elements on the fault\relax }{figure.caption.10}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {2.4}{\ignorespaces Evolution of the time step size $h$ for different solvers on the symmetric two-dimensional BP1 problem with 200 elements on the fault\relax }}{16}{figure.caption.11}}
-\newlabel{fig:timeEvolutionTANDEM_DT}{{2.4}{16}{Evolution of the time step size $h$ for different solvers on the symmetric two-dimensional BP1 problem with 200 elements on the fault\relax }{figure.caption.11}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {2.5}{\ignorespaces Number of evaluations of the right hand side of the ODE in each time iteration for different solvers on the symmetric two-dimensional BP1 problem with 200 elements on the fault\relax }}{17}{figure.caption.12}}
-\newlabel{fig:timeEvolutionTANDEM_RHS}{{2.5}{17}{Number of evaluations of the right hand side of the ODE in each time iteration for different solvers on the symmetric two-dimensional BP1 problem with 200 elements on the fault\relax }{figure.caption.12}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {2.7}Relative and Absolute Tolerances}{17}{section.2.7}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.7.1}Behaviour of the Error}{17}{subsection.2.7.1}}
-\@writefile{lof}{\contentsline {figure}{\numberline {2.6}{\ignorespaces Maximum relative and absolute errors using the RKDP5 method on a fault with 200 elements with an absolute and relative error tolerance of $10^{-7}$\relax }}{18}{figure.caption.13}}
-\newlabel{fig:errrors1e-7}{{2.6}{18}{Maximum relative and absolute errors using the RKDP5 method on a fault with 200 elements with an absolute and relative error tolerance of $10^{-7}$\relax }{figure.caption.13}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {2.7}{\ignorespaces Maximum and minimum values of the state variable $\psi $ and of the slip $S$ over time. Simulation performed with the RKDP5 method on a fault with 200 elements with an absolute and relative error tolerance of $10^{-7}$\relax }}{18}{figure.caption.14}}
-\newlabel{fig:minmax1e-7}{{2.7}{18}{Maximum and minimum values of the state variable $\psi $ and of the slip $S$ over time. Simulation performed with the RKDP5 method on a fault with 200 elements with an absolute and relative error tolerance of $10^{-7}$\relax }{figure.caption.14}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.7.2}Tolerance of the State Variable Dependent on the Slip}{18}{subsection.2.7.2}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.7.3}Tolerance of the State Variable Dependent on the Slip Rate}{20}{subsection.2.7.3}}
-\newlabel{eq:absoluteErrorPSIFromV}{{2.56}{20}{Tolerance of the State Variable Dependent on the Slip Rate}{equation.2.7.56}{}}
+\@writefile{toc}{\contentsline {subsubsection}{Jacobian of the compact DAE system}{16}{section*.11}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.5.2}Verification of the Jacobian}{16}{subsection.2.5.2}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2.2}{\ignorespaces Evaluation of the L2 norm of the residual $\phi (x_n)$ at each iteration of the Newton and Broyden methods\relax }}{17}{figure.caption.12}}
+\newlabel{fig:convergenceNewtonAndBroyden}{{2.2}{17}{Evaluation of the L2 norm of the residual $\phi (x_n)$ at each iteration of the Newton and Broyden methods\relax }{figure.caption.12}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.5.3}Limitations of the use of the Jacobian}{17}{subsection.2.5.3}}
+\@writefile{toc}{\contentsline {section}{\numberline {2.6}Numerical treatment in SEAS}{18}{section.2.6}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.6.1}Explicit methods to solve the DAE}{18}{subsection.2.6.1}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.6.2}Implicit methods to solve the DAE}{18}{subsection.2.6.2}}
+\@writefile{toc}{\contentsline {section}{\numberline {2.7}Results}{18}{section.2.7}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2.3}{\ignorespaces Evolution of the maximal slip rate $V$ on the fault for different solvers on the symmetric two-dimensional BP1 problem with 200 elements on the fault\relax }}{19}{figure.caption.13}}
+\newlabel{fig:timeEvolutionTANDEM_V}{{2.3}{19}{Evolution of the maximal slip rate $V$ on the fault for different solvers on the symmetric two-dimensional BP1 problem with 200 elements on the fault\relax }{figure.caption.13}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2.4}{\ignorespaces Evolution of the time step size $h$ for different solvers on the symmetric two-dimensional BP1 problem with 200 elements on the fault\relax }}{19}{figure.caption.14}}
+\newlabel{fig:timeEvolutionTANDEM_DT}{{2.4}{19}{Evolution of the time step size $h$ for different solvers on the symmetric two-dimensional BP1 problem with 200 elements on the fault\relax }{figure.caption.14}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2.5}{\ignorespaces Number of evaluations of the right hand side of the ODE in each time iteration for different solvers on the symmetric two-dimensional BP1 problem with 200 elements on the fault\relax }}{19}{figure.caption.15}}
+\newlabel{fig:timeEvolutionTANDEM_RHS}{{2.5}{19}{Number of evaluations of the right hand side of the ODE in each time iteration for different solvers on the symmetric two-dimensional BP1 problem with 200 elements on the fault\relax }{figure.caption.15}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {2.8}Relative and Absolute Tolerances}{19}{section.2.8}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.8.1}Behaviour of the Error}{19}{subsection.2.8.1}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2.6}{\ignorespaces Maximum relative and absolute errors using the RKDP5 method on a fault with 200 elements with an absolute and relative error tolerance of $10^{-7}$\relax }}{20}{figure.caption.16}}
+\newlabel{fig:errrors1e-7}{{2.6}{20}{Maximum relative and absolute errors using the RKDP5 method on a fault with 200 elements with an absolute and relative error tolerance of $10^{-7}$\relax }{figure.caption.16}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2.7}{\ignorespaces Maximum and minimum values of the state variable $\psi $ and of the slip $S$ over time. Simulation performed with the RKDP5 method on a fault with 200 elements with an absolute and relative error tolerance of $10^{-7}$\relax }}{21}{figure.caption.17}}
+\newlabel{fig:minmax1e-7}{{2.7}{21}{Maximum and minimum values of the state variable $\psi $ and of the slip $S$ over time. Simulation performed with the RKDP5 method on a fault with 200 elements with an absolute and relative error tolerance of $10^{-7}$\relax }{figure.caption.17}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.8.2}Tolerance of the State Variable Dependent on the Slip}{21}{subsection.2.8.2}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.8.3}Tolerance of the State Variable Dependent on the Slip Rate}{22}{subsection.2.8.3}}
+\newlabel{eq:absoluteErrorPSIFromV}{{2.67}{23}{Tolerance of the State Variable Dependent on the Slip Rate}{equation.2.8.67}{}}
+\newlabel{eq:relativeErrorPSIFromV}{{2.72}{23}{Tolerance of the State Variable Dependent on the Slip Rate}{equation.2.8.72}{}}
 \bibstyle{alpha}
 \bibdata{literature.bib}
-\newlabel{eq:relativeErrorPSIFromV}{{2.61}{21}{Tolerance of the State Variable Dependent on the Slip Rate}{equation.2.7.61}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {2.8}{\ignorespaces Absolute and relative error in $\psi $ in function of the error in the slip rate\relax }}{21}{figure.caption.15}}
-\newlabel{fig:RelAbsErrorToleranceVPSI}{{2.8}{21}{Absolute and relative error in $\psi $ in function of the error in the slip rate\relax }{figure.caption.15}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2.8}{\ignorespaces Absolute and relative error in $\psi $ in function of the error in the slip rate\relax }}{24}{figure.caption.18}}
+\newlabel{fig:RelAbsErrorToleranceVPSI}{{2.8}{24}{Absolute and relative error in $\psi $ in function of the error in the slip rate\relax }{figure.caption.18}{}}
 \bibcite{BroydenIteration}{Bro65}
+\bibcite{generalizedInverseSolutionSet}{Jam78}
+\bibcite{MoorePenroseInverse}{Pen55}
 \bibcite{NewtonRaphsonMethod}{Rap97}
 \bibcite{10.1115/1.1436090}{Roa01}
 \bibcite{AutomControlAdaptTS}{S\"02}
-\@writefile{toc}{\contentsline {chapter}{Bibliography}{22}{chapter*.16}}
+\@writefile{toc}{\contentsline {chapter}{Bibliography}{25}{chapter*.19}}

@@ -1,9 +1,20 @@
-\begin{thebibliography}{Rap97}
+\begin{thebibliography}{Jam78}
 
 \bibitem[Bro65]{BroydenIteration}
 C.~Broyden.
 \newblock A class of methods for solving nonlinear simultaneous equations.
 \newblock {\em Mathematics of Computation}, 19:577--593, 1965.
+
+\bibitem[Jam78]{generalizedInverseSolutionSet}
+M.~James.
+\newblock The generalised inverse.
+\newblock {\em The Mathematical Gazette}, 62(420):109–114, 1978.
+
+\bibitem[Pen55]{MoorePenroseInverse}
+R.~Penrose.
+\newblock A generalized inverse for matrices.
+\newblock {\em Mathematical Proceedings of the Cambridge Philosophical
+  Society}, 51(3):406–413, 1955.
 
 \bibitem[Rap97]{NewtonRaphsonMethod}
 Joseph Raphson.

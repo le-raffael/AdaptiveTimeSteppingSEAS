@@ -11,15 +11,19 @@
 \BOOKMARK [1][-]{section.2.2}{BP1 problem}{chapter.2}% 11
 \BOOKMARK [1][-]{section.2.3}{Formulation of the Discontinous Galerkin}{chapter.2}% 12
 \BOOKMARK [1][-]{section.2.4}{Formulation of the DAE}{chapter.2}% 13
-\BOOKMARK [2][-]{subsection.2.4.1}{Analytical Derivation of the Jacobian matrix}{section.2.4}% 14
-\BOOKMARK [2][-]{subsection.2.4.2}{Verification of the Jacobian}{section.2.4}% 15
-\BOOKMARK [2][-]{subsection.2.4.3}{Limitations of the use of the Jacobian}{section.2.4}% 16
-\BOOKMARK [1][-]{section.2.5}{Numerical treatment in SEAS}{chapter.2}% 17
-\BOOKMARK [2][-]{subsection.2.5.1}{Explicit methods to solve the DAE}{section.2.5}% 18
-\BOOKMARK [2][-]{subsection.2.5.2}{Implicit methods to solve the DAE}{section.2.5}% 19
-\BOOKMARK [1][-]{section.2.6}{Results}{chapter.2}% 20
-\BOOKMARK [1][-]{section.2.7}{Relative and Absolute Tolerances}{chapter.2}% 21
-\BOOKMARK [2][-]{subsection.2.7.1}{Behaviour of the Error}{section.2.7}% 22
-\BOOKMARK [2][-]{subsection.2.7.2}{Tolerance of the State Variable Dependent on the Slip}{section.2.7}% 23
-\BOOKMARK [2][-]{subsection.2.7.3}{Tolerance of the State Variable Dependent on the Slip Rate}{section.2.7}% 24
-\BOOKMARK [0][-]{chapter*.16}{Bibliography}{}% 25
+\BOOKMARK [2][-]{subsection.2.4.1}{Formulation as an ODE}{section.2.4}% 14
+\BOOKMARK [2][-]{subsection.2.4.2}{Formulation as DAE}{section.2.4}% 15
+\BOOKMARK [2][-]{subsection.2.4.3}{Compact formulation as a DAE}{section.2.4}% 16
+\BOOKMARK [1][-]{section.2.5}{Formulation of the Jacobian}{chapter.2}% 17
+\BOOKMARK [2][-]{subsection.2.5.1}{Analytical Derivation of the Jacobian matrix}{section.2.5}% 18
+\BOOKMARK [2][-]{subsection.2.5.2}{Verification of the Jacobian}{section.2.5}% 19
+\BOOKMARK [2][-]{subsection.2.5.3}{Limitations of the use of the Jacobian}{section.2.5}% 20
+\BOOKMARK [1][-]{section.2.6}{Numerical treatment in SEAS}{chapter.2}% 21
+\BOOKMARK [2][-]{subsection.2.6.1}{Explicit methods to solve the DAE}{section.2.6}% 22
+\BOOKMARK [2][-]{subsection.2.6.2}{Implicit methods to solve the DAE}{section.2.6}% 23
+\BOOKMARK [1][-]{section.2.7}{Results}{chapter.2}% 24
+\BOOKMARK [1][-]{section.2.8}{Relative and Absolute Tolerances}{chapter.2}% 25
+\BOOKMARK [2][-]{subsection.2.8.1}{Behaviour of the Error}{section.2.8}% 26
+\BOOKMARK [2][-]{subsection.2.8.2}{Tolerance of the State Variable Dependent on the Slip}{section.2.8}% 27
+\BOOKMARK [2][-]{subsection.2.8.3}{Tolerance of the State Variable Dependent on the Slip Rate}{section.2.8}% 28
+\BOOKMARK [0][-]{chapter*.19}{Bibliography}{}% 29

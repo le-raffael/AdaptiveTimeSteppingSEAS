@@ -21,17 +21,22 @@ struct OutputConfig {
 
 struct SolverConfig {
     bool use_monitor;
-    std::string ts_type;
-    std::string ts_rk_type;
-    std::string ts_adapt_wnormtype;    
-    bool bdf_manual_error_evaluation;
-    bool bdf_manual_Newton_iteration;
+    std::string problem_formulation;
+    std::string type_eq;
+    std::string type_as;
+    std::string rk_type_eq;
+    std::string rk_type_as;
+    int bdf_order_eq;
+    int bdf_order_as;
+    bool bdf_custom_error_evaluation;
+    bool bdf_custom_Newton_iteration;
+    std::string adapt_wnormtype;
+    bool custom_time_step_adapter;
     double S_rtol;
     double S_atol;
     double psi_rtol;
     double psi_atol_eq;
     double psi_atol_as;
-    int ts_bdf_order;
     std::string ksp_type;
     std::string pc_type;
     std::string pc_factor_mat_solver_type;

@@ -98,24 +98,20 @@ public:
 
 
     /**
-     * calculate the derivative dg/dpsi of the algebraic equation g(V,psi)=0 w.r.t to the state variable
-     * @param delta Dirac delta, 0 if off-diagonal, 1 if on diagonal
+     * calculate the partial derivative dg/dpsi of g(V,psi) w.r.t to the state variable
      * @param psi state variable at the current node
-     * @param dV_dpsi the derivative dV/dPSI
      * @return deriviative dg/dpsi
      * */
-    double dg_dpsi(double delta, double psi, double dV_dpsi) const {
-        return -cp_.V0 / cp_.L * exp((cp_.f0 - psi) / cp_.b) * delta - dV_dpsi * cp_.b / cp_.L;
+    double dg_dpsi(double psi) const {
+        return -cp_.V0 / cp_.L * exp((cp_.f0 - psi) / cp_.b);
     }
 
     /**
-     * calculate the derivative dg/dpsi of the algebraic equation g(V,psi)=0 w.r.t to the slip
-     * @param psi state variable at the current node
-     * @param dV_dpsi the derivative dV/dPSI
-     * @return deriviative dg/dpsi
+     * calculate the partial derivative dg/dV ofg(V,psi)=0 w.r.t to the slip rate
++     * @return deriviative dg/dV
      * */
-    double dg_dS(double psi, double dV_dS) const {
-        return - dV_dS * cp_.b / cp_.L;
+    double dg_dV() const {
+        return -cp_.b / cp_.L;
     }
 
 
@@ -130,7 +126,9 @@ public:
     double df_dpsi(std::size_t index, double sn, double V, double psi) const {
         auto a = p_[index].get<A>();
         double snAbs = sn + p_[index].get<SnPre>();
-        return -snAbs * asinh(V / (2.0 * cp_.V0)) * exp(psi / a);
+        double twoV0 = 2.0 * cp_.V0;
+        double e = exp(psi / a);
+        return -snAbs * V * e / (twoV0 * sqrt((V * e / twoV0) * (V * e / twoV0) + 1));
     }
 
     /**
@@ -146,8 +144,38 @@ public:
         auto eta = p_[index].get<Eta>();
         double snAbs = sn + p_[index].get<SnPre>();
         double twoV0 = 2.0 * cp_.V0;
-        return -snAbs * a / (twoV0 * sqrt(V * V / (twoV0 * twoV0) + 1)) * exp(psi / a) - eta;
+        double e = exp(psi / a);
+        return -snAbs * a * e / (twoV0 * sqrt((V * e / twoV0) * (V * e / twoV0) + 1)) - eta;
     }
+
+    /**
+     * Evaluate the friction law for given S, psi and V
+     * @param index of the current node
+     * @param sn at the current node - Scalar
+     * @param tau at the current node - Vector
+     * @param psi state variable at the current node - Scalar
+     * @param V slip rate at the current node - Scalar
+     * @return evaluation of the friction law - Scalar
+     * */
+    double friction_law(std::size_t index, double sn, 
+                   std::array<double, TangentialComponents> const& tau, double psi, double V) const {
+        auto eta = p_[index].get<Eta>();
+        auto tauAbsVec = tau + p_[index].get<TauPre>();
+        double snAbs = -sn + p_[index].get<SnPre>();
+        double tauAbs = norm(tauAbsVec);
+        return tauAbs - this->F(index, snAbs, V, psi) - eta * V; 
+   }
+
+    /**
+     * Evaluate the friction law for given S, psi and V
+     * @param index of the current node
+     * @param tau at the current node - Vector
+     * @return get the vector expression of tau - Scalar
+     * */
+    std::array<double, TangentialComponents> getTauVec(std::size_t index, std::array<double, TangentialComponents> const& tau) const {
+        return tau + p_[index].get<TauPre>();
+   }
+
 
     /**
      * Solve the algebraic equation f(V,psi) = 0 for the slip rate
@@ -192,6 +220,13 @@ public:
      * @return the velocity
      */
     double getV0() const {return cp_.V0;}
+
+    /**
+     * get the characteristic length L
+     * @return the velocity
+     */
+    double getL() const {return cp_.L;}
+
 
     /**
      * evaluate the denominator of the ratio between absolute errors in slip and state variable

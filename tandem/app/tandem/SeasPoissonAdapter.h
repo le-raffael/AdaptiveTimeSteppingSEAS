@@ -128,13 +128,13 @@ public:
             if (info.up[0] == info.up[1]) {
                 for (int i = 0; i < Nbf; i++){
                     auto u0 = linear_solver_.x().get_block(handleRead, info.up[0]);
-                    slip(i) = -u0(i);
+                    slip(i) = u0(i);
                 }
             } else {
                 for (int i = 0; i < Nbf; i++){
                     auto u0 = linear_solver_.x().get_block(handleRead, info.up[0]);
                     auto u1 = linear_solver_.x().get_block(handleRead, info.up[1]);
-                    slip(i) = -u0(i);
+                    slip(i) = u0(i);
                     slip(i) += u1(i);
                 }
             }

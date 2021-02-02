@@ -104,7 +104,7 @@ void solve_Jacobian(LocalSimplexMesh<DomainDimension> const& mesh, Config const&
         PetscBlockVector xBlock(blockSize, numFaultElements, MPI_COMM_WORLD);
         PetscBlockVector fBlock(blockSize, numFaultElements, MPI_COMM_WORLD);
         writeEigenToBlock(x, xBlock);
-        seasop->rhs(nextTime, xBlock, fBlock);  // executes the Jacobian update
+        seasop->rhsODE(nextTime, xBlock, fBlock, true);  // executes the Jacobian update
         VectorXd f(totalSize);
         writeBlockToEigen(fBlock, f);
         return f;
@@ -135,7 +135,7 @@ void solve_Jacobian(LocalSimplexMesh<DomainDimension> const& mesh, Config const&
     VectorXd fx_n = -x_n + x_init + dt * rhs(x_n);
 
     // 2. initialize the Jacobi matrix
-    MatrixXd J = JacobianImplicitEuler(seasop->getJacobian(), dt);
+    MatrixXd J = JacobianImplicitEuler(seasop->getJacobianODE(), dt);
 
     int k = 0;
 
@@ -158,7 +158,7 @@ void solve_Jacobian(LocalSimplexMesh<DomainDimension> const& mesh, Config const&
 
         // 5. update Jacobian
         fx_n = -x_n + x_init + dt * rhs(x_n);
-        J = JacobianImplicitEuler(seasop->getJacobian(), dt);
+        J = JacobianImplicitEuler(seasop->getJacobianODE(), dt);
     }
     std::cout << "final norm: "<<fx_n.norm()<<std::endl;
     std::cout << "final Jacobian: "<<std::endl<< J << std::endl;
@@ -181,7 +181,7 @@ void solve_Jacobian(LocalSimplexMesh<DomainDimension> const& mesh, Config const&
     // 1. first evaluation of the implicit Euler with the guess
     VectorXd f_n = -x_n + x_init + dt * rhs(x_n);
     // 2. initialize the Jacobi matrix 
-    MatrixXd J_b = JacobianImplicitEuler(seasop->getJacobian(), dt);
+    MatrixXd J_b = JacobianImplicitEuler(seasop->getJacobianODE(), dt);
 
     // difference to the previous iteration step
     VectorXd dx_n(totalSize);
