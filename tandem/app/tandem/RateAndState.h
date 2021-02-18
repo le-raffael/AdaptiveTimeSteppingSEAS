@@ -74,14 +74,25 @@ public:
               LinearAllocator<double>&) const;
 
     /**
-     * Set initial state variable and initial velocity
+     * copy and set slip rate
      * @param faultNo index of the current fault
      * @param traction matrix with sigma and tau at all nodes in the element
-     * @param state current solution vector
+     * @param state_small compact solution vector
+     * @param state_big extended solution vector
      * @param . some scratch
      * */
-    void initExtended(std::size_t faultNo, Matrix<double> const& traction, Vector<double>& state,
-              LinearAllocator<double>&) const;
+    void makeBig(std::size_t faultNo, Matrix<double> const& traction, Vector<double>& state_small,
+              Vector<double>& state_big, LinearAllocator<double>&) const;
+
+    /**
+     * just copy
+     * @param faultNo index of the current fault
+     * @param state_small compact solution vector
+     * @param state_big extended solution vector
+     * */
+    void makeSmall(std::size_t faultNo, Vector<double>& state_small,
+              Vector<double>& state_big) const;
+
 
     /**
      * Evaluate the rhs of the compact ODE 
@@ -228,8 +239,19 @@ public:
 private:
     template <typename T> auto mat(Vector<T>& state) const {
         std::size_t nbf = space_.numBasisFunctions();
-        return (extendedFormulation) ? reshape(state, nbf, NumQuantitiesExtended) : reshape(state, nbf, NumQuantitiesCompact);
+        return (extendedFormulation) ? matExtended(state) : matCompact(state);
     }
+
+    template <typename T> auto matCompact(Vector<T>& state) const {
+        std::size_t nbf = space_.numBasisFunctions();
+        return reshape(state, nbf, NumQuantitiesCompact);
+    }
+
+    template <typename T> auto matExtended(Vector<T>& state) const {
+        std::size_t nbf = space_.numBasisFunctions();
+        return reshape(state, nbf, NumQuantitiesExtended);
+    }
+
 
     auto get_tau(std::size_t node, Matrix<double> const& traction) const {
         std::array<double, TangentialComponents> result;
@@ -271,23 +293,43 @@ void RateAndState<Law>::initCompact(std::size_t faultNo, Matrix<double> const& t
 }
 
 template <class Law>
-void RateAndState<Law>::initExtended(std::size_t faultNo, Matrix<double> const& traction,
-                             Vector<double>& state, LinearAllocator<double>&) const {
-    auto s_mat = mat(state);
+void RateAndState<Law>::makeBig(std::size_t faultNo, Matrix<double> const& traction,
+                             Vector<double>& state_small, Vector<double>& state_big, LinearAllocator<double>&) const {
+    auto s_mat = matCompact(state_small);
+    auto b_mat = matExtended(state_big);
     std::size_t nbf = space_.numBasisFunctions();
     std::size_t index = faultNo * nbf;
 
     for (std::size_t node = 0; node < nbf; ++node) {
-        double psi = law_.psi_init(index + node, traction(node, 0), get_tau(node, traction));
-        s_mat(node, PsiIndex) = psi;
-        auto sn = traction(node, 0);           
-        auto Vi = law_.slip_rate(index + node, sn, get_tau(node, traction), psi);
-
         for (std::size_t t = 0; t < TangentialComponents; ++t) {
-            s_mat(node, VIndex + t) = Vi[t];
+            b_mat(node, t) = s_mat(node, t);
+        }
+        b_mat(node, PsiIndex) = s_mat(node, PsiIndex);
+
+        auto sn = traction(node, 0);           
+        auto Vi = law_.slip_rate(index + node, sn, get_tau(node, traction), s_mat(node, PsiIndex));
+        for (std::size_t t = 0; t < TangentialComponents; ++t) {
+            b_mat(node, VIndex + t) = Vi[t];
         }
     }
 }
+
+template <class Law>
+void RateAndState<Law>::makeSmall(std::size_t faultNo,
+                             Vector<double>& state_small, Vector<double>& state_big) const {
+    auto s_mat = matCompact(state_small);
+    auto b_mat = matExtended(state_big);
+    std::size_t nbf = space_.numBasisFunctions();
+    std::size_t index = faultNo * nbf;
+
+    for (std::size_t node = 0; node < nbf; ++node) {
+        for (std::size_t t = 0; t < TangentialComponents; ++t) {
+            s_mat(node, t) = b_mat(node, t);
+        }
+        s_mat(node, PsiIndex) = b_mat(node, PsiIndex);
+    }
+}
+
 
 
 template <class Law>

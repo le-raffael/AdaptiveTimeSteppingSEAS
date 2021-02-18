@@ -95,7 +95,7 @@ void solve_Jacobian(LocalSimplexMesh<DomainDimension> const& mesh, Config const&
 
     // initialize full solution vector
     PetscBlockVector xB = PetscBlockVector(blockSize, numFaultElements, seasop->comm());
-    seasop->initial_condition_compact(xB);
+    seasop->initial_condition(xB);
     VectorXd x_init(totalSize);
     writeBlockToEigen(xB, x_init);
 

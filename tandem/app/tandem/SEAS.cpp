@@ -87,7 +87,7 @@ void solve_seas_problem(LocalSimplexMesh<DomainDimension> const& mesh, Config co
     } 
 
 
-    auto ts = PetscTimeSolver(*seasop, cfg.solver, ksp);
+    auto ts = PetscTimeSolver(*seasop, ksp);
     std::cout<<"Perform simulation with "<<seasop->numLocalElements()<<" fault elements and a block size of " << seasop->block_size() <<std::endl;
 
     std::unique_ptr<seas_writer_t> writer;

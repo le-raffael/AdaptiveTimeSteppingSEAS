@@ -39,7 +39,9 @@ public:
         int (*customNewtonFct)(SNES,Vec);
 
         bool checkAS;           // true if it is a period of aseismic slip, false if it is an eartquake    
-        bool JacobianNeeded;    // true if an implicit method is used either in the aseismic slip or in the earthquake phase
+
+        std::shared_ptr<PetscBlockVector> state_compact;        
+        std::shared_ptr<PetscBlockVector> state_extended;
     }; 
 
 
@@ -51,8 +53,9 @@ public:
      */
     SeasOperator(std::unique_ptr<LocalOperator> localOperator,
                  std::unique_ptr<SeasAdapter> seas_adapter, 
-                 const std::optional<tndm::SolverConfig>& cfg)
-        : lop_(std::move(localOperator)), adapter_(std::move(seas_adapter)), solverCfg_(cfg) {
+                 const std::optional<tndm::SolverConfigGeneral>& cfg)
+        : lop_(std::move(localOperator)), adapter_(std::move(seas_adapter)), 
+        solverGenCfg_(cfg), solverEqCfg_(cfg->solver_earthquake), solverAsCfg_(cfg->solver_aseismicslip) {
         scratch_size_ = lop_->scratch_mem_size();
         scratch_size_ += adapter_->scratch_mem_size();
         scratch_mem_ = std::make_unique<double[]>(scratch_size_);
@@ -85,7 +88,7 @@ public:
      *  - solve the system once
      * @param vector solution vector to be initialized [S,psi]
      */
-    template <class BlockVector> void initial_condition_compact(BlockVector& vector) {
+    template <class BlockVector> void initial_condition(BlockVector& vector) {
         auto scratch = make_scratch();
         auto access_handle = vector.begin_access();
         for (std::size_t faultNo = 0, num = numLocalElements(); faultNo < num; ++faultNo) {
@@ -113,49 +116,55 @@ public:
 
         // Initialize the Jacobian matrix
         JacobianQuantities_ = new PetscBlockVector(4 * lop_->space().numBasisFunctions(), numLocalElements(), comm());
-
-        this->initializeCompactJacobian();
     }
 
     /**
-     * Initialize the system 
-     *  - apply initial conditions on the local operator
-     *  - solve the system once
-     * @param vector solution vector to be initialized [S,psi,V]
+     * transform a compact to an extended formulation
+     *  - calculate slip rate by solving the system
+     * @param time current simulation time
+     * @param vector_small solution vector to be written from [S,psi]
+     * @param vector_big solution vector to be written to [S,psi,V]
      */
-    template <class BlockVector> void initial_condition_extended(BlockVector& vector) {
+    template <class BlockVector> void makeSystemBig(double time, BlockVector& vector_small, BlockVector& vector_big) {
+        adapter_->solve(time, vector_small);
+
         auto scratch = make_scratch();
-        auto access_handle = vector.begin_access();
-        for (std::size_t faultNo = 0, num = numLocalElements(); faultNo < num; ++faultNo) {
-            auto B = vector.get_block(access_handle, faultNo);
-            lop_->pre_init(faultNo, B, scratch);
-        }
-        vector.end_access(access_handle);
-
-        adapter_->solve(0.0, vector);
-
-        access_handle = vector.begin_access();
+        auto small_handle = vector_small.begin_access();
+        auto big_handle = vector_big.begin_access();
         auto traction = Managed<Matrix<double>>(adapter_->traction_info());
-        adapter_->begin_traction([&vector, &access_handle](std::size_t faultNo) {
-            return vector.get_block(const_cast<typename BlockVector::const_handle>(access_handle),
+        adapter_->begin_traction([&vector_small, &small_handle](std::size_t faultNo) {
+            return vector_small.get_block(const_cast<typename BlockVector::const_handle>(small_handle),
                                     faultNo);
         });
         for (std::size_t faultNo = 0, num = numLocalElements(); faultNo < num; ++faultNo) {
             adapter_->traction(faultNo, traction, scratch);
 
-            auto B = vector.get_block(access_handle, faultNo);
-            lop_->initExtended(faultNo, traction, B, scratch);
+            auto S = vector_small.get_block(small_handle, faultNo);
+            auto B = vector_big.get_block(big_handle, faultNo);
+            lop_->makeBig(faultNo, traction, S, B, scratch);            
         }
         adapter_->end_traction();
-        vector.end_access(access_handle);
+        vector_small.end_access(small_handle);
+        vector_big.end_access(big_handle);
+    }
 
-        JacobianQuantities_ = new PetscBlockVector(4 * lop_->space().numBasisFunctions(), numLocalElements(), comm());
 
-        // Initialize the Jacobian matrix
-        this->initializeExtendedJacobian();
-
-        // enable accuracy info for the extended ODE
-        error_extended_ODE_ = 0.0;
+    /**
+     * transform an extended to a compact formulation
+     *  - calculate slip rate by solving the system
+     * @param vector_small solution vector to be written from [S,psi]
+     * @param vector_big solution vector to be written to [S,psi,V]
+     */
+    template <class BlockVector> void makeSystemSmall(BlockVector& vector_small, BlockVector& vector_big) {
+        auto small_handle = vector_small.begin_access();
+        auto big_handle = vector_big.begin_access();
+        for (std::size_t faultNo = 0, num = numLocalElements(); faultNo < num; ++faultNo) {
+            auto S = vector_small.get_block(small_handle, faultNo);
+            auto B = vector_big.get_block(big_handle, faultNo);
+            lop_->makeSmall(faultNo, S, B);            
+        }
+        vector_small.end_access(small_handle);
+        vector_big.end_access(big_handle);
     }
 
 
@@ -425,6 +434,84 @@ public:
     
     LocalOperator& lop() {return *lop_; }
 
+    /**
+     * Set up the constant part dV/dt for the extended ODE formulation
+     */
+    void initialize_secondOrderDerivative() {
+        // ----------------- general parameters ----------------- //
+        size_t blockSize = this->block_size();
+        size_t numFaultElements = this->numLocalElements();
+        size_t nbf = lop_->space().numBasisFunctions();
+        size_t Nbf = adapter_->block_size_rhsDG();
+        size_t totalnbf = nbf * numFaultElements;
+        size_t totalNbf = Nbf * numFaultElements;
+        size_t totalSize = blockSize * numFaultElements;
+
+        // ----------------- Initiallize vector ---------------//
+        dV_dt_ = new PetscBlockVector(nbf, numFaultElements, comm());
+
+        // ----------------- Calculate dV/dt ----------------- //
+                                            
+        // vector to initialize other vectors to 0
+        PetscBlockVector zeroVector = PetscBlockVector(blockSize, numFaultElements, this->comm());
+            zeroVector.set_zero();
+
+        // evaluate tau for the zero vector at time t=1
+        double time = 1.0; 
+        adapter_->solve(time, zeroVector);
+
+        auto scratch = make_scratch();
+        auto in_handle = zeroVector.begin_access_readonly();
+        auto out_handle = dV_dt_->begin_access();
+
+        auto traction = Managed<Matrix<double>>(adapter_->traction_info());
+        adapter_->begin_traction([&zeroVector, &in_handle](std::size_t faultNo) {
+            return zeroVector.get_block(in_handle, faultNo);
+        });
+        for (std::size_t faultNo = 0, num = numLocalElements(); faultNo < num; ++faultNo) {
+            adapter_->traction(faultNo, traction, scratch);
+            auto res = dV_dt_->get_block(out_handle, faultNo);
+            for (int i = 0; i < nbf; ++i){
+                res(i) = traction(i,1);
+            }
+        }
+        std::cout<<std::endl;
+        adapter_->end_traction();
+
+        zeroVector.end_access_readonly(in_handle);
+        dV_dt_->end_access(out_handle);
+    }
+
+
+    /**
+     * Initialize the Jacobian matrices and set up the constant part df/dS 
+     * @param bs_compact block size in the compact formulation
+     * @param bs_extended block size in the extended formulation
+     */
+    void initialize_Jacobian(std::size_t bs_compact, std::size_t bs_extended){
+        // ----------------- general compact parameters ----------------- //
+        size_t numFaultElements = this->numLocalElements();
+        size_t totalSize = bs_compact * numFaultElements;
+
+        // ----------------- initialize Jacobian matices to 0 ----------------- //
+        CHKERRTHROW(MatCreateSeqDense(comm(), totalSize, totalSize, NULL, &Jacobian_compact_ode_));
+        CHKERRTHROW(MatZeroEntries(Jacobian_compact_ode_));
+        CHKERRTHROW(MatCreateSeqDense(comm(), totalSize, totalSize, NULL, &Jacobian_compact_dae_));
+        CHKERRTHROW(MatZeroEntries(Jacobian_compact_dae_));
+
+        // ----------------- general extended parameters ---------------------- //
+       totalSize = bs_extended * numFaultElements;
+
+        // ----------------- initialize Jacobian matices to 0 ----------------- //
+        CHKERRTHROW(MatCreateSeqDense(comm(), totalSize, totalSize, NULL, &Jacobian_extended_ode_));
+        CHKERRTHROW(MatZeroEntries(Jacobian_extended_ode_));
+        CHKERRTHROW(MatCreateSeqDense(comm(), totalSize, totalSize, NULL, &Jacobian_extended_dae_));
+        CHKERRTHROW(MatZeroEntries(Jacobian_extended_dae_));
+
+        // -------------------- initialize constant df/dS --------------------- //
+        initialize_df_dS();
+        
+    }
     /**
      * calculate the analytic Jacobian matrix
      * @param Jac the Jacobian
@@ -700,7 +787,11 @@ public:
 
     solverParametersASandEQ& getSolverParameters(){ return solverParameters_; }
 
-    auto getSolverConfiguration() const { return solverCfg_; }
+    auto& getGeneralSolverConfiguration() const { return solverGenCfg_; }
+
+    auto& getEarthquakeSolverConfiguration() const { return solverEqCfg_; }
+
+    auto& getAseismicSlipSolverConfiguration() const { return solverAsCfg_; }
 
     double getV0(){ return lop_->getV0(); }
 
@@ -767,47 +858,6 @@ public:
     }
 
     private:
-
-
-    /**
-     * Initialize the compact Jacobian matrices of the system
-     */
-    void initializeCompactJacobian(){
-        // ----------------- general parameters ----------------- //
-        size_t blockSize = this->block_size();
-        size_t numFaultElements = this->numLocalElements();
-        size_t totalSize = blockSize * numFaultElements;
-
-        // ----------------- initialize Jacobian matices to 0 ----------------- //
-        CHKERRTHROW(MatCreateSeqDense(comm(), totalSize, totalSize, NULL, &Jacobian_compact_ode_));
-        CHKERRTHROW(MatZeroEntries(Jacobian_compact_ode_));
-        CHKERRTHROW(MatCreateSeqDense(comm(), totalSize, totalSize, NULL, &Jacobian_compact_dae_));
-        CHKERRTHROW(MatZeroEntries(Jacobian_compact_dae_));
-
-        initialize_df_dS();
-    }
-
-    /**
-     * Initialize the Jacobian matrices of the system
-     */
-    void initializeExtendedJacobian(){
-        // ----------------- general parameters ----------------- //
-        size_t blockSize = this->block_size();
-        size_t numFaultElements = this->numLocalElements();
-        size_t totalSize = blockSize * numFaultElements;
-
-        // ----------------- initialize Jacobian matices to 0 ----------------- //
-        CHKERRTHROW(MatCreateSeqDense(comm(), totalSize, totalSize, NULL, &Jacobian_extended_ode_));
-        CHKERRTHROW(MatZeroEntries(Jacobian_extended_ode_));
-        CHKERRTHROW(MatCreateSeqDense(comm(), totalSize, totalSize, NULL, &Jacobian_extended_dae_));
-        CHKERRTHROW(MatZeroEntries(Jacobian_extended_dae_));
-
-        initialize_df_dS();
-
-        initialize_dV_dt(); // for the extended ODE formulation
-    }
-
-
     /**
      * Set up the constant part df/dS of the Jacobian matrix
      */
@@ -916,55 +966,6 @@ public:
         CHKERRTHROW(MatDestroy(&dtau_du_big));
         CHKERRTHROW(MatDestroy(&dtau_dS_big));
     }
-
-    /**
-     * Set up the constant part dV/dt for the extended ODE formulation
-     */
-    void initialize_dV_dt() {
-        // ----------------- general parameters ----------------- //
-        size_t blockSize = this->block_size();
-        size_t numFaultElements = this->numLocalElements();
-        size_t nbf = lop_->space().numBasisFunctions();
-        size_t Nbf = adapter_->block_size_rhsDG();
-        size_t totalnbf = nbf * numFaultElements;
-        size_t totalNbf = Nbf * numFaultElements;
-        size_t totalSize = blockSize * numFaultElements;
-
-        // ----------------- Initiallize vector ---------------//
-        dV_dt_ = new PetscBlockVector(nbf, numFaultElements, comm());
-
-        // ----------------- Calculate dV/dt ----------------- //
-                                            
-        // vector to initialize other vectors to 0
-        PetscBlockVector zeroVector = PetscBlockVector(blockSize, numFaultElements, this->comm());
-            zeroVector.set_zero();
-
-        // evaluate tau for the zero vector at time t=1
-        double time = 1.0; 
-        adapter_->solve(time, zeroVector);
-
-        auto scratch = make_scratch();
-        auto in_handle = zeroVector.begin_access_readonly();
-        auto out_handle = dV_dt_->begin_access();
-
-        auto traction = Managed<Matrix<double>>(adapter_->traction_info());
-        adapter_->begin_traction([&zeroVector, &in_handle](std::size_t faultNo) {
-            return zeroVector.get_block(in_handle, faultNo);
-        });
-        for (std::size_t faultNo = 0, num = numLocalElements(); faultNo < num; ++faultNo) {
-            adapter_->traction(faultNo, traction, scratch);
-            auto res = dV_dt_->get_block(out_handle, faultNo);
-            for (int i = 0; i < nbf; ++i){
-                res(i) = traction(i,1);
-            }
-        }
-        std::cout<<std::endl;
-        adapter_->end_traction();
-
-        zeroVector.end_access_readonly(in_handle);
-        dV_dt_->end_access(out_handle);
-    }
-
 
     /**
      * Calculate the rhs of the slip rate as dV/dt = J * d(S,psi)/dt
@@ -1454,9 +1455,13 @@ public:
     Mat Jacobian_approx_;                   // approximated Jacobian matrix    
 
     solverParametersASandEQ solverParameters_;
+    const std::optional<tndm::SolverConfigGeneral>& solverGenCfg_;    // general solver configuration   
+    const std::optional<tndm::SolverConfigSpecific>& solverEqCfg_;    // solver configuration in earthquake   
+    const std::optional<tndm::SolverConfigSpecific>& solverAsCfg_;    // solver configuration in aseismic slip
+
     Vec x_prev_;                            // solution at the previous timestep (unused)
     Vec rhs_prev_;                          // rhs evaluation at the previous timestep (unused)
-    const std::optional<tndm::SolverConfig>& solverCfg_;    // solver configuration   
+
 };
 
 } // namespace tndm
