@@ -76,7 +76,7 @@ void solve_seas_problem(LocalSimplexMesh<DomainDimension> const& mesh, Config co
     auto topo = std::make_shared<DGOperatorTopo>(mesh, PETSC_COMM_WORLD);
     auto adapt = adapter<type>::make(cfg, scenario, cl, topo, fop->space().clone());
     KSP& ksp = adapt->getKSP();
-    auto seasop = std::make_shared<seas_op_t>(std::move(fop), std::move(adapt));
+    auto seasop = std::make_shared<seas_op_t>(std::move(fop), std::move(adapt), cfg.solver);
     seasop->lop().set_constant_params(friction_scenario.constant_params());
     seasop->lop().set_params(friction_scenario.param_fun());
     if (friction_scenario.source_fun()) {

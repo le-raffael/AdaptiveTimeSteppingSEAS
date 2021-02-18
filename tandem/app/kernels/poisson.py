@@ -93,6 +93,7 @@ def add(generator, dim, nbf, Nbf, nq, Nq):
         Dgrad_u_Du['kpq'] <= d_x[0]['kpq'] +
                        c0[0] * e[0]['kq'] * n_unit_q['pq']
     ])
+   
  
 
 

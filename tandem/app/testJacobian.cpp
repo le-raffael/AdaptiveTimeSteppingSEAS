@@ -90,6 +90,74 @@ int main(int argc, char** argv) {
         });
 
     auto& solverSchema = schema.add_table("solver", &Config::solver);
+    solverSchema.add_value("solution_size", &SolverConfig::solution_size)
+        .validator([](auto&& x) { return ((x == "compact") || (x == "extended")); })
+        .default_value("compact")
+        .help("Whether to include the velocity in the solution vector. ['compact', 'extended']");
+    solverSchema.add_value("problem_formulation", &SolverConfig::problem_formulation)
+        .validator([](auto&& x) { return ((x == "ode") || (x == "dae")); })
+        .default_value("ode")
+        .help("The formulation of the SEAS problem. ['ode', 'dae']");
+    solverSchema.add_value("type_eq", &SolverConfig::type_eq)
+        .default_value("rk")
+        .help("type of the time integration scheme during the earthquake phase.  ['rk', 'bdf', ... ]");
+    solverSchema.add_value("type_as", &SolverConfig::type_as)
+        .default_value("rk")
+        .help("type of the time integration scheme during the aseismic slip.  ['rk', 'bdf', ... ]");
+    solverSchema.add_value("rk_type_eq", &SolverConfig::rk_type_eq)
+        .default_value("5dp")
+        .help("type of the Runge-Kutta scheme during the earthquake phase (use Petsc standard). Does not need to be provided if no Runge-Kutta scheme is used. ['3bs', '5dp', ... ]");
+    solverSchema.add_value("rk_type_as", &SolverConfig::rk_type_as)
+        .default_value("5dp")
+        .help("type of the Runge-Kutta scheme during the aseismic slip (use Petsc standard). Does not need to be provided if no Runge-Kutta scheme is used. ['3bs', '5dp', ... ]");
+    solverSchema.add_value("bdf_order_eq", &SolverConfig::bdf_order_eq)
+        .validator([](auto&& x) { return ((x > 0) || (x <= 6)); })
+        .default_value(4)
+        .help("Order of the BDF scheme during the earthquake phase. Does not need to be provided if no BDF scheme is used");
+    solverSchema.add_value("bdf_order_as", &SolverConfig::bdf_order_as)
+        .validator([](auto&& x) { return ((x > 0) || (x <= 6)); })
+        .default_value(4)
+        .help("Order of the BDF scheme during the aseismic slip. Does not need to be provided if no BDF scheme is used");
+    solverSchema.add_value("bdf_custom_error_evaluation", &SolverConfig::bdf_custom_error_evaluation)
+        .default_value(false)
+        .help("Only for BDF methods:\n  -[false] to use the default error estimate with Lagrange polynomials. \n  -[true] for a custom evaluation with an other BDF evaluation of lower order");
+    solverSchema.add_value("bdf_custom_Newton_iteration", &SolverConfig::bdf_custom_Newton_iteration)
+        .default_value(false)
+        .help("Only for BDF methods:\n  -[false] to use the default Newton iteration.\n  - [true] for a custom implementation (used for debugging)");
+    solverSchema.add_value("custom_time_step_adapter", &SolverConfig::custom_time_step_adapter)
+        .default_value(false)
+        .help("Estimation of the new time step size:\n  -[false] to use the basic PETSc built-in adapter.\n  -[true] to use a custom, implementation-dependent adapter.\n Deverloper note: this parameter is likely to be changed to string to allow the choice between different custom adapter");
+    solverSchema.add_value("adapt_wnormtype", &SolverConfig::adapt_wnormtype)
+        .default_value("infinity")
+        .help("norm to estimate the local truncation error");
+    solverSchema.add_value("psi_rtol", &SolverConfig::psi_rtol)
+        .validator([](auto&& x) { return x >= 0; })
+        .default_value(1e-7)
+        .help("relative tolerance for the state variable psi");
+    solverSchema.add_value("S_rtol", &SolverConfig::S_rtol)
+        .validator([](auto&& x) { return x >= 0; })
+        .default_value(1e-7)
+        .help("relative tolerance for the slip");
+    solverSchema.add_value("V_atol", &SolverConfig::V_atol)
+        .validator([](auto&& x) { return x >= 0; })
+        .default_value(1e-7)
+        .help("absolute tolerance for the slip rate");
+    solverSchema.add_value("V_rtol", &SolverConfig::V_rtol)
+        .validator([](auto&& x) { return x >= 0; })
+        .default_value(1e-7)
+        .help("relative tolerance for the slip rate");
+    solverSchema.add_value("psi_atol_as", &SolverConfig::psi_atol_as)
+        .validator([](auto&& x) { return x >= 0; })
+        .default_value(1e-7)
+        .help("absolute tolerance for the state variable psi during the aseismic slip");
+    solverSchema.add_value("psi_atol_eq", &SolverConfig::psi_atol_eq)
+        .validator([](auto&& x) { return x >= 0; })
+        .default_value(1e-7)
+        .help("absolute tolerance for the state variable psi during the erthquake");
+    solverSchema.add_value("S_atol", &SolverConfig::S_atol)
+        .validator([](auto&& x) { return x >= 0; })
+        .default_value(1e-7)
+        .help("absolute tolerance for the slip");
     solverSchema.add_value("ksp_type", &SolverConfig::ksp_type)
         .default_value("preonly")
         .help("type of the ksp matrix-vector multiplication procedure");

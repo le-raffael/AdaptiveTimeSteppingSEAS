@@ -49,6 +49,8 @@ TensorBase<Matrix<double>> SeasPoissonAdapter::traction_info() const {
     return TensorBase<Matrix<double>>(poisson_adapter::tensor::traction::Shape[0], 2);
 }
 
+
+
 void SeasPoissonAdapter::traction(std::size_t faultNo, Matrix<double>& traction,
                                   LinearAllocator<double>&) const {
     std::fill(traction.data(), traction.data() + traction.size(), 0.0);
@@ -96,11 +98,32 @@ void SeasPoissonAdapter::dtau_du(std::size_t faultNo, Matrix<double>& dtau_du,
     } else {
         dgop_->lop().derivative_traction_skeleton(fctNo, info, Dgrad_u_Du);    
     }
-    poisson_adapter::kernel::evaluate_derivative_traction krnl;
+    poisson_adapter::kernel::evaluate_derivative_traction_dU krnl;
     krnl.e_q_T = e_q_T.data();
     krnl.Dgrad_u_Du = Dgrad_u_Du_raw;
     krnl.minv = minv.data();
     krnl.dtau_du = &dtau_du(0, 0);
+    krnl.n_unit_q = fault_[faultNo].template get<UnitNormal>().data()->data();
+    krnl.w = dgop_->lop().facetQuadratureRule().weights().data();
+    krnl.execute(); 
+}
+
+void SeasPoissonAdapter::dtau_dS(std::size_t faultNo, Matrix<double>& dtau_dS, 
+                                LinearAllocator<double>&) const {
+
+    auto fctNo = faultMap_.fctNo(faultNo);
+    auto const& info = dgop_->topo().info(fctNo);
+    auto u0 = linear_solver_.x().get_block(handle_, info.up[0]);
+    auto u1 = linear_solver_.x().get_block(handle_, info.up[1]);
+    poisson_adapter::kernel::evaluate_derivative_traction_dS krnl;
+    krnl.e_q_T = e_q_T.data();
+    if (info.up[0] == info.up[1]) {
+        krnl.c00 = -0.5 * dgop_->lop().penalty(info);
+    } else {
+        krnl.c00 = -dgop_->lop().penalty(info);
+    }
+    krnl.minv = minv.data();
+    krnl.dtau_dS = &dtau_dS(0, 0);
     krnl.n_unit_q = fault_[faultNo].template get<UnitNormal>().data()->data();
     krnl.w = dgop_->lop().facetQuadratureRule().weights().data();
     krnl.execute(); 

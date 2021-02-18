@@ -96,10 +96,14 @@ int main(int argc, char** argv) {
             return type != AdaptiveOutputStrategy::Unknown;
         });
     auto& solverSchema = schema.add_table("solver", &Config::solver);
+    solverSchema.add_value("solution_size", &SolverConfig::solution_size)
+        .validator([](auto&& x) { return ((x == "compact") || (x == "extended")); })
+        .default_value("compact")
+        .help("Whether to include the velocity in the solution vector. ['compact', 'extended']");
     solverSchema.add_value("problem_formulation", &SolverConfig::problem_formulation)
-        .validator([](auto&& x) { return ((x == "ode") || (x == "compactDAE")); })
+        .validator([](auto&& x) { return ((x == "ode") || (x == "dae")); })
         .default_value("ode")
-        .help("The formulation of the SEAS problem. ['ode', 'compactDAE']");
+        .help("The formulation of the SEAS problem. ['ode', 'dae']");
     solverSchema.add_value("type_eq", &SolverConfig::type_eq)
         .default_value("rk")
         .help("type of the time integration scheme during the earthquake phase.  ['rk', 'bdf', ... ]");
@@ -139,6 +143,14 @@ int main(int argc, char** argv) {
     solverSchema.add_value("S_rtol", &SolverConfig::S_rtol)
         .validator([](auto&& x) { return x >= 0; })
         .default_value(1e-7)
+        .help("relative tolerance for the slip");
+    solverSchema.add_value("V_atol", &SolverConfig::V_atol)
+        .validator([](auto&& x) { return x >= 0; })
+        .default_value(1e-7)
+        .help("absolute tolerance for the slip rate");
+    solverSchema.add_value("V_rtol", &SolverConfig::V_rtol)
+        .validator([](auto&& x) { return x >= 0; })
+        .default_value(1e-7)
         .help("relative tolerance for the slip rate");
     solverSchema.add_value("psi_atol_as", &SolverConfig::psi_atol_as)
         .validator([](auto&& x) { return x >= 0; })
@@ -151,7 +163,7 @@ int main(int argc, char** argv) {
     solverSchema.add_value("S_atol", &SolverConfig::S_atol)
         .validator([](auto&& x) { return x >= 0; })
         .default_value(1e-7)
-        .help("absolute tolerance for the slip rate");
+        .help("absolute tolerance for the slip");
     solverSchema.add_value("ksp_type", &SolverConfig::ksp_type)
         .default_value("preonly")
         .help("type of the ksp matrix-vector multiplication procedure");

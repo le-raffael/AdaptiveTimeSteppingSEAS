@@ -24,12 +24,17 @@ namespace tndm {
 class RateAndStateBase {
 public:
     static constexpr std::size_t TangentialComponents = DomainDimension - 1u;
-    constexpr static std::size_t NumQuantities = TangentialComponents + 1u;
+    constexpr static std::size_t NumQuantitiesCompact = TangentialComponents + 1u;
+    constexpr static std::size_t NumQuantitiesExtended = 2 * TangentialComponents + 1u;
     constexpr static std::size_t NumInternalQuantities = 2 + 3 * TangentialComponents;
     
     RateAndStateBase(std::shared_ptr<Curvilinear<DomainDimension>> cl);
 
-    std::size_t block_size() const { return space_.numBasisFunctions() * NumQuantities; }
+    std::size_t block_size() { 
+        return (extendedFormulation) ?  
+                space_.numBasisFunctions() * NumQuantitiesExtended :
+                space_.numBasisFunctions() * NumQuantitiesCompact;
+    }
     std::size_t scratch_mem_size() const { return 1; }
 
     void begin_preparation(std::size_t numFaultFaces);
@@ -41,10 +46,14 @@ public:
                                                            numLocalElements);
     }
 
+    void setExtendedFormulation(bool is) { extendedFormulation = is; }
+
     auto const& space() const { return space_; }
 
 protected:
     std::shared_ptr<Curvilinear<DomainDimension>> cl_;
+
+    bool extendedFormulation = false;
 
     // Basis
     NodalRefElement<DomainDimension - 1u> space_;

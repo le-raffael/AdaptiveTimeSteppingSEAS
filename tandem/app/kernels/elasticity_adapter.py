@@ -9,6 +9,8 @@ def add(generator, dim, nbf_fault, Nbf_element, nq):
     minv = Tensor('minv', (nbf_fault, nbf_fault))
     w = Tensor('w', (nq, ))
 
+    c0 = [Scalar('c0{}'.format(x)) for x in range(2)]
+
     copy_slip = Tensor('copy_slip', (dim - 1, dim),
                        spp={(d - 1, d): '1.0'
                             for d in range(1, dim)},
@@ -32,3 +34,6 @@ def add(generator, dim, nbf_fault, Nbf_element, nq):
     generator.add('evaluate_derivative_traction', dtau_du['pl'] <= minv['rp'] * e_q_T['qr'] * w['q'] * \
                                                         Dgrad_u_Du['lkq'] * n_unit_q['kq'])
 
+    dtau_dS = Tensor('dtau_dS', (nbf_fault, nbf_fault))
+    generator.add('evaluate_derivative_traction_dS', dtau_dS['pj'] <= c0[0] * minv['rp'] * e_q_T['qr'] * w['q'] * \
+                                                        e_q_T['qj'] * n_unit_q['kq'] * n_unit_q['kq'])

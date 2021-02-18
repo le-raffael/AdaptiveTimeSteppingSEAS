@@ -88,13 +88,24 @@ public:
 
     /**
      * get the dimensions of the matrix dtau/dU to assemble the Jacobian
-     * @return Tensor base of Dtau/DU in one element [nbf, blockSize]
+     * @return Tensor base of Dtau/DU in one element [nbf, Nbf]
      */
         TensorBase<Matrix<double>> getBaseDtauDu(){
             TensorBase<Matrix<double>> tensorBase(elasticity_adapter::tensor::dtau_du::Shape[0],
                                           elasticity_adapter::tensor::dtau_du::Shape[1]);
             return tensorBase;
         }
+
+    /**
+     * get the dimensions of the matrix dtau/dS to assemble the Jacobian
+     * @return Tensor base of Dtau/DS in one element [nbf, nbf]
+     */
+        TensorBase<Matrix<double>> getBaseDtauDS(){
+            TensorBase<Matrix<double>> tensorBase(elasticity_adapter::tensor::dtau_dS::Shape[0],
+                                          elasticity_adapter::tensor::dtau_dS::Shape[1]);
+            return tensorBase;
+        }
+
 
     /** 
      * calculate the derivative of the traction w.r.t the displacement
@@ -103,6 +114,14 @@ public:
      * @param . this scratch thingy
      */
     void dtau_du(std::size_t faultNo, Matrix<double>& dtau_du, LinearAllocator<double>&) const;
+
+    /** 
+     * calculate the derivative of the traction w.r.t the slip
+     * @param faultNo index of the fault
+     * @param dtau_dS result tensor with dimensions (nbf, nbf)
+     * @param . this scratch thingy
+     */
+    void dtau_dS(std::size_t faultNo, Matrix<double>& dtau_dS, LinearAllocator<double>&) const;
 
     /**
      * Solve the DG problem, with a unit vector to set up the Jacobian

@@ -10,20 +10,35 @@
 \BOOKMARK [1][-]{section.2.1}{Physical Description}{chapter.2}% 10
 \BOOKMARK [1][-]{section.2.2}{BP1 problem}{chapter.2}% 11
 \BOOKMARK [1][-]{section.2.3}{Formulation of the Discontinous Galerkin}{chapter.2}% 12
-\BOOKMARK [1][-]{section.2.4}{Formulation of the DAE}{chapter.2}% 13
-\BOOKMARK [2][-]{subsection.2.4.1}{Formulation as an ODE}{section.2.4}% 14
-\BOOKMARK [2][-]{subsection.2.4.2}{Formulation as DAE}{section.2.4}% 15
+\BOOKMARK [1][-]{section.2.4}{First Order Differential Equation}{chapter.2}% 13
+\BOOKMARK [2][-]{subsection.2.4.1}{Formulation as a first order ODE}{section.2.4}% 14
+\BOOKMARK [2][-]{subsection.2.4.2}{Formulation as a DAE}{section.2.4}% 15
 \BOOKMARK [2][-]{subsection.2.4.3}{Compact formulation as a DAE}{section.2.4}% 16
 \BOOKMARK [1][-]{section.2.5}{Formulation of the Jacobian}{chapter.2}% 17
 \BOOKMARK [2][-]{subsection.2.5.1}{Analytical Derivation of the Jacobian matrix}{section.2.5}% 18
 \BOOKMARK [2][-]{subsection.2.5.2}{Verification of the Jacobian}{section.2.5}% 19
 \BOOKMARK [2][-]{subsection.2.5.3}{Limitations of the use of the Jacobian}{section.2.5}% 20
-\BOOKMARK [1][-]{section.2.6}{Numerical treatment in SEAS}{chapter.2}% 21
-\BOOKMARK [2][-]{subsection.2.6.1}{Explicit methods to solve the DAE}{section.2.6}% 22
-\BOOKMARK [2][-]{subsection.2.6.2}{Implicit methods to solve the DAE}{section.2.6}% 23
-\BOOKMARK [1][-]{section.2.7}{Results}{chapter.2}% 24
-\BOOKMARK [1][-]{section.2.8}{Relative and Absolute Tolerances}{chapter.2}% 25
-\BOOKMARK [2][-]{subsection.2.8.1}{Behaviour of the Error}{section.2.8}% 26
-\BOOKMARK [2][-]{subsection.2.8.2}{Tolerance of the State Variable Dependent on the Slip}{section.2.8}% 27
-\BOOKMARK [2][-]{subsection.2.8.3}{Tolerance of the State Variable Dependent on the Slip Rate}{section.2.8}% 28
-\BOOKMARK [0][-]{chapter*.19}{Bibliography}{}% 29
+\BOOKMARK [1][-]{section.2.6}{Second Order Differential Equation}{chapter.2}% 21
+\BOOKMARK [2][-]{subsection.2.6.1}{Derivation of the second order ODE}{section.2.6}% 22
+\BOOKMARK [2][-]{subsection.2.6.2}{Derivation of the analytic Jacobian}{section.2.6}% 23
+\BOOKMARK [2][-]{subsection.2.6.3}{Error estimation}{section.2.6}% 24
+\BOOKMARK [2][-]{subsection.2.6.4}{Analytic derivation of an upper bound for the LTE}{section.2.6}% 25
+\BOOKMARK [2][-]{subsection.2.6.5}{Normalization of the slip rate}{section.2.6}% 26
+\BOOKMARK [1][-]{section.2.7}{Numerical treatment in SEAS}{chapter.2}% 27
+\BOOKMARK [2][-]{subsection.2.7.1}{Explicit methods}{section.2.7}% 28
+\BOOKMARK [2][-]{subsection.2.7.2}{Implicit methods}{section.2.7}% 29
+\BOOKMARK [2][-]{subsection.2.7.3}{Implicit - explicit methods}{section.2.7}% 30
+\BOOKMARK [2][-]{subsection.2.7.4}{Switching between different formulations}{section.2.7}% 31
+\BOOKMARK [2][-]{subsection.2.7.5}{Definition of the tolerances}{section.2.7}% 32
+\BOOKMARK [2][-]{subsection.2.7.6}{Time adaptivity}{section.2.7}% 33
+\BOOKMARK [1][-]{section.2.8}{Results}{chapter.2}% 34
+\BOOKMARK [2][-]{subsection.2.8.1}{Comparison between the different formulations of problem}{section.2.8}% 35
+\BOOKMARK [1][-]{section.2.9}{Relative and Absolute Tolerances}{chapter.2}% 36
+\BOOKMARK [2][-]{subsection.2.9.1}{Behaviour of the Error}{section.2.9}% 37
+\BOOKMARK [2][-]{subsection.2.9.2}{Tolerance of the State Variable Dependent on the Slip}{section.2.9}% 38
+\BOOKMARK [2][-]{subsection.2.9.3}{Tolerance of the State Variable Dependent on the Slip Rate}{section.2.9}% 39
+\BOOKMARK [0][-]{chapter.3}{Extension to More Complex Problems}{}% 40
+\BOOKMARK [1][-]{section.3.1}{Elasticity Equation}{chapter.3}% 41
+\BOOKMARK [1][-]{section.3.2}{Three-Dimensional Simulations}{chapter.3}% 42
+\BOOKMARK [1][-]{section.3.3}{Seismic Waves in the Domain}{chapter.3}% 43
+\BOOKMARK [0][-]{chapter*.22}{Bibliography}{}% 44

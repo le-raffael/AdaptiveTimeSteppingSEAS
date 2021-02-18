@@ -1,0 +1,115 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\@writefile{toc}{\contentsline {chapter}{\numberline {2}Two-Dimensional SEAS model}{9}{chapter.2}}
+\@writefile{lof}{\addvspace {10\p@ }}
+\@writefile{lot}{\addvspace {10\p@ }}
+\@writefile{toc}{\contentsline {section}{\numberline {2.1}Physical Description}{9}{section.2.1}}
+\newlabel{ssec:physicalDescriptionSEAS2D}{{2.1}{9}{Physical Description}{section.2.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {2.2}BP1 problem}{9}{section.2.2}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2.1}{\ignorespaces Space discretization of the BP1 problem with 200 elements on the fault\relax }}{10}{figure.caption.8}}
+\newlabel{fig:mesh_BP1_200_fault_elements}{{2.1}{10}{Space discretization of the BP1 problem with 200 elements on the fault\relax }{figure.caption.8}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {2.3}Formulation of the Discontinous Galerkin}{10}{section.2.3}}
+\@writefile{toc}{\contentsline {section}{\numberline {2.4}First Order Differential Equation}{10}{section.2.4}}
+\newlabel{eq:SEASDAE_dV_dt}{{2.3}{10}{First Order Differential Equation}{equation.2.4.3}{}}
+\newlabel{eq:SEAS_DAE_ageing_law}{{2.4}{10}{First Order Differential Equation}{equation.2.4.4}{}}
+\newlabel{eq:SEASDAE_frictionLaw}{{2.5}{10}{First Order Differential Equation}{equation.2.4.5}{}}
+\newlabel{eq:SEAS_DAE_AU=b}{{2.6}{10}{First Order Differential Equation}{equation.2.4.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4.1}Formulation as a first order ODE}{11}{subsection.2.4.1}}
+\newlabel{eq:ODE_formulation_SEAS}{{2.7}{11}{Formulation as a first order ODE}{equation.2.4.7}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4.2}Formulation as a DAE}{11}{subsection.2.4.2}}
+\newlabel{eq:DAE_formulation_SEAS}{{2.8}{11}{Formulation as a DAE}{equation.2.4.8}{}}
+\newlabel{eq:DAE_extended_formulation_SEAS}{{2.10}{11}{Formulation as a DAE}{equation.2.4.10}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4.3}Compact formulation as a DAE}{12}{subsection.2.4.3}}
+\newlabel{eq:DAE_compact_formulation_SEAS}{{2.11}{12}{Compact formulation as a DAE}{equation.2.4.11}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {2.5}Formulation of the Jacobian}{12}{section.2.5}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.5.1}Analytical Derivation of the Jacobian matrix}{12}{subsection.2.5.1}}
+\newlabel{ssec:AnalyticalDerivationOfTheJacobianMatrix}{{2.5.1}{12}{Analytical Derivation of the Jacobian matrix}{subsection.2.5.1}{}}
+\@writefile{toc}{\contentsline {subsubsection}{Jacobian of the ODE system}{12}{section*.9}}
+\newlabel{sssec:Jacobian_ODE}{{2.5.1}{12}{Jacobian of the ODE system}{section*.9}{}}
+\newlabel{eq:Jacobian_ODE_formulation}{{2.12}{12}{Jacobian of the ODE system}{equation.2.5.12}{}}
+\newlabel{eq:partial_df_dpsi}{{2.15}{12}{Jacobian of the ODE system}{equation.2.5.15}{}}
+\newlabel{eq:partial_df_dV}{{2.16}{13}{Jacobian of the ODE system}{equation.2.5.16}{}}
+\newlabel{eq:partialDerivative_df_dS}{{2.17}{13}{Jacobian of the ODE system}{equation.2.5.17}{}}
+\@writefile{toc}{\contentsline {subsubsection}{Jacobian of the DAE system}{14}{section*.10}}
+\newlabel{sssec:Jacobian_DAE}{{2.5.1}{14}{Jacobian of the DAE system}{section*.10}{}}
+\newlabel{eq:Jacobian_DAE_formulation}{{2.30}{14}{Jacobian of the DAE system}{equation.2.5.30}{}}
+\newlabel{eq:Jacobian_Newton_Iteration_extended_DAE}{{2.35}{15}{Jacobian of the DAE system}{equation.2.5.35}{}}
+\@writefile{toc}{\contentsline {subsubsection}{Jacobian of the compact DAE system}{15}{section*.11}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.5.2}Verification of the Jacobian}{15}{subsection.2.5.2}}
+\citation{BroydenIteration}
+\@writefile{lof}{\contentsline {figure}{\numberline {2.2}{\ignorespaces Evaluation of the L2 norm of the residual $\phi (x_n)$ at each iteration of the Newton and Broyden methods\relax }}{16}{figure.caption.12}}
+\newlabel{fig:convergenceNewtonAndBroyden}{{2.2}{16}{Evaluation of the L2 norm of the residual $\phi (x_n)$ at each iteration of the Newton and Broyden methods\relax }{figure.caption.12}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.5.3}Limitations of the use of the Jacobian}{17}{subsection.2.5.3}}
+\@writefile{toc}{\contentsline {section}{\numberline {2.6}Second Order Differential Equation}{17}{section.2.6}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.6.1}Derivation of the second order ODE}{18}{subsection.2.6.1}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2.3}{\ignorespaces Maximum slip rate in the 1st and 2nd order formulations on a domain with 5 fault elements for 1000 years\relax }}{19}{figure.caption.13}}
+\newlabel{fig:timeEvolution_2ndOrderODE_vs_1stOrderODE}{{2.3}{19}{Maximum slip rate in the 1st and 2nd order formulations on a domain with 5 fault elements for 1000 years\relax }{figure.caption.13}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.6.2}Derivation of the analytic Jacobian}{19}{subsection.2.6.2}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.6.3}Error estimation}{19}{subsection.2.6.3}}
+\newlabel{fig:timeEvolution_2ndOrderODE_differentTolerances}{{2.4a}{20}{Maximum absolute value of the friction law\relax }{figure.caption.14}{}}
+\newlabel{sub@fig:timeEvolution_2ndOrderODE_differentTolerances}{{a}{20}{Maximum absolute value of the friction law\relax }{figure.caption.14}{}}
+\newlabel{fig:timeEvolution_LTE_2ndOrderODE_differentTolerances}{{2.4b}{20}{Absolute change of the friciton law per timestep, averaged over 50 timesteps\relax }{figure.caption.14}{}}
+\newlabel{sub@fig:timeEvolution_LTE_2ndOrderODE_differentTolerances}{{b}{20}{Absolute change of the friciton law per timestep, averaged over 50 timesteps\relax }{figure.caption.14}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2.4}{\ignorespaces Evolution of the value of the friction law of the 2nd order formulation with 5 elements on the fault over 1000 years with varying relative tolerances in the slip rate $V$\relax }}{20}{figure.caption.14}}
+\newlabel{fig:timeEvolution_2ndOrderODE_differentSizes}{{2.5a}{20}{Maximum absolute value of the friction law\relax }{figure.caption.15}{}}
+\newlabel{sub@fig:timeEvolution_2ndOrderODE_differentSizes}{{a}{20}{Maximum absolute value of the friction law\relax }{figure.caption.15}{}}
+\newlabel{fig:timeEvolution_LTE_2ndOrderODE_differentSizes}{{2.5b}{20}{Absolute change of the friciton law per timestep, averaged over 50 timesteps\relax }{figure.caption.15}{}}
+\newlabel{sub@fig:timeEvolution_LTE_2ndOrderODE_differentSizes}{{b}{20}{Absolute change of the friciton law per timestep, averaged over 50 timesteps\relax }{figure.caption.15}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2.5}{\ignorespaces Evolution of the value of the friction law of the 2nd order formulation over 400 years with varying domain sizes, where $n$ denotes the number of fault elements\relax }}{20}{figure.caption.15}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.6.4}Analytic derivation of an upper bound for the LTE}{21}{subsection.2.6.4}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.6.5}Normalization of the slip rate}{21}{subsection.2.6.5}}
+\@writefile{toc}{\contentsline {section}{\numberline {2.7}Numerical treatment in SEAS}{21}{section.2.7}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.7.1}Explicit methods}{21}{subsection.2.7.1}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.7.2}Implicit methods}{21}{subsection.2.7.2}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.7.3}Implicit - explicit methods}{21}{subsection.2.7.3}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.7.4}Switching between different formulations}{22}{subsection.2.7.4}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.7.5}Definition of the tolerances}{22}{subsection.2.7.5}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.7.6}Time adaptivity}{22}{subsection.2.7.6}}
+\@writefile{toc}{\contentsline {section}{\numberline {2.8}Results}{22}{section.2.8}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.8.1}Comparison between the different formulations of problem}{22}{subsection.2.8.1}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2.6}{\ignorespaces Evolution of the maximal slip rate $V$ on the fault for different solvers on the symmetric two-dimensional BP1 problem with 200 elements on the fault\relax }}{22}{figure.caption.16}}
+\newlabel{fig:timeEvolutionTANDEM_V}{{2.6}{22}{Evolution of the maximal slip rate $V$ on the fault for different solvers on the symmetric two-dimensional BP1 problem with 200 elements on the fault\relax }{figure.caption.16}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2.7}{\ignorespaces Evolution of the time step size $h$ for different solvers on the symmetric two-dimensional BP1 problem with 200 elements on the fault\relax }}{22}{figure.caption.17}}
+\newlabel{fig:timeEvolutionTANDEM_DT}{{2.7}{22}{Evolution of the time step size $h$ for different solvers on the symmetric two-dimensional BP1 problem with 200 elements on the fault\relax }{figure.caption.17}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2.8}{\ignorespaces Number of evaluations of the right hand side of the ODE in each time iteration for different solvers on the symmetric two-dimensional BP1 problem with 200 elements on the fault \newline  \textbf  {Legend:} \leavevmode {\color {red}---} 1st order ODE formulation, \leavevmode {\color {blue}---} 2nd order ODE formulation, \leavevmode {\color {green}---} extended DAE formulation, \leavevmode {\color {yellow}---} compact DAE formulation \relax }}{23}{figure.caption.18}}
+\newlabel{fig:timeEvolutionTANDEM_RHS}{{2.8}{23}{Number of evaluations of the right hand side of the ODE in each time iteration for different solvers on the symmetric two-dimensional BP1 problem with 200 elements on the fault \newline \textbf {Legend:} \textcolor {red}{---} 1st order ODE formulation, \textcolor {blue}{---} 2nd order ODE formulation, \textcolor {green}{---} extended DAE formulation, \textcolor {yellow}{---} compact DAE formulation \relax }{figure.caption.18}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {2.9}Relative and Absolute Tolerances}{23}{section.2.9}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.9.1}Behaviour of the Error}{23}{subsection.2.9.1}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2.9}{\ignorespaces Maximum relative and absolute errors using the RKDP5 method on a fault with 200 elements with an absolute and relative error tolerance of $10^{-7}$\relax }}{24}{figure.caption.19}}
+\newlabel{fig:errrors1e-7}{{2.9}{24}{Maximum relative and absolute errors using the RKDP5 method on a fault with 200 elements with an absolute and relative error tolerance of $10^{-7}$\relax }{figure.caption.19}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2.10}{\ignorespaces Maximum and minimum values of the state variable $\psi $ and of the slip $S$ over time. Simulation performed with the RKDP5 method on a fault with 200 elements with an absolute and relative error tolerance of $10^{-7}$\relax }}{24}{figure.caption.20}}
+\newlabel{fig:minmax1e-7}{{2.10}{24}{Maximum and minimum values of the state variable $\psi $ and of the slip $S$ over time. Simulation performed with the RKDP5 method on a fault with 200 elements with an absolute and relative error tolerance of $10^{-7}$\relax }{figure.caption.20}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.9.2}Tolerance of the State Variable Dependent on the Slip}{24}{subsection.2.9.2}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.9.3}Tolerance of the State Variable Dependent on the Slip Rate}{26}{subsection.2.9.3}}
+\newlabel{eq:absoluteErrorPSIFromV}{{2.62}{26}{Tolerance of the State Variable Dependent on the Slip Rate}{equation.2.9.62}{}}
+\newlabel{eq:relativeErrorPSIFromV}{{2.67}{27}{Tolerance of the State Variable Dependent on the Slip Rate}{equation.2.9.67}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2.11}{\ignorespaces Absolute and relative error in $\psi $ in function of the error in the slip rate\relax }}{27}{figure.caption.21}}
+\newlabel{fig:RelAbsErrorToleranceVPSI}{{2.11}{27}{Absolute and relative error in $\psi $ in function of the error in the slip rate\relax }{figure.caption.21}{}}
+\@setckpt{TwoDimensionalSEASProblem}{
+\setcounter{page}{29}
+\setcounter{equation}{72}
+\setcounter{enumi}{3}
+\setcounter{enumii}{0}
+\setcounter{enumiii}{0}
+\setcounter{enumiv}{0}
+\setcounter{footnote}{0}
+\setcounter{mpfootnote}{0}
+\setcounter{part}{0}
+\setcounter{chapter}{2}
+\setcounter{section}{9}
+\setcounter{subsection}{3}
+\setcounter{subsubsection}{0}
+\setcounter{paragraph}{0}
+\setcounter{subparagraph}{0}
+\setcounter{figure}{11}
+\setcounter{table}{0}
+\setcounter{ContinuedFloat}{0}
+\setcounter{subfigure}{0}
+\setcounter{subtable}{0}
+\setcounter{parentequation}{0}
+\setcounter{Item}{3}
+\setcounter{Hfootnote}{0}
+\setcounter{bookmark@seq@number}{39}
+\setcounter{float@type}{4}
+\setcounter{section@level}{2}
+}

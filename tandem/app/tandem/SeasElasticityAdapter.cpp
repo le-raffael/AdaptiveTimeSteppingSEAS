@@ -105,4 +105,21 @@ void SeasElasticityAdapter::dtau_du(std::size_t faultNo, Matrix<double>& dtau_du
 }
 
 
+void SeasElasticityAdapter::dtau_dS(std::size_t faultNo, Matrix<double>& dtau_dS, 
+                                LinearAllocator<double>&) const {
+
+    auto fctNo = faultMap_.fctNo(faultNo);
+    auto const& info = dgop_->topo().info(fctNo);
+    auto u0 = linear_solver_.x().get_block(handle_, info.up[0]);
+    auto u1 = linear_solver_.x().get_block(handle_, info.up[1]);
+    elasticity_adapter::kernel::evaluate_derivative_traction_dS krnl;
+    krnl.e_q_T = e_q_T.data();
+    krnl.c00 = -dgop_->lop().penalty(info);
+    krnl.minv = minv.data();
+    krnl.dtau_dS = &dtau_dS(0, 0);
+    krnl.n_unit_q = fault_[faultNo].template get<UnitNormal>().data()->data();
+    krnl.w = dgop_->lop().facetQuadratureRule().weights().data();
+    krnl.execute(); 
+    }
+
 } // namespace tndm

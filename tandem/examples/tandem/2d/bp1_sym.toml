@@ -1,4 +1,6 @@
-final_time = 7884000000
+final_time = 7889238000  #250 years
+#final_time = 12622780800  #400 years
+#final_time = 31556952000 #1000 years
 mesh_file = "bp1_sym.msh"
 
 [seas]
@@ -28,19 +30,22 @@ t_min = 0.05
 t_max = 9460800
 
 [solver]
-problem_formulation="ode"
-type_as = "rk"
-type_eq = "rk"
+solution_size = "extended"
+problem_formulation="dae"
+type_as = "bdf"
+type_eq = "bdf"
 rk_type_as = "5dp"
 rk_type_eq = "5dp"
-bdf_order_as = 5
-bdf_order_eq = 5
+bdf_order_as = 4
+bdf_order_eq = 4
 bdf_custom_error_evaluation = false
 bdf_custom_Newton_iteration = false
 custom_time_step_adapter = false
 adapt_wnormtype = "infinity"
 S_rtol = 0
-S_atol = 1.0e-7
+S_atol = 1e-7
+V_rtol = 1e-7
+V_atol = 0
 psi_rtol = 0
 psi_atol_as = 1.0e-7
 psi_atol_eq = 1.0e-7

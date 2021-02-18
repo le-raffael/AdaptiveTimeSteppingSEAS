@@ -21,6 +21,7 @@ template <class Law> class RateAndState : public RateAndStateBase {
 public:
     using RateAndStateBase::RateAndStateBase;
     static constexpr std::size_t PsiIndex = TangentialComponents;
+    static constexpr std::size_t VIndex = TangentialComponents + 1u;
 
     using param_fun_t =
         std::function<typename Law::Params(std::array<double, DomainDimension> const&)>;
@@ -69,27 +70,56 @@ public:
      * @param state current solution vector
      * @param . some scratch
      * */
-    void init(std::size_t faultNo, Matrix<double> const& traction, Vector<double>& state,
+    void initCompact(std::size_t faultNo, Matrix<double> const& traction, Vector<double>& state,
               LinearAllocator<double>&) const;
 
     /**
-     * Evaluate the rhs of the ODE 
+     * Set initial state variable and initial velocity
+     * @param faultNo index of the current fault
+     * @param traction matrix with sigma and tau at all nodes in the element
+     * @param state current solution vector
+     * @param . some scratch
+     * */
+    void initExtended(std::size_t faultNo, Matrix<double> const& traction, Vector<double>& state,
+              LinearAllocator<double>&) const;
+
+    /**
+     * Evaluate the rhs of the compact ODE 
      * - first solve the algebraic equation f(V, psi) = 0 for the slip rate
      * - assign the derivative of dS_dt = V
      * - assign the derivative of dpsi_dt = g(V, psi)
      * @param faultNo index of the current fault
+     * @param time current simulation time 
      * @param traction matrix with sigma and tau at all nodes in the element
      * @param state current solution vector
      * @param result vector with the right hand side of the ODE dstate_dt
      * @param . some scratch
      * @return the maximal velocity encountered in this element
      * */
-    double rhsODE(std::size_t faultNo, double time, Matrix<double> const& traction,
+    double rhsCompactODE(std::size_t faultNo, double time, Matrix<double> const& traction,
                Vector<double const>& state, Vector<double>& result, LinearAllocator<double>&) const;
+
+
+    /**
+     * Evaluate the rhs of the extended ODE 
+     * - assign the derivative dS_dt = V
+     * - assign the derivative dpsi_dt = g(V, psi)
+     * - the derivative dV/dt will be calculated in a later step
+     * @param faultNo index of the current fault
+     * @param time current simulation time 
+     * @param state current solution vector
+     * @param result vector with the right hand side of the ODE dstate_dt
+     * @param . some scratch
+     * @param checkAS check whether the simulation is in the aseismic slip or in the earthquake
+     * @return the maximal velocity encountered in this element
+     * */
+    double rhsExtendedODE(std::size_t faultNo, double time,
+               Vector<double const>& state, Vector<double>& result, LinearAllocator<double>&, bool checkAS) const;
 
     /**
      * Evaluate the lhs of the compact DAE formulation 
      * @param faultNo index of the current fault
+     * @param time current simulation time 
      * @param traction matrix with sigma and tau at all nodes in the element
      * @param state current solution vector 
      * @param state_der derivative of the current solution vector
@@ -101,28 +131,65 @@ public:
                               Vector<double const>& state, Vector<double>& state_der, Vector<double>& result,
                               LinearAllocator<double>&) const;               
 
+    /**
+     * Evaluate the lhs of the extended DAE formulation 
+     * @param faultNo index of the current fault
+     * @param time current simulation time 
+     * @param traction matrix with sigma and tau at all nodes in the element
+     * @param state current solution vector 
+     * @param state_der derivative of the current solution vector
+     * @param result vector with the algebraic equation that has to be set to 0
+     * @param . some scratch
+     * @return the maximal velocity encountered in this element
+     * */
+    double lhsExtendedDAE(std::size_t faultNo, double time, Matrix<double> const& traction,
+                              Vector<double const>& state, Vector<double>& state_der, Vector<double>& result,
+                              LinearAllocator<double>&) const;               
 
+    /**
+     * Evaluate the friction law for the DAE formulation 
+     * @param faultNo index of the current fault
+     * @param time current simulation time 
+     * @param traction matrix with sigma and tau at all nodes in the element
+     * @param state current solution vector [S,psi,:] needed
+     * @param state_der derivative of the current solution vector [V,:] needed
+     * @param result vector with the evaluation of the algebraic equation
+     * @param . some scratch
+     * */
     void applyFrictionLaw(std::size_t faultNo, double time, Matrix<double> const& traction,
                               Vector<double const>& state, Vector<double>& state_der, Vector<double>& result,
                               LinearAllocator<double>&) const;
+
+    /**
+     * Evaluate the friction law for the extended ODE formulation 
+     * @param faultNo index of the current fault
+     * @param time current simulation time 
+     * @param traction matrix with sigma and tau at all nodes in the element
+     * @param state current solution vector [S,psi,V] needed
+     * @param . some scratch
+     * @return the maximal absolute value of the friction law
+     * */
+    double applyMaxFrictionLaw(std::size_t faultNo, double time, Matrix<double> const& traction,
+                              Vector<double const>& state, LinearAllocator<double>&) const;
 
 
     /**
      * Evaluate some derivatives for the Jacobian 
      * - assign the derivative of df/dV
      * - assign the derivative of df/dpsi
-     * - store the values of psi
-     * - store the values of V
-     * - store the values of g
+     * - assign the derivative of dg/dV
+     * - assign the derivative of dg/dpsi
      * @param faultNo index of the current fault
      * @param traction matrix with sigma and tau at all nodes in the element
-     * @param state current solution vector
-     * @param state_der derivatives of the current solution vector
+     * @param state current solution vector [S,psi,:] needed
+     * @param state_der derivatives of the current solution vector [V,:] needed
      * @param result vector with the derivatives df/dV, df/dpsi, psi, V, g 
      * @param . some scratch
      * */
     void getJacobianQuantities(std::size_t faultNo, double time, Matrix<double> const& traction,
                Vector<double const>& state, Vector<double>& state_der, Vector<double>& result, LinearAllocator<double>&) const;
+    void getJacobianQuantities(std::size_t faultNo, double time, Matrix<double> const& traction,
+               Vector<double const>& state, Vector<double>& result, LinearAllocator<double>&) const;
 
     /**
      * Calculate derivatives of the ageing law dg/dpsi and dg/dS
@@ -161,7 +228,7 @@ public:
 private:
     template <typename T> auto mat(Vector<T>& state) const {
         std::size_t nbf = space_.numBasisFunctions();
-        return reshape(state, nbf, NumQuantities);
+        return (extendedFormulation) ? reshape(state, nbf, NumQuantitiesExtended) : reshape(state, nbf, NumQuantitiesCompact);
     }
 
     auto get_tau(std::size_t node, Matrix<double> const& traction) const {
@@ -192,7 +259,7 @@ void RateAndState<Law>::pre_init(std::size_t faultNo, Vector<double>& state,
 }
 
 template <class Law>
-void RateAndState<Law>::init(std::size_t faultNo, Matrix<double> const& traction,
+void RateAndState<Law>::initCompact(std::size_t faultNo, Matrix<double> const& traction,
                              Vector<double>& state, LinearAllocator<double>&) const {
     auto s_mat = mat(state);
     std::size_t nbf = space_.numBasisFunctions();
@@ -204,7 +271,27 @@ void RateAndState<Law>::init(std::size_t faultNo, Matrix<double> const& traction
 }
 
 template <class Law>
-double RateAndState<Law>::rhsODE(std::size_t faultNo, double time, Matrix<double> const& traction,
+void RateAndState<Law>::initExtended(std::size_t faultNo, Matrix<double> const& traction,
+                             Vector<double>& state, LinearAllocator<double>&) const {
+    auto s_mat = mat(state);
+    std::size_t nbf = space_.numBasisFunctions();
+    std::size_t index = faultNo * nbf;
+
+    for (std::size_t node = 0; node < nbf; ++node) {
+        double psi = law_.psi_init(index + node, traction(node, 0), get_tau(node, traction));
+        s_mat(node, PsiIndex) = psi;
+        auto sn = traction(node, 0);           
+        auto Vi = law_.slip_rate(index + node, sn, get_tau(node, traction), psi);
+
+        for (std::size_t t = 0; t < TangentialComponents; ++t) {
+            s_mat(node, VIndex + t) = Vi[t];
+        }
+    }
+}
+
+
+template <class Law>
+double RateAndState<Law>::rhsCompactODE(std::size_t faultNo, double time, Matrix<double> const& traction,
                               Vector<double const>& state, Vector<double>& result,
                               LinearAllocator<double>&) const {
     double VMax = 0.0;
@@ -237,6 +324,33 @@ double RateAndState<Law>::rhsODE(std::size_t faultNo, double time, Matrix<double
     return VMax;
 }
 
+template <class Law>
+double RateAndState<Law>::rhsExtendedODE(std::size_t faultNo, double time,
+                              Vector<double const>& state, Vector<double>& result,
+                              LinearAllocator<double>&, bool checkAS) const {
+    double VMax = 0.0;
+    std::size_t nbf = space_.numBasisFunctions();
+    std::size_t index = faultNo * nbf;
+    auto s_mat = mat(state);
+    auto r_mat = mat(result);
+    for (std::size_t node = 0; node < nbf; ++node) {
+        auto sn = 0.0;      // Will it always stay like that?
+        auto psi = s_mat(node, PsiIndex);
+        std::array<double, TangentialComponents> Vi;
+        for (std::size_t t = 0; t < TangentialComponents; ++t) {
+            Vi[t] = s_mat(node, VIndex + t);
+        }        
+        double V = norm(Vi);
+
+        for (std::size_t t = 0; t < TangentialComponents; ++t) {
+            r_mat(node, t) = Vi[t];            
+        }
+        VMax = std::max(VMax, V);
+
+        r_mat(node, PsiIndex) = law_.state_rhs(index + node, V, psi);
+    }
+    return VMax;
+}
 
 template <class Law>
 double RateAndState<Law>::lhsCompactDAE(std::size_t faultNo, double time, Matrix<double> const& traction,
@@ -249,22 +363,70 @@ double RateAndState<Law>::lhsCompactDAE(std::size_t faultNo, double time, Matrix
     auto s_der_mat = mat(state_der);
     auto r_mat = mat(result);
     for (std::size_t node = 0; node < nbf; ++node) {
-        auto sn = traction(node, 0);
+        auto sn      = traction(node, 0);
         auto tau_vec = law_.getTauVec(index + node, get_tau(node, traction));
-        auto psi = s_mat(node, PsiIndex);        
+
+        auto psi     = s_mat(node, PsiIndex);        
+        auto psi_dot = s_der_mat(node, PsiIndex);
+
         std::array<double, TangentialComponents> Vi;
         for (std::size_t t = 0; t < TangentialComponents; ++t) {
             Vi[t] = s_der_mat(node, t);
         }
+
         double V = norm(Vi);
         VMax = std::max(VMax, V);
 
-        r_mat(node, 0) = law_.friction_law(index + node, sn, get_tau(node, traction), psi, V);
-        if (TangentialComponents == 2) r_mat(node, 1) =  Vi[0] / V - tau_vec[0] / norm(tau_vec);
-        r_mat(node, PsiIndex) = s_der_mat(node, PsiIndex) - law_.state_rhs(index + node, V, psi);
+        r_mat(node, 0)        = law_.friction_law(index + node, sn, get_tau(node, traction), psi, V);
+        if (TangentialComponents == 2)
+               r_mat(node, 1) = Vi[0] / V - tau_vec[0] / norm(tau_vec);
+        r_mat(node, PsiIndex) = law_.state_rhs(index + node, V, psi) - psi_dot;
     }
     return VMax;
 }
+template <class Law>
+double RateAndState<Law>::lhsExtendedDAE(std::size_t faultNo, double time, Matrix<double> const& traction,
+                              Vector<double const>& state, Vector<double>& state_der, Vector<double>& result,
+                              LinearAllocator<double>&) const {
+    double VMax = 0.0;
+    std::size_t nbf = space_.numBasisFunctions();
+    std::size_t index = faultNo * nbf;
+    auto s_mat = mat(state);
+    auto s_der_mat = mat(state_der);
+    auto r_mat = mat(result);
+    for (std::size_t node = 0; node < nbf; ++node) {
+        auto sn = traction(node, 0);
+        auto tau_vec = law_.getTauVec(index + node, get_tau(node, traction));
+        auto tau = norm(tau_vec);
+
+        auto psi     = s_mat(node, PsiIndex);        
+        auto psi_dot = s_der_mat(node, PsiIndex);
+
+        auto V       = s_mat(node, VIndex);
+
+        std::array<double, TangentialComponents> Vi;
+        for (std::size_t t = 0; t < TangentialComponents; ++t) {
+            Vi[t] = tau_vec[t] / tau * V ;
+        }
+
+        std::array<double, TangentialComponents> Si_dot;
+        for (std::size_t t = 0; t < TangentialComponents; ++t) {
+            Si_dot[t] = s_der_mat(node, t);
+        }
+
+        VMax = std::max(VMax, V);
+
+        for (std::size_t t = 0; t < TangentialComponents; ++t) {
+            r_mat(node, t)    = Vi[t] - Si_dot[t];
+        }
+        r_mat(node, PsiIndex) =  law_.state_rhs(index + node, V, psi) - psi_dot;
+        r_mat(node, VIndex)   = law_.friction_law(index + node, sn, get_tau(node, traction), psi, V);
+        if (TangentialComponents == 2) 
+        r_mat(node, VIndex+1) =  Vi[0] / V - tau_vec[0] / tau;
+    }
+    return VMax;
+}
+
 
 template <class Law>
 void RateAndState<Law>::applyFrictionLaw(std::size_t faultNo, double time, Matrix<double> const& traction,
@@ -289,6 +451,30 @@ void RateAndState<Law>::applyFrictionLaw(std::size_t faultNo, double time, Matri
 }
 
 template <class Law>
+double RateAndState<Law>::applyMaxFrictionLaw(std::size_t faultNo, double time, Matrix<double> const& traction,
+                              Vector<double const>& state, LinearAllocator<double>&) const {
+    std::size_t nbf = space_.numBasisFunctions();
+    std::size_t index = faultNo * nbf;
+    auto s_mat = mat(state);
+    double fmax = 0.0;
+
+    for (std::size_t node = 0; node < nbf; ++node) {
+        auto sn = traction(node, 0);
+        auto tau_vec = law_.getTauVec(index + node, get_tau(node, traction));
+        auto psi = s_mat(node, PsiIndex);        
+        std::array<double, TangentialComponents> Vi;
+        for (std::size_t t = 0; t < TangentialComponents; ++t) {
+            Vi[t] = s_mat(node, VIndex + t);
+        }
+        double V = norm(Vi);
+        double f = law_.friction_law(index + node, sn, get_tau(node, traction), psi, V);
+        fmax = std::max(fmax, abs(f));  
+    }
+    return fmax;
+}
+
+
+template <class Law>
 void RateAndState<Law>::getJacobianQuantities(std::size_t faultNo, double time, Matrix<double> const& traction,
                Vector<double const>& state, Vector<double>& state_der, Vector<double>& result, LinearAllocator<double>&) const {
     auto s_mat = mat(state);
@@ -310,6 +496,26 @@ void RateAndState<Law>::getJacobianQuantities(std::size_t faultNo, double time, 
         result(3 * nbf + node) = law_.dg_dpsi(psi);           
     }
 }
+
+template <class Law>
+void RateAndState<Law>::getJacobianQuantities(std::size_t faultNo, double time, Matrix<double> const& traction,
+               Vector<double const>& state, Vector<double>& result, LinearAllocator<double>&) const {
+    auto s_mat = mat(state);
+    std::size_t nbf = space_.numBasisFunctions();
+    std::size_t index = faultNo * nbf;
+    for (std::size_t node = 0; node < nbf; ++node) {
+
+        auto sn  = traction(node, 0);
+        auto psi = s_mat(node, PsiIndex);
+        auto V   = s_mat(node, VIndex);
+
+        result(0 * nbf + node) = law_.df_dV(index + node, sn, V, psi);
+        result(1 * nbf + node) = law_.df_dpsi(index + node, sn, V, psi);
+        result(2 * nbf + node) = law_.dg_dV();
+        result(3 * nbf + node) = law_.dg_dpsi(psi);           
+    }
+}
+
 
 template <class Law>
 void RateAndState<Law>::getAgeingDerivatives(double delta, double psi, double dV_dS, double dV_dpsi, double& dg_dS, double& dg_dpsi) {    

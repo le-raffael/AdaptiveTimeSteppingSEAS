@@ -52,7 +52,7 @@ public:
         
 
         timeAnalysis.open("timeAnalysis.csv");
-        timeAnalysis << "time,Vmax,count_rhs,errorSrel,errorPSIrel,errorSabs,errorPSIabs,maxPSI,minPSI,maxS,minS" << std::endl;
+        timeAnalysis << "time,Vmax,count_rhs,errorSrel,errorPSIrel,errorSabs,errorPSIabs,maxPSI,minPSI,maxS,minS,fmax" << std::endl;
 
         fault_base_ += "-fault";
         MPI_Comm_rank(seasop_->comm(), &rank_);
@@ -97,10 +97,12 @@ public:
 //        calculateMaxErrors(state);
 
         double Vmax = seasop_->VMax();
+        double fmax = seasop_->fMax();
+        
         timeAnalysis <<std::setprecision(18)<< time << "," << Vmax << "," << 
         seasop_->rhs_count() << ","  << 
         errorSrel_ << "," << errorPSIrel_ << "," << errorSabs_ << "," << errorPSIabs_ << "," <<
-        maxPSI_ << "," << minPSI_ << "," << maxS_ << "," << minS_ << std::endl;
+        maxPSI_ << "," << minPSI_ << "," << maxS_ << "," << minS_ <<"," << fmax << std::endl;
         seasop_->reset_rhs_count();
         
         auto interval = output_interval(seasop_->VMax());

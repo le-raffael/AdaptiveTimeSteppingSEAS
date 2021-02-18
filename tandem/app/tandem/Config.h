@@ -21,6 +21,7 @@ struct OutputConfig {
 
 struct SolverConfig {
     bool use_monitor;
+    std::string solution_size;
     std::string problem_formulation;
     std::string type_eq;
     std::string type_as;
@@ -34,6 +35,8 @@ struct SolverConfig {
     bool custom_time_step_adapter;
     double S_rtol;
     double S_atol;
+    double V_rtol;
+    double V_atol;
     double psi_rtol;
     double psi_atol_eq;
     double psi_atol_as;

@@ -148,10 +148,10 @@ public:
     }
     void set_slip(facet_functional_t fun) { fun_slip = std::move(fun); }
 
-private:
     double penalty(FacetInfo const& info) const {
         return std::max(base::penalty[info.up[0]], base::penalty[info.up[1]]);
     }
+private:
     bool bc_skeleton(std::size_t fctNo, BC bc, double f_q_raw[]) const;
     bool bc_boundary(std::size_t fctNo, BC bc, double f_q_raw[]) const;
 

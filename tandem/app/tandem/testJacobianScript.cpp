@@ -58,7 +58,7 @@ void solve_Jacobian(LocalSimplexMesh<DomainDimension> const& mesh, Config const&
 
     KSP& ksp = adapt->getKSP();
     
-    auto seasop = std::make_shared<seas_op_t>(std::move(fop), std::move(adapt));
+    auto seasop = std::make_shared<seas_op_t>(std::move(fop), std::move(adapt), cfg.solver);
     seasop->lop().set_constant_params(friction_scenario.constant_params());
     seasop->lop().set_params(friction_scenario.param_fun());
     if (friction_scenario.source_fun()) {
@@ -89,13 +89,13 @@ void solve_Jacobian(LocalSimplexMesh<DomainDimension> const& mesh, Config const&
     std::cout << "Test the Jacobian for a symmetric domain with " <<numFaultElements 
               << " fault elements" << std::endl;
 
-    double dt = 1e7;    
+    double dt = 1e8;    
     double nextTime = dt;
 
 
     // initialize full solution vector
     PetscBlockVector xB = PetscBlockVector(blockSize, numFaultElements, seasop->comm());
-    seasop->initial_condition(xB);
+    seasop->initial_condition_compact(xB);
     VectorXd x_init(totalSize);
     writeBlockToEigen(xB, x_init);
 
@@ -104,7 +104,7 @@ void solve_Jacobian(LocalSimplexMesh<DomainDimension> const& mesh, Config const&
         PetscBlockVector xBlock(blockSize, numFaultElements, MPI_COMM_WORLD);
         PetscBlockVector fBlock(blockSize, numFaultElements, MPI_COMM_WORLD);
         writeEigenToBlock(x, xBlock);
-        seasop->rhsODE(nextTime, xBlock, fBlock, true);  // executes the Jacobian update
+        seasop->rhsCompactODE(nextTime, xBlock, fBlock, true);  // executes the Jacobian update
         VectorXd f(totalSize);
         writeBlockToEigen(fBlock, f);
         return f;
@@ -127,7 +127,7 @@ void solve_Jacobian(LocalSimplexMesh<DomainDimension> const& mesh, Config const&
     // VectorXd intermediate = x + 0.5 * dt * rhs(x);
     // VectorXd x_n = x + dt * rhs(intermediate);
 
-    dt = 1e8;
+    dt = 1e5;
 
     VectorXd x_n = x_init;
 
@@ -135,7 +135,7 @@ void solve_Jacobian(LocalSimplexMesh<DomainDimension> const& mesh, Config const&
     VectorXd fx_n = -x_n + x_init + dt * rhs(x_n);
 
     // 2. initialize the Jacobi matrix
-    MatrixXd J = JacobianImplicitEuler(seasop->getJacobianODE(), dt);
+    MatrixXd J = JacobianImplicitEuler(seasop->getJacobianCompactODE(), dt);
 
     int k = 0;
 
@@ -158,10 +158,9 @@ void solve_Jacobian(LocalSimplexMesh<DomainDimension> const& mesh, Config const&
 
         // 5. update Jacobian
         fx_n = -x_n + x_init + dt * rhs(x_n);
-        J = JacobianImplicitEuler(seasop->getJacobianODE(), dt);
+        J = JacobianImplicitEuler(seasop->getJacobianCompactODE(), dt);
     }
     std::cout << "final norm: "<<fx_n.norm()<<std::endl;
-    std::cout << "final Jacobian: "<<std::endl<< J << std::endl;
     VectorXd solutionDirect = x_n;
 
 
@@ -180,8 +179,9 @@ void solve_Jacobian(LocalSimplexMesh<DomainDimension> const& mesh, Config const&
 
     // 1. first evaluation of the implicit Euler with the guess
     VectorXd f_n = -x_n + x_init + dt * rhs(x_n);
+
     // 2. initialize the Jacobi matrix 
-    MatrixXd J_b = JacobianImplicitEuler(seasop->getJacobianODE(), dt);
+    MatrixXd J_b = JacobianImplicitEuler(seasop->getJacobianCompactODE(), dt);
 
     // difference to the previous iteration step
     VectorXd dx_n(totalSize);
@@ -190,7 +190,7 @@ void solve_Jacobian(LocalSimplexMesh<DomainDimension> const& mesh, Config const&
 
     k = 0;
 
-    while (f_n.norm() > 1e-15){
+    while (f_n.squaredNorm() > tol * tol){
         k++;
         std::cout<<"iteration " << k << " with norm: " << f_n.norm() << std::endl;
         x_n_1 = x_n;
@@ -207,7 +207,7 @@ void solve_Jacobian(LocalSimplexMesh<DomainDimension> const& mesh, Config const&
         J_b = J_b + (df_n - J_b * dx_n) / (dx_n.squaredNorm()) * dx_n.transpose();
     }
 
-    J_b = 1 / dt * (J_b + MatrixXd::Identity(totalSize, totalSize));
+    J_b = 1.0 / dt * (J_b + MatrixXd::Identity(totalSize, totalSize));
 
     std::cout << "final norm: "<<f_n.norm()<<std::endl;
     MatrixXd diff = J - J_b;
@@ -215,11 +215,6 @@ void solve_Jacobian(LocalSimplexMesh<DomainDimension> const& mesh, Config const&
     std::cout << "L2-norm of the difference between the Jacobians: " << diff.norm() << std::endl;
     std::cout << "inf-norm of the difference between the Jacobians: " << diff.lpNorm<Infinity>() << std::endl;
 
-    for (int i = 0; i < numFaultElements; ++i){
-        std::cout << " Difference in the Jacobi for element " << i << ": " << std::endl << diff.block(0,i*blockSize,totalSize,blockSize) << std::endl;
-    }
-    std::cout << " Jacobi of Broyden: " << std::endl << J_b.block(0,4*blockSize,totalSize,blockSize) << std::endl;
-    std::cout << " Analytical Jacobi: " << std::endl << J.block(0,4*blockSize,totalSize,blockSize) << std::endl;
 };
 
 

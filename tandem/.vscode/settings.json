@@ -65,5 +65,6 @@
         "bit": "cpp",
         "charconv": "cpp",
         "core": "cpp"
-    }
+    },
+    "C_Cpp.dimInactiveRegions": false
 }
