@@ -86,15 +86,15 @@ void solve_seas_problem(LocalSimplexMesh<DomainDimension> const& mesh, Config co
         seasop->set_boundary(*scenario.boundary());
     } 
 
+    std::cout<<"Perform simulation with "<<seasop->numLocalElements()<<" fault elements " << std::endl;
 
     auto ts = PetscTimeSolver(*seasop, ksp);
-    std::cout<<"Perform simulation with "<<seasop->numLocalElements()<<" fault elements and a block size of " << seasop->block_size() <<std::endl;
 
     std::unique_ptr<seas_writer_t> writer;
     if (cfg.output) {
         writer = std::make_unique<seas_writer_t>(cfg.output->prefix, mesh, cl, seasop,
                                                  PolynomialDegree, cfg.output->V_ref,
-                                                 cfg.output->t_min, cfg.output->t_max, ts);
+                                                 cfg.output->t_min, cfg.output->t_max);
         ts.set_monitor(*writer);
     }
 

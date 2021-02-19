@@ -3,7 +3,6 @@
 
 #include "tandem/AdaptiveOutputStrategy.h"
 
-#include "common/PetscTimeSolver.h"
 #include "petscts.h"  
 #include "petscdm.h" 
 #include "common/PetscBlockVector.h"
@@ -38,17 +37,16 @@ public:
      * @param V_ref reference velocity
      * @param t_min minimum simulation time between two writing operations
      * @param t_max maximum simulation time between two writing operations
-     * @param ts reference to the PETSC time solver instance (use ts_.getTS() for the TS object)
      * @param strategy method to calculate the interval between two writing operations (available: Threshold, Exponential)
      */
     SeasWriter(std::string_view baseName, LocalSimplexMesh<D> const& mesh,
                std::shared_ptr<Curvilinear<D>> cl, std::shared_ptr<SeasOperator> seasop,
-               unsigned degree, double V_ref, double t_min, double t_max, PetscTimeSolver& ts,
+               unsigned degree, double V_ref, double t_min, double t_max,
                AdaptiveOutputStrategy strategy = AdaptiveOutputStrategy::Threshold)
         : seasop_(std::move(seasop)), fault_adapter_(mesh, cl, seasop_->faultMap().fctNos()),
           adapter_(std::move(cl), seasop_->adapter().numLocalElements()), degree_(degree),
           fault_base_(baseName), base_(baseName), V_ref_(V_ref), t_min_(t_min), t_max_(t_max), 
-          ts_(ts), strategy_(strategy){
+          strategy_(strategy){
         
 
         timeAnalysis.open("timeAnalysis.csv");
@@ -152,67 +150,67 @@ private:
      * @param state current state of the system
      */
     template <class BlockVector> void calculateMaxErrors( BlockVector const& state){
-        // reset error values 
-        errorSrel_ = 0;
-        errorPSIrel_ = 0;
-        errorSabs_ = 0;
-        errorPSIabs_ = 0;
-        maxS_ = 0;
-        maxPSI_ = 0;
-        minS_ = 10;
-        minPSI_ = 1;
+        // // reset error values 
+        // errorSrel_ = 0;
+        // errorPSIrel_ = 0;
+        // errorSabs_ = 0;
+        // errorPSIabs_ = 0;
+        // maxS_ = 0;
+        // maxPSI_ = 0;
+        // minS_ = 10;
+        // minPSI_ = 1;
 
-        // create embeded solution vector
-        Vec embeddedSolution;
+        // // create embeded solution vector
+        // Vec embeddedSolution;
 
-        // obtain the order of the numerical scheme
-        int order;                                      
-        CHKERRTHROW(TSRKGetOrder(ts_.getTS(), &order)); // find a more elegant way that also works for non RK schemes
+        // // obtain the order of the numerical scheme
+        // int order;                                      
+        // CHKERRTHROW(TSRKGetOrder(ts_.getTS(), &order)); // find a more elegant way that also works for non RK schemes
 
-        // evaluate X for the embedded method of lower order at the current time step
-        DM dm;
-        CHKERRTHROW(TSGetDM(ts_.getTS(), &dm));
-        CHKERRTHROW(DMGetGlobalVector(dm, &embeddedSolution));
-        CHKERRTHROW(TSEvaluateStep(ts_.getTS(), order-1, embeddedSolution, nullptr));
+        // // evaluate X for the embedded method of lower order at the current time step
+        // DM dm;
+        // CHKERRTHROW(TSGetDM(ts_.getTS(), &dm));
+        // CHKERRTHROW(DMGetGlobalVector(dm, &embeddedSolution));
+        // CHKERRTHROW(TSEvaluateStep(ts_.getTS(), order-1, embeddedSolution, nullptr));
 
-        // get domain characteristics
-        int nbf = seasop_->lop().space().numBasisFunctions();
-        int PsiIndex = RateAndStateBase::TangentialComponents * nbf;
+        // // get domain characteristics
+        // int nbf = seasop_->lop().space().numBasisFunctions();
+        // int PsiIndex = RateAndStateBase::TangentialComponents * nbf;
 
-        // initialize access to Petsc vectors
-        auto s = state.begin_access_readonly();
-        const double* e;
-        CHKERRTHROW(VecGetArrayRead(embeddedSolution, &e));     // can I avoid that with the DM ???
+        // // initialize access to Petsc vectors
+        // auto s = state.begin_access_readonly();
+        // const double* e;
+        // CHKERRTHROW(VecGetArrayRead(embeddedSolution, &e));     // can I avoid that with the DM ???
 
-        // calculate relative and absolute errors in S and PSI
-        for (int noFault = 0; noFault < seasop_->numLocalElements(); noFault++){
-            auto eB = e + noFault * seasop_->block_size();
-            auto sB = state.get_block(s, noFault);
+        // // calculate relative and absolute errors in S and PSI
+        // for (int noFault = 0; noFault < seasop_->numLocalElements(); noFault++){
+        //     auto eB = e + noFault * seasop_->block_size();
+        //     auto sB = state.get_block(s, noFault);
 
-            for (int component = 0; component < RateAndStateBase::TangentialComponents; component++){
-                for (int node = 0; node < nbf; node++){
-                    int i = component * nbf + node;
-                    maxS_ = std::max(maxS_,sB(i));
-                    minS_ = std::min(minS_,sB(i));
-                    errorSabs_ = std::max(errorSabs_, abs(sB(i) - eB[i]));
-                    errorSrel_ = std::max(errorSrel_, 
-                        (sB(i) != 0) ? abs((sB(i) - eB[i]) / sB(i)) : 0);
-                }
-            }
-            for (int node = 0; node < nbf; node++){
-                int i = PsiIndex + node;
-                maxPSI_ = std::max(maxPSI_,sB(i));
-                minPSI_ = std::min(minPSI_,sB(i));
-                errorPSIabs_ = std::max(errorPSIabs_, abs(sB(i) - eB[i]));
-                errorPSIrel_ = std::max(errorPSIrel_, 
-                    (sB(i) != 0) ? abs((sB(i) - eB[i]) / sB(i)) : 0);
-            }
-        }
+        //     for (int component = 0; component < RateAndStateBase::TangentialComponents; component++){
+        //         for (int node = 0; node < nbf; node++){
+        //             int i = component * nbf + node;
+        //             maxS_ = std::max(maxS_,sB(i));
+        //             minS_ = std::min(minS_,sB(i));
+        //             errorSabs_ = std::max(errorSabs_, abs(sB(i) - eB[i]));
+        //             errorSrel_ = std::max(errorSrel_, 
+        //                 (sB(i) != 0) ? abs((sB(i) - eB[i]) / sB(i)) : 0);
+        //         }
+        //     }
+        //     for (int node = 0; node < nbf; node++){
+        //         int i = PsiIndex + node;
+        //         maxPSI_ = std::max(maxPSI_,sB(i));
+        //         minPSI_ = std::min(minPSI_,sB(i));
+        //         errorPSIabs_ = std::max(errorPSIabs_, abs(sB(i) - eB[i]));
+        //         errorPSIrel_ = std::max(errorPSIrel_, 
+        //             (sB(i) != 0) ? abs((sB(i) - eB[i]) / sB(i)) : 0);
+        //     }
+        // }
 
-        // restore access to Petsc vectors
-        CHKERRTHROW(VecRestoreArrayRead(embeddedSolution, &e));
-        state.end_access_readonly(s);
-        CHKERRTHROW(DMRestoreGlobalVector(dm, &embeddedSolution));
+        // // restore access to Petsc vectors
+        // CHKERRTHROW(VecRestoreArrayRead(embeddedSolution, &e));
+        // state.end_access_readonly(s);
+        // CHKERRTHROW(DMRestoreGlobalVector(dm, &embeddedSolution));
 
     } 
 
@@ -243,7 +241,6 @@ private:
     AdaptiveOutputStrategy strategy_;
 
     // error evaluation parameters
-    PetscTimeSolver& ts_;
     double errorSrel_;    
     double errorPSIrel_;    
     double errorSabs_;    

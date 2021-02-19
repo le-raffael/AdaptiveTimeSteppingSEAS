@@ -38,10 +38,12 @@ public:
         int (*customErrorFct)(TS,NormType,PetscInt*,PetscReal*);
         int (*customNewtonFct)(SNES,Vec);
 
-        bool checkAS;           // true if it is a period of aseismic slip, false if it is an eartquake    
+        bool checkAS;                     // true if it is a period of aseismic slip, false if it is an eartquake    
+        bool checkFirstcompactDAE=false;  // true if it is the first step of the compact DAE (need to set stol = 0)
 
         std::shared_ptr<PetscBlockVector> state_compact;        
         std::shared_ptr<PetscBlockVector> state_extended;
+
     }; 
 
 
