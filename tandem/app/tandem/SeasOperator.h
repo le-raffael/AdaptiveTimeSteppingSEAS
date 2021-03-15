@@ -12,6 +12,10 @@
 #include <petscts.h>
 #include <petscvec.h>
 #include <petscksp.h>
+#include <petscsnes.h>
+#include <petsc/private/snesimpl.h>   
+#include <petsc/private/kspimpl.h>
+//#include <../src/snes/impls/ls/lsimpl.h>
 
 #include <Eigen/Dense>
 
@@ -39,10 +43,17 @@ public:
         int (*customNewtonFct)(SNES,Vec);
 
         bool checkAS;                     // true if it is a period of aseismic slip, false if it is an eartquake    
-        bool checkFirstcompactDAE=false;  // true if it is the first step of the compact DAE (need to set stol = 0)
+        bool needRegularizationCompactDAE=false;  // true if it is the first step of the compact DAE (need to set stol = 0)
+
+        double time_eq = 0.;              // stores the time at the beginning of the earthquake 
+
+        double FMax = 0.0;                // Maximum residual - only for output
+        double ratio_addition = 0.0;      // ratio (sigma * df/dS) / (df/dV) - only for output
+
+        std::optional<tndm::SolverConfigSpecific> current_solver_cfg;
 
         std::shared_ptr<PetscBlockVector> state_compact;        
-        std::shared_ptr<PetscBlockVector> state_extended;
+        std::shared_ptr<PetscBlockVector> state_extended;        
 
     }; 
 
@@ -150,7 +161,6 @@ public:
         vector_big.end_access(big_handle);
     }
 
-
     /**
      * transform an extended to a compact formulation
      *  - calculate slip rate by solving the system
@@ -201,7 +211,7 @@ public:
 
             double VMax = lop_->rhsCompactODE(faultNo, time, traction, state_block, result_block, scratch);
 
-            lop_->getJacobianQuantities(faultNo, time, traction, state_block, result_block, JacobianQuantities_block, scratch);
+            lop_->getJacobianQuantitiesCompact(faultNo, time, traction, state_block, result_block, JacobianQuantities_block, scratch);
 
             VMax_ = std::max(VMax_, VMax);
         }
@@ -248,7 +258,7 @@ public:
 
             double VMax = lop_->rhsExtendedODE(faultNo, time, state_block, result_block, scratch, solverParameters_.checkAS);
 
-            lop_->getJacobianQuantities(faultNo, time, traction, state_block, result_block, JacobianQuantities_block, scratch);
+            lop_->getJacobianQuantitiesExtended(faultNo, time, traction, state_block, JacobianQuantities_block, scratch);
 
             if (error_extended_ODE_ >= 0) error_extended_ODE_ = std::max(error_extended_ODE_, 
                 lop_->applyMaxFrictionLaw(faultNo, time, traction, state_block, scratch));
@@ -277,11 +287,12 @@ public:
      * @param result evaluation of the function F()
      */
     template <typename BlockVector> void lhsCompactDAE(double time, BlockVector& state, BlockVector& state_der, BlockVector& result) {
+        time += solverParameters_.time_eq;
         adapter_->solve(time, state);
 
         auto scratch = make_scratch();
         auto in_handle = state.begin_access_readonly();
-        auto in_der_handle = state_der.begin_access();
+        auto in_der_handle = state_der.begin_access_readonly();
         auto out_handle = result.begin_access();
         
         auto outJac_handle = JacobianQuantities_->begin_access();
@@ -290,6 +301,7 @@ public:
             return state.get_block(in_handle, faultNo);
         });
         VMax_ = 0.0;
+        double FMax = 0.0;
         for (std::size_t faultNo = 0, num = numLocalElements(); faultNo < num; ++faultNo) {
             adapter_->traction(faultNo, traction, scratch);
 
@@ -300,7 +312,7 @@ public:
 
             double VMax = lop_->lhsCompactDAE(faultNo, time, traction, state_block, state_der_block, result_block, scratch);
 
-            lop_->getJacobianQuantities(faultNo, time, traction, state_block, state_der_block, JacobianQuantities_block, scratch);
+            lop_->getJacobianQuantitiesCompact(faultNo, time, traction, state_block, state_der_block, JacobianQuantities_block, scratch);
 
             VMax_ = std::max(VMax_, VMax);
             // std::cout << "u     at fault " << faultNo <<": ";
@@ -318,9 +330,13 @@ public:
             //     std::cout << result_block(i) << " ";
             // }
             // std::cout<<std::endl;
+            for (int i = 0; i < block_size(); ++i) {
+                FMax = std::max(FMax, std::abs(result_block(i)));
+            }
         }
+        solverParameters_.FMax = FMax;
         adapter_->end_traction();
-        state_der.end_access(in_der_handle);
+        state_der.end_access_readonly(in_der_handle);
         state.end_access_readonly(in_handle);
         result.end_access(out_handle);
         JacobianQuantities_->end_access(outJac_handle);
@@ -339,11 +355,12 @@ public:
      * @param result evaluation of the function F()
      */
     template <typename BlockVector> void lhsExtendedDAE(double time, BlockVector& state, BlockVector& state_der, BlockVector& result) {
+        time += solverParameters_.time_eq;
         adapter_->solve(time, state);
 
         auto scratch = make_scratch();
         auto in_handle = state.begin_access_readonly();
-        auto in_der_handle = state_der.begin_access();
+        auto in_der_handle = state_der.begin_access_readonly();
         auto out_handle = result.begin_access();
         
         auto outJac_handle = JacobianQuantities_->begin_access();
@@ -351,7 +368,8 @@ public:
         adapter_->begin_traction([&state, &in_handle](std::size_t faultNo) {
             return state.get_block(in_handle, faultNo);
         });
-        VMax_ = 0.0;
+        VMax_ = 0.0;        
+        double FMax = 0.0;
         for (std::size_t faultNo = 0, num = numLocalElements(); faultNo < num; ++faultNo) {
             adapter_->traction(faultNo, traction, scratch);
 
@@ -362,12 +380,16 @@ public:
 
             double VMax = lop_->lhsExtendedDAE(faultNo, time, traction, state_block, state_der_block, result_block, scratch);
 
-            lop_->getJacobianQuantities(faultNo, time, traction, state_block, JacobianQuantities_block, scratch);
+            lop_->getJacobianQuantitiesExtended(faultNo, time, traction, state_block, JacobianQuantities_block, scratch);
 
             VMax_ = std::max(VMax_, VMax);
+            for (int i = 0; i < block_size(); ++i) {     
+                FMax = std::max(FMax, std::abs(result_block(i)));
+            }
         }
+        solverParameters_.FMax = FMax;                  
         adapter_->end_traction();
-        state_der.end_access(in_der_handle);
+        state_der.end_access_readonly(in_der_handle);
         state.end_access_readonly(in_handle);
         result.end_access(out_handle);
         JacobianQuantities_->end_access(outJac_handle);
@@ -432,7 +454,7 @@ public:
 
     double VMax() const { return VMax_; }
 
-    double fMax() const { return (error_extended_ODE_ >= 0) ? error_extended_ODE_ : 0.0; }
+    double fMax() const { return (error_extended_ODE_ >= 0) ? error_extended_ODE_ : solverParameters_.FMax; }
     
     LocalOperator& lop() {return *lop_; }
 
@@ -617,7 +639,6 @@ public:
         VectorXd df_dpsi_vec(numFaultNodes);
         VectorXd dg_dV_vec(numFaultNodes);                             
         VectorXd dg_dpsi_vec(numFaultNodes);
-        VectorXd f_vec(numFaultNodes);
 
         auto accessRead = JacobianQuantities_->begin_access_readonly();
         for (int noFault = 0; noFault < numFaultElements; noFault++){
@@ -645,6 +666,16 @@ public:
         double* J;
         CHKERRTHROW(MatDenseGetArrayRead(df_dS_, &df_dS));
         CHKERRTHROW(MatDenseGetArrayWrite(Jac, &J));
+
+        solverParameters_.ratio_addition = 0.0;
+        double ratio;
+        for (int i = 0; i < numFaultNodes; ++i) {
+            ratio = sigma * df_dV_vec(i) / df_dS[i + i * numFaultNodes];
+            std::cout << sigma << ": dg/dpsi: " << dg_dpsi_vec(i) << ", df/dS: "<< df_dS[i + i * numFaultNodes] << std::endl;
+            solverParameters_.ratio_addition = std::max(solverParameters_.ratio_addition, std::abs(ratio));
+        }
+
+
         for (int noFault = 0; noFault < numFaultElements; noFault++){
             for (int i = 0; i < nbf; i++){                  // row iteration
                 S_i = noFault * blockSize + i;
@@ -660,8 +691,7 @@ public:
                 // components F_x
                 J[S_i   + PSI_i * totalSize] += df_dpsi_vec(n_i);
                 J[PSI_i + PSI_i * totalSize] += dg_dpsi_vec(n_i);
-                
-
+                                
                 for (int noFault2 = 0; noFault2 < numFaultElements; noFault2++){
                     for(int j = 0; j < nbf; j++) {          // column iteration
 
@@ -778,7 +808,6 @@ public:
         CHKERRTHROW(MatDenseRestoreArrayWrite(Jac, &J));
     }
 
-
     Mat& getJacobianCompactODE() { return Jacobian_compact_ode_; }
 
     Mat& getJacobianExtendedODE() { return Jacobian_extended_ode_; }
@@ -798,6 +827,10 @@ public:
     double getV0(){ return lop_->getV0(); }
 
     void setExtendedFormulation(bool is) { lop_->setExtendedFormulation(is); }
+
+    void setTSInstance(TS ts) { ts_ = ts; }
+
+    void resetDivergenceTest() { solverParameters_.FMax = -1.0; }
 
     /**
      * Allocate memory in scratch
@@ -1463,6 +1496,8 @@ public:
 
     Vec x_prev_;                            // solution at the previous timestep (unused)
     Vec rhs_prev_;                          // rhs evaluation at the previous timestep (unused)
+
+    TS ts_;                                 // TS instance
 
 };
 

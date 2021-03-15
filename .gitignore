@@ -10,11 +10,11 @@ compile_commands.json
 CTestTestfile.cmake
 _deps
 *.vtu
+*.pvtu
 *.vtk
-*.csv
 *.ipynb_checkpoints*
-build/
-results/
+tandem/build/*
 *.json
 *.cyp
 *.msh
+*.log

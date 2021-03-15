@@ -134,9 +134,9 @@ int main(int argc, char** argv) {
         .default_value("5dp")
         .help("type of the Runge-Kutta scheme (use Petsc standard). Does not need to be provided if no Runge-Kutta scheme is used. ['3bs', '5dp', ... ]");
     earthquakeSchema.add_value("bdf_order", &SolverConfigSpecific::bdf_order)
-        .validator([](auto&& x) { return ((x > 0) || (x <= 6)); })
+        .validator([](auto&& x) { return ((x >= 0) || (x <= 6)); })
         .default_value(4)
-        .help("Order of the BDF scheme. Does not need to be provided if no BDF scheme is used");
+        .help("Order of the BDF scheme. Does not need to be provided if no BDF scheme is used. Set 0 to adaptively change the order.");
     earthquakeSchema.add_value("S_atol", &SolverConfigSpecific::S_atol)
         .validator([](auto&& x) { return x >= 0; })
         .default_value(1e-7)

@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.18 (TeX Live 2017/Debian) (preloaded format=pdflatex 2021.1.6)  15 FEB 2021 14:21
+This is pdfTeX, Version 3.14159265-2.6-1.40.18 (TeX Live 2017/Debian) (preloaded format=pdflatex 2021.1.6)  15 MAR 2021 18:38
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -2508,49 +2508,49 @@ l.32 \subsection
 
 
 ] [2] [3]
-<images/analysis_RKF45_TS.png, id=261, 722.7pt x 722.7pt>
+<images/analysis_RKF45_TS.png, id=241, 722.7pt x 722.7pt>
 File: images/analysis_RKF45_TS.png Graphic file (type png)
 <use images/analysis_RKF45_TS.png>
 Package pdftex.def Info: images/analysis_RKF45_TS.png  used on input line 119.
 (pdftex.def)             Requested size: 145.68144pt x 145.67326pt.
-<images/analysis_RKF45_NI.png, id=263, 722.7pt x 722.7pt>
+<images/analysis_RKF45_NI.png, id=243, 722.7pt x 722.7pt>
 File: images/analysis_RKF45_NI.png Graphic file (type png)
 <use images/analysis_RKF45_NI.png>
 Package pdftex.def Info: images/analysis_RKF45_NI.png  used on input line 125.
 (pdftex.def)             Requested size: 145.68144pt x 145.67326pt.
-<images/analysis_RKF45_psi.png, id=264, 722.7pt x 722.7pt>
+<images/analysis_RKF45_psi.png, id=244, 722.7pt x 722.7pt>
 File: images/analysis_RKF45_psi.png Graphic file (type png)
 <use images/analysis_RKF45_psi.png>
 Package pdftex.def Info: images/analysis_RKF45_psi.png  used on input line 131.
 
 (pdftex.def)             Requested size: 145.68144pt x 145.67326pt.
-<images/analysis_BDF12_TS.png, id=267, 722.7pt x 722.7pt>
+<images/analysis_BDF12_TS.png, id=247, 722.7pt x 722.7pt>
 File: images/analysis_BDF12_TS.png Graphic file (type png)
 <use images/analysis_BDF12_TS.png>
 Package pdftex.def Info: images/analysis_BDF12_TS.png  used on input line 144.
 (pdftex.def)             Requested size: 145.68144pt x 145.67326pt.
-<images/analysis_BDF12_NI.png, id=268, 722.7pt x 722.7pt>
+<images/analysis_BDF12_NI.png, id=248, 722.7pt x 722.7pt>
 File: images/analysis_BDF12_NI.png Graphic file (type png)
 <use images/analysis_BDF12_NI.png>
 Package pdftex.def Info: images/analysis_BDF12_NI.png  used on input line 150.
 (pdftex.def)             Requested size: 145.68144pt x 145.67326pt.
-<images/analysis_BDF12_psi.png, id=269, 722.7pt x 722.7pt>
+<images/analysis_BDF12_psi.png, id=249, 722.7pt x 722.7pt>
 File: images/analysis_BDF12_psi.png Graphic file (type png)
 <use images/analysis_BDF12_psi.png>
 Package pdftex.def Info: images/analysis_BDF12_psi.png  used on input line 156.
 
 (pdftex.def)             Requested size: 145.68144pt x 145.67326pt.
-<images/analysis_BDF23_TS.png, id=272, 722.7pt x 722.7pt>
+<images/analysis_BDF23_TS.png, id=252, 722.7pt x 722.7pt>
 File: images/analysis_BDF23_TS.png Graphic file (type png)
 <use images/analysis_BDF23_TS.png>
 Package pdftex.def Info: images/analysis_BDF23_TS.png  used on input line 169.
 (pdftex.def)             Requested size: 145.68144pt x 145.67326pt.
-<images/analysis_BDF23_NI.png, id=273, 722.7pt x 722.7pt>
+<images/analysis_BDF23_NI.png, id=253, 722.7pt x 722.7pt>
 File: images/analysis_BDF23_NI.png Graphic file (type png)
 <use images/analysis_BDF23_NI.png>
 Package pdftex.def Info: images/analysis_BDF23_NI.png  used on input line 175.
 (pdftex.def)             Requested size: 145.68144pt x 145.67326pt.
-<images/analysis_BDF23_psi.png, id=274, 722.7pt x 722.7pt>
+<images/analysis_BDF23_psi.png, id=254, 722.7pt x 722.7pt>
 File: images/analysis_BDF23_psi.png Graphic file (type png)
 <use images/analysis_BDF23_psi.png>
 Package pdftex.def Info: images/analysis_BDF23_psi.png  used on input line 181.
@@ -2573,43 +2573,43 @@ Underfull \hbox (badness 10000) in paragraph at lines 196--200
 
 [5 <./images/analysis_BDF23_TS.png> <./images/analysis_BDF23_NI.png> <./images/
 analysis_BDF23_psi.png>]
-<images/timeEvolutionValues.png, id=308, 681.0243pt x 406.3983pt>
+<images/timeEvolutionValues.png, id=288, 681.0243pt x 406.3983pt>
 File: images/timeEvolutionValues.png Graphic file (type png)
 <use images/timeEvolutionValues.png>
 Package pdftex.def Info: images/timeEvolutionValues.png  used on input line 210
 .
 (pdftex.def)             Requested size: 195.75163pt x 116.8107pt.
-<images/timeEvolutionDT.png, id=309, 629.2308pt x 433.8609pt>
+<images/timeEvolutionDT.png, id=289, 629.2308pt x 433.8609pt>
 File: images/timeEvolutionDT.png Graphic file (type png)
 <use images/timeEvolutionDT.png>
 Package pdftex.def Info: images/timeEvolutionDT.png  used on input line 216.
 (pdftex.def)             Requested size: 195.75163pt x 134.97214pt.
-<images/timeEvolutionPSIerror.png, id=315, 601.2864pt x 440.847pt>
+<images/timeEvolutionPSIerror.png, id=295, 601.2864pt x 440.847pt>
 File: images/timeEvolutionPSIerror.png Graphic file (type png)
 <use images/timeEvolutionPSIerror.png>
 Package pdftex.def Info: images/timeEvolutionPSIerror.png  used on input line 2
 31.
 (pdftex.def)             Requested size: 195.75163pt x 143.51573pt.
-<images/timeEvolutionVerror.png, id=316, 651.1527pt x 425.6703pt>
+<images/timeEvolutionVerror.png, id=296, 651.1527pt x 425.6703pt>
 File: images/timeEvolutionVerror.png Graphic file (type png)
 <use images/timeEvolutionVerror.png>
 Package pdftex.def Info: images/timeEvolutionVerror.png  used on input line 237
 .
 (pdftex.def)             Requested size: 195.75163pt x 127.96837pt.
  [6 <./images/timeEvolutionValues.png> <./images/timeEvolutionDT.png>]
-<images/errorEstimateRKF45.png, id=329, 651.1527pt x 440.3652pt>
+<images/errorEstimateRKF45.png, id=309, 651.1527pt x 440.3652pt>
 File: images/errorEstimateRKF45.png Graphic file (type png)
 <use images/errorEstimateRKF45.png>
 Package pdftex.def Info: images/errorEstimateRKF45.png  used on input line 252.
 
 (pdftex.def)             Requested size: 145.68144pt x 98.52017pt.
-<images/errorEstimateBDF12.png, id=330, 651.1527pt x 451.2057pt>
+<images/errorEstimateBDF12.png, id=310, 651.1527pt x 451.2057pt>
 File: images/errorEstimateBDF12.png Graphic file (type png)
 <use images/errorEstimateBDF12.png>
 Package pdftex.def Info: images/errorEstimateBDF12.png  used on input line 258.
 
 (pdftex.def)             Requested size: 145.68144pt x 100.94545pt.
-<images/errorEstimateBDF23.png, id=331, 651.1527pt x 447.5922pt>
+<images/errorEstimateBDF23.png, id=311, 651.1527pt x 447.5922pt>
 File: images/errorEstimateBDF23.png Graphic file (type png)
 <use images/errorEstimateBDF23.png>
 Package pdftex.def Info: images/errorEstimateBDF23.png  used on input line 264.
@@ -2622,7 +2622,7 @@ rEstimateBDF23.png>]) [8]
 
  (./TwoDimensionalSEASProblem.tex
 Chapter 2.
-<images/BP1_MESH_200.png, id=350, 600.2425pt x 599.23875pt>
+<images/BP1_MESH_200.png, id=330, 600.2425pt x 599.23875pt>
 File: images/BP1_MESH_200.png Graphic file (type png)
 <use images/BP1_MESH_200.png>
 Package pdftex.def Info: images/BP1_MESH_200.png  used on input line 25.
@@ -2641,226 +2641,264 @@ Underfull \hbox (badness 10000) in paragraph at lines 37--39
 
  []
 
-
-Underfull \hbox (badness 10000) in paragraph at lines 50--52
-
- []
-
-[10 <./images/BP1_MESH_200.png>] [11]
-Underfull \hbox (badness 10000) in paragraph at lines 110--112
+[10 <./images/BP1_MESH_200.png>] [11] [12] [13] [14]
+Underfull \hbox (badness 10000) in paragraph at lines 271--273
 
  []
 
-[12] [13] [14] [15]
-<images/NewtonIterationConvergence5Elements.png, id=446, 673.3155pt x 469.5141p
-t>
-File: images/NewtonIterationConvergence5Elements.png Graphic file (type png)
-<use images/NewtonIterationConvergence5Elements.png>
-Package pdftex.def Info: images/NewtonIterationConvergence5Elements.png  used o
-n input line 328.
-(pdftex.def)             Requested size: 131.1124pt x 91.42233pt.
-<images/NewtonIterationConvergence40Elements.png, id=447, 673.3155pt x 469.5141
-pt>
-File: images/NewtonIterationConvergence40Elements.png Graphic file (type png)
-<use images/NewtonIterationConvergence40Elements.png>
-Package pdftex.def Info: images/NewtonIterationConvergence40Elements.png  used 
-on input line 333.
-(pdftex.def)             Requested size: 145.68144pt x 101.58118pt.
-<images/NewtonIterationConvergence200Elements.png, id=448, 673.3155pt x 469.514
-1pt>
-File: images/NewtonIterationConvergence200Elements.png Graphic file (type png)
-<use images/NewtonIterationConvergence200Elements.png>
-Package pdftex.def Info: images/NewtonIterationConvergence200Elements.png  used
- on input line 338.
-(pdftex.def)             Requested size: 145.68144pt x 101.58118pt.
- [16 <./images/NewtonIterationConvergence5Elements.png> <./images/NewtonIterati
-onConvergence40Elements.png> <./images/NewtonIterationConvergence200Elements.pn
-g>] [17]
+[15] [16]
 
-LaTeX Warning: Reference `eq:???' on page 18 undefined on input line 381.
+LaTeX Warning: Reference `eq:???' on page 17 undefined on input line 328.
 
-<images/TANDEMtimeEvolutionVExtendedODE1stvs2ndOrder.png, id=475, 644.6484pt x 
+<images/TANDEMtimeEvolutionVExtendedODE1stvs2ndOrder.png, id=442, 644.6484pt x 
 442.5333pt>
 File: images/TANDEMtimeEvolutionVExtendedODE1stvs2ndOrder.png Graphic file (typ
 e png)
 <use images/TANDEMtimeEvolutionVExtendedODE1stvs2ndOrder.png>
 Package pdftex.def Info: images/TANDEMtimeEvolutionVExtendedODE1stvs2ndOrder.pn
-g  used on input line 387.
+g  used on input line 334.
 (pdftex.def)             Requested size: 204.85846pt x 140.62767pt.
-[18]
-Underfull \hbox (badness 10000) in paragraph at lines 396--397
+[17]
+Underfull \hbox (badness 10000) in paragraph at lines 345--346
 
  []
 
-[19 <./images/TANDEMtimeEvolutionVExtendedODE1stvs2ndOrder.png>]
-<images/TANDEMtimeEvolutionFExtendedODEDifferentTolerances.png, id=495, 644.648
-4pt x 449.2785pt>
-File: images/TANDEMtimeEvolutionFExtendedODEDifferentTolerances.png Graphic fil
-e (type png)
-<use images/TANDEMtimeEvolutionFExtendedODEDifferentTolerances.png>
-Package pdftex.def Info: images/TANDEMtimeEvolutionFExtendedODEDifferentToleran
-ces.png  used on input line 404.
-(pdftex.def)             Requested size: 204.85846pt x 142.77115pt.
-<images/TANDEMtimeEvolutionFLTEExtendedODEDifferentTolerances.png, id=496, 655.
-248pt x 442.5333pt>
-File: images/TANDEMtimeEvolutionFLTEExtendedODEDifferentTolerances.png Graphic 
+
+Underfull \hbox (badness 10000) in paragraph at lines 346--347
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 359--360
+
+ []
+
+[18 <./images/TANDEMtimeEvolutionVExtendedODE1stvs2ndOrder.png>]
+Underfull \hbox (badness 10000) in paragraph at lines 383--384
+
+ []
+
+<images/NewtonIterationConvergence5Elements.png, id=469, 673.3155pt x 469.5141p
+t>
+File: images/NewtonIterationConvergence5Elements.png Graphic file (type png)
+<use images/NewtonIterationConvergence5Elements.png>
+Package pdftex.def Info: images/NewtonIterationConvergence5Elements.png  used o
+n input line 410.
+(pdftex.def)             Requested size: 131.1124pt x 91.42233pt.
+<images/NewtonIterationConvergence40Elements.png, id=470, 673.3155pt x 469.5141
+pt>
+File: images/NewtonIterationConvergence40Elements.png Graphic file (type png)
+<use images/NewtonIterationConvergence40Elements.png>
+Package pdftex.def Info: images/NewtonIterationConvergence40Elements.png  used 
+on input line 415.
+(pdftex.def)             Requested size: 145.68144pt x 101.58118pt.
+<images/NewtonIterationConvergence200Elements.png, id=471, 673.3155pt x 469.514
+1pt>
+File: images/NewtonIterationConvergence200Elements.png Graphic file (type png)
+<use images/NewtonIterationConvergence200Elements.png>
+Package pdftex.def Info: images/NewtonIterationConvergence200Elements.png  used
+ on input line 420.
+(pdftex.def)             Requested size: 145.68144pt x 101.58118pt.
+[19]
+Underfull \hbox (badness 10000) in paragraph at lines 429--431
+
+ []
+
+<images/TANDEMConvergenceAnalysisCompactDAENewton_Size5.png, id=485, 681.9879pt
+ x 459.3963pt>
+File: images/TANDEMConvergenceAnalysisCompactDAENewton_Size5.png Graphic file (
+type png)
+<use images/TANDEMConvergenceAnalysisCompactDAENewton_Size5.png>
+Package pdftex.def Info: images/TANDEMConvergenceAnalysisCompactDAENewton_Size5
+.png  used on input line 436.
+(pdftex.def)             Requested size: 131.1124pt x 88.31664pt.
+<images/TANDEMConvergenceAnalysisCompactDAEMaxResidual_Size5.png, id=486, 692.3
+466pt x 459.3963pt>
+File: images/TANDEMConvergenceAnalysisCompactDAEMaxResidual_Size5.png Graphic f
+ile (type png)
+<use images/TANDEMConvergenceAnalysisCompactDAEMaxResidual_Size5.png>
+Package pdftex.def Info: images/TANDEMConvergenceAnalysisCompactDAEMaxResidual_
+Size5.png  used on input line 442.
+(pdftex.def)             Requested size: 145.68144pt x 96.65833pt.
+<images/TANDEMConvergenceAnalysisCompactDAERatioInAddition_Size5.png, id=487, 6
+85.6014pt x 459.3963pt>
+File: images/TANDEMConvergenceAnalysisCompactDAERatioInAddition_Size5.png Graph
+ic file (type png)
+<use images/TANDEMConvergenceAnalysisCompactDAERatioInAddition_Size5.png>
+Package pdftex.def Info: images/TANDEMConvergenceAnalysisCompactDAERatioInAddit
+ion_Size5.png  used on input line 448.
+(pdftex.def)             Requested size: 145.68144pt x 97.61165pt.
+[20 <./images/NewtonIterationConvergence5Elements.png> <./images/NewtonIteratio
+nConvergence40Elements.png> <./images/NewtonIterationConvergence200Elements.png
+>]
+<images/TANDEMConvergenceAnalysisExtendedDAEMaxResidual_Size5.png, id=502, 652.
+5981pt x 442.5333pt>
+File: images/TANDEMConvergenceAnalysisExtendedDAEMaxResidual_Size5.png Graphic 
 file (type png)
-<use images/TANDEMtimeEvolutionFLTEExtendedODEDifferentTolerances.png>
-Package pdftex.def Info: images/TANDEMtimeEvolutionFLTEExtendedODEDifferentTole
-rances.png  used on input line 410.
-(pdftex.def)             Requested size: 204.85846pt x 138.35208pt.
-<images/TANDEMtimeEvolutionFExtendedODEDifferentSizes.png, id=499, 644.6484pt x
- 449.2785pt>
-File: images/TANDEMtimeEvolutionFExtendedODEDifferentSizes.png Graphic file (ty
-pe png)
-<use images/TANDEMtimeEvolutionFExtendedODEDifferentSizes.png>
-Package pdftex.def Info: images/TANDEMtimeEvolutionFExtendedODEDifferentSizes.p
-ng  used on input line 423.
-(pdftex.def)             Requested size: 204.85846pt x 142.77115pt.
-<images/TANDEMtimeEvolutionFLTEExtendedODEDifferentSizes.png, id=500, 658.1388p
-t x 442.5333pt>
-File: images/TANDEMtimeEvolutionFLTEExtendedODEDifferentSizes.png Graphic file 
-(type png)
-<use images/TANDEMtimeEvolutionFLTEExtendedODEDifferentSizes.png>
-Package pdftex.def Info: images/TANDEMtimeEvolutionFLTEExtendedODEDifferentSize
-s.png  used on input line 429.
-(pdftex.def)             Requested size: 204.85846pt x 137.74435pt.
- [20 <./images/TANDEMtimeEvolutionFExtendedODEDifferentTolerances.png> <./image
-s/TANDEMtimeEvolutionFLTEExtendedODEDifferentTolerances.png> <./images/TANDEMti
-meEvolutionFExtendedODEDifferentSizes.png> <./images/TANDEMtimeEvolutionFLTEExt
-endedODEDifferentSizes.png>]
-Underfull \hbox (badness 10000) in paragraph at lines 448--449
-
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 449--450
-
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 461--462
-
- []
-
-[21]
-<images/TANDEMcompareFormulationstimeEvolutionVall.png, id=522, 674.2791pt x 45
+<use images/TANDEMConvergenceAnalysisExtendedDAEMaxResidual_Size5.png>
+Package pdftex.def Info: images/TANDEMConvergenceAnalysisExtendedDAEMaxResidual
+_Size5.png  used on input line 460.
+(pdftex.def)             Requested size: 204.85846pt x 138.91254pt.
+ [21 <./images/TANDEMConvergenceAnalysisCompactDAENewton_Size5.png> <./images/T
+ANDEMConvergenceAnalysisCompactDAEMaxResidual_Size5.png> <./images/TANDEMConver
+genceAnalysisCompactDAERatioInAddition_Size5.png> <./images/TANDEMConvergenceAn
+alysisExtendedDAEMaxResidual_Size5.png>]
+<images/TANDEMcompareFormulationstimeEvolutionVall.png, id=514, 674.0382pt x 45
 9.3963pt>
 File: images/TANDEMcompareFormulationstimeEvolutionVall.png Graphic file (type 
 png)
 <use images/TANDEMcompareFormulationstimeEvolutionVall.png>
 Package pdftex.def Info: images/TANDEMcompareFormulationstimeEvolutionVall.png 
- used on input line 487.
-(pdftex.def)             Requested size: 145.68144pt x 99.25195pt.
-<images/TANDEMcompareFormulationstimeEvolutionVsurroundings.png, id=523, 712.34
+ used on input line 478.
+(pdftex.def)             Requested size: 145.68144pt x 99.287pt.
+<images/TANDEMcompareFormulationstimeEvolutionVsurroundings.png, id=515, 712.34
 13pt x 459.3963pt>
 File: images/TANDEMcompareFormulationstimeEvolutionVsurroundings.png Graphic fi
 le (type png)
 <use images/TANDEMcompareFormulationstimeEvolutionVsurroundings.png>
 Package pdftex.def Info: images/TANDEMcompareFormulationstimeEvolutionVsurround
-ings.png  used on input line 492.
+ings.png  used on input line 483.
 (pdftex.def)             Requested size: 145.68144pt x 93.95253pt.
-<images/TANDEMcompareFormulationstimeEvolutionVearthquake.png, id=524, 673.5564
+<images/TANDEMcompareFormulationstimeEvolutionVearthquake.png, id=516, 725.3499
 pt x 459.3963pt>
 File: images/TANDEMcompareFormulationstimeEvolutionVearthquake.png Graphic file
  (type png)
 <use images/TANDEMcompareFormulationstimeEvolutionVearthquake.png>
 Package pdftex.def Info: images/TANDEMcompareFormulationstimeEvolutionVearthqua
-ke.png  used on input line 497.
-(pdftex.def)             Requested size: 145.68144pt x 99.3571pt.
-<images/TANDEMcompareFormulationstimeEvolutionDTall.png, id=525, 673.7973pt x 4
-59.3963pt>
+ke.png  used on input line 488.
+(pdftex.def)             Requested size: 145.68144pt x 92.26317pt.
+<images/TANDEMcompareFormulationstimeEvolutionDTall.png, id=517, 673.5564pt x 4
+61.3235pt>
 File: images/TANDEMcompareFormulationstimeEvolutionDTall.png Graphic file (type
  png)
 <use images/TANDEMcompareFormulationstimeEvolutionDTall.png>
 Package pdftex.def Info: images/TANDEMcompareFormulationstimeEvolutionDTall.png
-  used on input line 509.
-(pdftex.def)             Requested size: 145.68144pt x 99.32205pt.
-<images/TANDEMcompareFormulationstimeEvolutionDTsurroundings.png, id=526, 711.8
-595pt x 459.3963pt>
+  used on input line 500.
+(pdftex.def)             Requested size: 145.68144pt x 99.77391pt.
+<images/TANDEMcompareFormulationstimeEvolutionDTsurroundings.png, id=518, 711.8
+595pt x 461.3235pt>
 File: images/TANDEMcompareFormulationstimeEvolutionDTsurroundings.png Graphic f
 ile (type png)
 <use images/TANDEMcompareFormulationstimeEvolutionDTsurroundings.png>
 Package pdftex.def Info: images/TANDEMcompareFormulationstimeEvolutionDTsurroun
-dings.png  used on input line 514.
-(pdftex.def)             Requested size: 145.68144pt x 94.01563pt.
-<images/TANDEMcompareFormulationstimeEvolutionDTearthquake.png, id=527, 673.074
-6pt x 459.3963pt>
+dings.png  used on input line 505.
+(pdftex.def)             Requested size: 145.68144pt x 94.41002pt.
+<images/TANDEMcompareFormulationstimeEvolutionDTearthquake.png, id=519, 724.868
+1pt x 461.3235pt>
 File: images/TANDEMcompareFormulationstimeEvolutionDTearthquake.png Graphic fil
 e (type png)
 <use images/TANDEMcompareFormulationstimeEvolutionDTearthquake.png>
 Package pdftex.def Info: images/TANDEMcompareFormulationstimeEvolutionDTearthqu
-ake.png  used on input line 519.
-(pdftex.def)             Requested size: 145.68144pt x 99.4272pt.
-<images/TANDEMcompareFormulationstimeEvolutionRHSall.png, id=528, 646.5756pt x 
+ake.png  used on input line 510.
+(pdftex.def)             Requested size: 145.68144pt x 92.71356pt.
+<images/TANDEMcompareFormulationstimeEvolutionRHSall.png, id=520, 646.3347pt x 
 459.3963pt>
 File: images/TANDEMcompareFormulationstimeEvolutionRHSall.png Graphic file (typ
 e png)
 <use images/TANDEMcompareFormulationstimeEvolutionRHSall.png>
 Package pdftex.def Info: images/TANDEMcompareFormulationstimeEvolutionRHSall.pn
-g  used on input line 531.
-(pdftex.def)             Requested size: 145.68144pt x 103.50691pt.
-<images/TANDEMcompareFormulationstimeEvolutionRHSsurroundings.png, id=529, 684.
+g  used on input line 522.
+(pdftex.def)             Requested size: 145.68144pt x 103.54196pt.
+<images/TANDEMcompareFormulationstimeEvolutionRHSsurroundings.png, id=521, 684.
 8787pt x 459.3963pt>
 File: images/TANDEMcompareFormulationstimeEvolutionRHSsurroundings.png Graphic 
 file (type png)
 <use images/TANDEMcompareFormulationstimeEvolutionRHSsurroundings.png>
 Package pdftex.def Info: images/TANDEMcompareFormulationstimeEvolutionRHSsurrou
-ndings.png  used on input line 536.
+ndings.png  used on input line 527.
 (pdftex.def)             Requested size: 145.68144pt x 97.7168pt.
-<images/TANDEMcompareFormulationstimeEvolutionRHSearthquake.png, id=530, 645.85
-29pt x 459.3963pt>
+<images/TANDEMcompareFormulationstimeEvolutionRHSearthquake.png, id=522, 697.64
+64pt x 459.3963pt>
 File: images/TANDEMcompareFormulationstimeEvolutionRHSearthquake.png Graphic fi
 le (type png)
 <use images/TANDEMcompareFormulationstimeEvolutionRHSearthquake.png>
 Package pdftex.def Info: images/TANDEMcompareFormulationstimeEvolutionRHSearthq
-uake.png  used on input line 541.
-(pdftex.def)             Requested size: 145.68144pt x 103.61906pt.
+uake.png  used on input line 532.
+(pdftex.def)             Requested size: 145.68144pt x 95.92929pt.
  [22 <./images/TANDEMcompareFormulationstimeEvolutionVall.png> <./images/TANDEM
 compareFormulationstimeEvolutionVsurroundings.png> <./images/TANDEMcompareFormu
 lationstimeEvolutionVearthquake.png> <./images/TANDEMcompareFormulationstimeEvo
 lutionDTall.png> <./images/TANDEMcompareFormulationstimeEvolutionDTsurroundings
 .png> <./images/TANDEMcompareFormulationstimeEvolutionDTearthquake.png>]
-<images/TANDEMtimeEvolutionErrorall_RKDP5.png, id=544, 722.7pt x 505.89pt>
-File: images/TANDEMtimeEvolutionErrorall_RKDP5.png Graphic file (type png)
-<use images/TANDEMtimeEvolutionErrorall_RKDP5.png>
-Package pdftex.def Info: images/TANDEMtimeEvolutionErrorall_RKDP5.png  used on 
-input line 566.
-(pdftex.def)             Requested size: 273.14923pt x 191.20581pt.
-
-[23 <./images/TANDEMcompareFormulationstimeEvolutionRHSall.png> <./images/TANDE
-McompareFormulationstimeEvolutionRHSsurroundings.png> <./images/TANDEMcompareFo
-rmulationstimeEvolutionRHSearthquake.png>]
-Underfull \hbox (badness 10000) in paragraph at lines 570--572
+Underfull \hbox (badness 10000) in paragraph at lines 541--542
 
  []
 
-<images/TANDEMtimeEvolutionMinMaxAll_RKDP5.png, id=557, 722.7pt x 505.89pt>
+<images/TANDEMtimeEvolutionFExtendedODEDifferentTolerances.png, id=539, 644.648
+4pt x 449.2785pt>
+File: images/TANDEMtimeEvolutionFExtendedODEDifferentTolerances.png Graphic fil
+e (type png)
+<use images/TANDEMtimeEvolutionFExtendedODEDifferentTolerances.png>
+Package pdftex.def Info: images/TANDEMtimeEvolutionFExtendedODEDifferentToleran
+ces.png  used on input line 549.
+(pdftex.def)             Requested size: 204.85846pt x 142.77115pt.
+<images/TANDEMtimeEvolutionFLTEExtendedODEDifferentTolerances.png, id=540, 655.
+248pt x 442.5333pt>
+File: images/TANDEMtimeEvolutionFLTEExtendedODEDifferentTolerances.png Graphic 
+file (type png)
+<use images/TANDEMtimeEvolutionFLTEExtendedODEDifferentTolerances.png>
+Package pdftex.def Info: images/TANDEMtimeEvolutionFLTEExtendedODEDifferentTole
+rances.png  used on input line 555.
+(pdftex.def)             Requested size: 204.85846pt x 138.35208pt.
+[23 <./images/TANDEMcompareFormulationstimeEvolutionRHSall.png> <./images/TANDE
+McompareFormulationstimeEvolutionRHSsurroundings.png> <./images/TANDEMcompareFo
+rmulationstimeEvolutionRHSearthquake.png>]
+<images/TANDEMtimeEvolutionFExtendedODEDifferentSizes.png, id=552, 644.6484pt x
+ 449.2785pt>
+File: images/TANDEMtimeEvolutionFExtendedODEDifferentSizes.png Graphic file (ty
+pe png)
+<use images/TANDEMtimeEvolutionFExtendedODEDifferentSizes.png>
+Package pdftex.def Info: images/TANDEMtimeEvolutionFExtendedODEDifferentSizes.p
+ng  used on input line 568.
+(pdftex.def)             Requested size: 204.85846pt x 142.77115pt.
+<images/TANDEMtimeEvolutionFLTEExtendedODEDifferentSizes.png, id=553, 658.1388p
+t x 442.5333pt>
+File: images/TANDEMtimeEvolutionFLTEExtendedODEDifferentSizes.png Graphic file 
+(type png)
+<use images/TANDEMtimeEvolutionFLTEExtendedODEDifferentSizes.png>
+Package pdftex.def Info: images/TANDEMtimeEvolutionFLTEExtendedODEDifferentSize
+s.png  used on input line 574.
+(pdftex.def)             Requested size: 204.85846pt x 137.74435pt.
+ [24 <./images/TANDEMtimeEvolutionFExtendedODEDifferentTolerances.png> <./image
+s/TANDEMtimeEvolutionFLTEExtendedODEDifferentTolerances.png> <./images/TANDEMti
+meEvolutionFExtendedODEDifferentSizes.png> <./images/TANDEMtimeEvolutionFLTEExt
+endedODEDifferentSizes.png>]
+<images/TANDEMtimeEvolutionErrorall_RKDP5.png, id=565, 722.7pt x 505.89pt>
+File: images/TANDEMtimeEvolutionErrorall_RKDP5.png Graphic file (type png)
+<use images/TANDEMtimeEvolutionErrorall_RKDP5.png>
+Package pdftex.def Info: images/TANDEMtimeEvolutionErrorall_RKDP5.png  used on 
+input line 602.
+(pdftex.def)             Requested size: 273.14923pt x 191.20581pt.
+
+Underfull \hbox (badness 10000) in paragraph at lines 606--608
+
+ []
+
+[25 <./images/TANDEMtimeEvolutionErrorall_RKDP5.png>]
+<images/TANDEMtimeEvolutionMinMaxAll_RKDP5.png, id=577, 722.7pt x 505.89pt>
 File: images/TANDEMtimeEvolutionMinMaxAll_RKDP5.png Graphic file (type png)
 <use images/TANDEMtimeEvolutionMinMaxAll_RKDP5.png>
 Package pdftex.def Info: images/TANDEMtimeEvolutionMinMaxAll_RKDP5.png  used on
- input line 575.
+ input line 611.
 (pdftex.def)             Requested size: 273.14923pt x 191.20581pt.
-[24 <./images/TANDEMtimeEvolutionErrorall_RKDP5.png> <./images/TANDEMtimeEvolut
-ionMinMaxAll_RKDP5.png>]
-LaTeX Font Info:    Try loading font information for U+bbm on input line 588.
+LaTeX Font Info:    Try loading font information for U+bbm on input line 624.
 
 (/usr/share/texlive/texmf-dist/tex/latex/bbm-macros/ubbm.fd
 File: ubbm.fd 1999/03/15 V 1.2 Font definition for bbm font - TH
-) [25] [26]
-<images/ErrorRelationPSI_VAbsoluteRelative.png, id=595, 653.5617pt x 442.5333pt
+) [26 <./images/TANDEMtimeEvolutionMinMaxAll_RKDP5.png>] [27] [28]
+<images/ErrorRelationPSI_VAbsoluteRelative.png, id=617, 653.5617pt x 442.5333pt
 >
 File: images/ErrorRelationPSI_VAbsoluteRelative.png Graphic file (type png)
 <use images/ErrorRelationPSI_VAbsoluteRelative.png>
 Package pdftex.def Info: images/ErrorRelationPSI_VAbsoluteRelative.png  used on
- input line 642.
+ input line 678.
 (pdftex.def)             Requested size: 273.14923pt x 184.95787pt.
- [27 <./images/ErrorRelationPSI_VAbsoluteRelative.png>])
-Underfull \hbox (badness 10000) in paragraph at lines 660--34
+)
+Underfull \hbox (badness 10000) in paragraph at lines 696--34
 
  []
 
-[28]
+[29 <./images/ErrorRelationPSI_VAbsoluteRelative.png>]
 \openout2 = `Extensions.aux'.
 
  (./Extensions.tex
@@ -2870,11 +2908,11 @@ Underfull \hbox (badness 10000) in paragraph at lines 10--11
 
  []
 
-) [29
+) [30
 
 
 
-] (./main.bbl) [30
+] (./main.bbl) [31
 
 
 ]
@@ -2885,7 +2923,7 @@ Package atveryend Info: Empty hook `AfterLastShipout' on input line 41.
 Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 41.
 Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 41.
 Package rerunfilecheck Info: File `main.out' has not changed.
-(rerunfilecheck)             Checksum: 2549C62E4D883B497F27E3138384D9AC;3425.
+(rerunfilecheck)             Checksum: CDF03E7C55760CB5F6C39172D888D63B;2998.
 
 
 LaTeX Warning: There were undefined references.
@@ -2893,10 +2931,10 @@ LaTeX Warning: There were undefined references.
 Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 41.
  ) 
 Here is how much of TeX's memory you used:
- 38036 strings out of 494324
- 817561 string characters out of 6170707
- 947990 words of memory out of 5000000
- 40634 multiletter control sequences out of 15000+600000
+ 38066 strings out of 494324
+ 819206 string characters out of 6170707
+ 947734 words of memory out of 5000000
+ 40652 multiletter control sequences out of 15000+600000
  555114 words of font info for 92 fonts, out of 8000000 for 9000
  475 hyphenation exceptions out of 8191
  62i,15n,56p,10382b,763s stack positions out of 5000i,500n,10000p,200000b,80000s
@@ -2927,12 +2965,13 @@ public/amsfonts/cm/cmr8.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/a
 msfonts/cm/cmsy10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfont
 s/cm/cmsy5.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cm
 sy6.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb
-></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb>
-</usr/share/texlive/texmf-dist/fonts/type1/public/stmaryrd/stmary10.pfb>
-Output written on main.pdf (31 pages, 7381128 bytes).
+></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/
+share/texlive/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb></usr/s
+hare/texlive/texmf-dist/fonts/type1/public/stmaryrd/stmary10.pfb>
+Output written on main.pdf (32 pages, 8606766 bytes).
 PDF statistics:
- 1161 PDF objects out of 1200 (max. 8388607)
- 630 compressed objects within 7 object streams
- 199 named destinations out of 1000 (max. 500000)
- 550 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 1183 PDF objects out of 1200 (max. 8388607)
+ 636 compressed objects within 7 object streams
+ 207 named destinations out of 1000 (max. 500000)
+ 530 words of extra memory for PDF output out of 10000 (max. 10000000)
 

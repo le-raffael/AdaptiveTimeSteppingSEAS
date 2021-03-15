@@ -215,28 +215,12 @@ private:
     template <typename TimeOp>
     static PetscErrorCode LHSFunctionCompactDAE(TS ts, PetscReal t, Vec u, Vec u_t, Vec F, void* ctx) {
         TimeOp* self = reinterpret_cast<TimeOp*>(ctx);
+
         auto u_view = PetscBlockVectorView(u);
         auto u_t_view = PetscBlockVectorView(u_t);
         auto F_view = PetscBlockVectorView(F);
+
         self->lhsCompactDAE(t, u_view, u_t_view, F_view);
-        return 0;
-    }
-    /**
-     * evaluate the lhs F() of the extended DAE
-     * @param ts TS object
-     * @param t current simulation time
-     * @param u current state vector (contains S and psi on all fault nodes in block format)
-     * @param u_t current state derivative vector (contains V and dot{psi} on all fault nodes in block format)
-     * @param F first time derivative of u (solution vector to be written to)
-     * @param ctx pointer to Seas operator instanceTimeOp*
-     */
-    template <typename TimeOp>
-    static PetscErrorCode LHSFunctionExtendedDAE(TS ts, PetscReal t, Vec u, Vec u_t, Vec F, void* ctx) {
-        TimeOp* self = reinterpret_cast<TimeOp*>(ctx);
-        auto u_view = PetscBlockVectorView(u);
-        auto u_t_view = PetscBlockVectorView(u_t);
-        auto F_view = PetscBlockVectorView(F);
-        self->lhsExtendedDAE(t, u_view, u_t_view, F_view);
         return 0;
     }
 
@@ -257,6 +241,30 @@ private:
         self->updateJacobianCompactDAE(sigma,A);
         return 0;
     }
+
+
+    /**
+     * evaluate the lhs F() of the extended DAE
+     * @param ts TS object
+     * @param t current simulation time
+     * @param u current state vector (contains S and psi on all fault nodes in block format)
+     * @param u_t current state derivative vector (contains V and dot{psi} on all fault nodes in block format)
+     * @param F first time derivative of u (solution vector to be written to)
+     * @param ctx pointer to Seas operator instanceTimeOp*
+     */
+    template <typename TimeOp>
+    static PetscErrorCode LHSFunctionExtendedDAE(TS ts, PetscReal t, Vec u, Vec u_t, Vec F, void* ctx) {
+        TimeOp* self = reinterpret_cast<TimeOp*>(ctx);
+
+        auto u_view = PetscBlockVectorView(u);
+        auto u_t_view = PetscBlockVectorView(u_t);
+        auto F_view = PetscBlockVectorView(F);
+
+
+        self->lhsExtendedDAE(t, u_view, u_t_view, F_view);
+        return 0;
+    }
+
     /**
      * evaluate the Jacobian of the extended DAE
      * @param ts TS object
@@ -336,6 +344,7 @@ private:
 
         // apply the intitial condition in S and psi
         timeop.initial_condition(*state_compact_);
+        timeop.setTSInstance(ts_);
 
         // initialize Jacobians etc...
         if ((cfg_eq->type == "bdf") || (cfg_as->type == "bdf")) timeop.initialize_Jacobian(bs_compact, bs_extended);
@@ -350,6 +359,7 @@ private:
         solverStruct.customErrorFct = &evaluateEmbeddedMethodBDF;
         solverStruct.customNewtonFct = &solveNewton;
         solverStruct.checkAS = true;
+        solverStruct.current_solver_cfg = cfg_as;
         solverStruct.state_compact = state_compact_;
         solverStruct.state_extended = state_extended_;
 
@@ -358,14 +368,136 @@ private:
                                           true);   // true  because it is the initial call
     }
 
+
+    /**
+     * Performs actions before each stage
+     * - If it is the first call of a compact DAE, calculate the initial derivative vector
+     *   and approximate the initial guess with an explicit RK4
+     * @param ts TS context
+     * @param t current simulation time
+     */
+    template <typename TimeOp> 
+    static PetscErrorCode functionPreStage(TS ts, double t) {
+        TimeOp* seasop;
+        CHKERRTHROW(TSGetApplicationContext(ts, &seasop));
+
+        auto& solverStruct = seasop->getSolverParameters();
+        auto const& cfg    = seasop->getGeneralSolverConfiguration();
+
+        // Reset the divergence test before each stage
+        seasop->resetDivergenceTest();
+
+        PetscFunctionBegin;
+        TS_BDF *bdf = (TS_BDF*)ts->data;
+
+        // initialize the SNES solver with an explicit Rk4
+        if (solverStruct.needRegularizationCompactDAE) {
+            solverStruct.needRegularizationCompactDAE = false;
+
+            TS_BDF *bdf = (TS_BDF*)ts->data;
+
+            double dt = bdf->time[0] - bdf->time[1];
+            RK4(ts, bdf->time[1], dt, bdf->work[1], bdf->work[0], RHSFunctionCompactODE<TimeOp>, seasop);
+        }
+        PetscFunctionReturn(0);
+    }
+
+    /**
+     * Performs actions after each stage
+     * - Recognises if the SNES solver failed because of own diverged test, and restart the step with accurate estimate for the solution vector
+     * @param ts TS context
+     * @param t current simulation time
+     * @param k stage index
+     * @param Y current solution vector
+     */
+    template <typename TimeOp> 
+    static PetscErrorCode functionPostStage(TS ts, double t, int k, Vec* Y) {
+        TimeOp* seasop;
+        SNES snes;
+        SNESConvergedReason reason;
+
+        PetscFunctionBegin;
+        CHKERRTHROW(TSGetApplicationContext(ts, &seasop));
+        CHKERRTHROW(TSGetSNES(ts, &snes));
+        CHKERRTHROW(SNESGetConvergedReason(snes, &reason));
+
+        if (reason == SNES_DIVERGED_FNORM_NAN) {
+            TS_BDF *bdf = (TS_BDF*)ts->data;
+            double dt = bdf->time[0] - bdf->time[1];
+            RK4(ts, bdf->time[1], dt, bdf->work[1], bdf->work[0], RHSFunctionCompactODE<TimeOp>, seasop);
+            CHKERRTHROW(SNESSetConvergedReason(snes, SNES_CONVERGED_ITS));
+
+            // PetscReal dt,new_dt;
+            // TSGetTimeStep(ts,&dt);
+            // new_dt = dt / ts->adapt->scale_solve_failed * 0.5;
+            // TSSetTimeStep(ts,new_dt);
+
+//            auto& solverStruct = seasop->getSolverParameters();
+//            solverStruct.needRegularizationCompactDAE = true;
+        }
+        PetscFunctionReturn(0);
+    }
+
+    /**
+     * This function is executed at the end of each succesfull timestep. Used to update tolerances
+     * @param ts the TS context
+     */
+    template <typename TimeOp>
+    static PetscErrorCode functionPostEvaluate(TS ts){
+        TimeOp* seasop;
+        CHKERRTHROW(TSGetApplicationContext(ts, &seasop));
+
+        auto& solverStruct = seasop->getSolverParameters();
+        auto const& cfg_as = seasop->getAseismicSlipSolverConfiguration();
+        auto const& cfg_eq = seasop->getEarthquakeSolverConfiguration();
+
+        if (solverStruct.checkAS && (seasop->VMax() > seasop->getV0())){          // change from as -> eq
+            std::cout << "Enter earthquake phase" << std::endl;
+            switchBetweenASandEQ(ts, *seasop, true, false);
+            solverStruct.checkAS = false;
+            solverStruct.current_solver_cfg = cfg_eq;
+        } else if (!solverStruct.checkAS && (seasop->VMax() < seasop->getV0())){  // change from eq -> as
+            std::cout << "Exit earthquake phase" << std::endl;
+            switchBetweenASandEQ(ts, *seasop, false, false);
+            solverStruct.checkAS = true;
+            solverStruct.current_solver_cfg = cfg_as;
+        }
+
+
+
+        if ((solverStruct.current_solver_cfg->type == "bdf") && 
+            (solverStruct.current_solver_cfg->bdf_order == 0)) {
+            int next_order;
+            int order;
+            CHKERRTHROW(TSBDFGetOrder(ts, &order));
+            adaptBDFOrder<TimeOp>(ts, next_order);
+            std::cout << "current order: " << order << ", next order: "<< next_order <<std::endl; 
+            CHKERRTHROW(TSBDFSetOrder(ts, next_order));
+        }
+//        reducedTimeEachStep(ts, solverStruct.time_eq);
+        // VecGetArray(Xx, &xx); // for some reason needed if BDF order > 4
+        // VecRestoreArray(Xx, &xx); // for some reason needed if BDF order > 4
+
+        // Vec Xx;   Only for manual error evaluation
+        // double* xx;
+        // CHKERRTHROW(TSGetSolution(ts,&Xx));        
+        // VecGetArray(Xx, &xx); // for some reason needed if BDF order > 4
+        // VecRestoreArray(Xx, &xx); // for some reason needed if BDF order > 4
+
+        return 0;
+    }
+
+
+
+
     /**
      * Sets the absolute and relative tolerances 
      * @param ts the TS context
-     * @param timeop instance of the seas operator
+     * @param timeop instance of the seas opTS contexterator
      * @param enterEQphase direction of the switch: true for as->eq, false for eq->as
      * @param initialCall only true to initialize the system at the very beginning
      */
-    template <typename TimeOp> 
+    template <typename TimeOp>
     static void switchBetweenASandEQ(TS ts, TimeOp& timeop, bool enterEQphase, bool initialCall){
         auto& solverStruct = timeop.getSolverParameters();
         auto const& cfg = timeop.getGeneralSolverConfiguration();
@@ -374,113 +506,50 @@ private:
 
         std::string type;
         std::string rk_type;
+        std::string solution_size;
+        std::string problem_formulation;
         int bdf_order;
 
-        // change formulation if needed
-        if (initialCall || (cfg_as->solution_size != cfg_eq->solution_size) 
-                        || (cfg_as->problem_formulation != cfg_eq->problem_formulation)) {
-            double time;
-            CHKERRTHROW(TSGetTime(ts, &time));
-            if (enterEQphase) {
-                changeFormulation(ts, time, timeop, cfg_as, cfg_eq, initialCall);
-            } else {
-                changeFormulation(ts, time, timeop, cfg_eq, cfg_as, initialCall);
-            }
-        }
+        double time;
+        CHKERRTHROW(TSGetTime(ts, &time));
 
-        // change tolerances and fetch solver parameters
+        // change formulation, tolerances and fetch solver parameters
         if (enterEQphase) {
+        //    if (!initialCall) reducedTimeBeginEQ(ts, solverStruct.time_eq);
+            changeFormulation(ts, time, timeop, cfg_as, cfg_eq, initialCall);
             setTolerancesVector(ts, timeop, cfg_eq->solution_size, cfg_eq->S_rtol, cfg_eq->S_atol,   
                                  cfg_eq->psi_rtol, cfg_eq->psi_atol, cfg_eq->V_rtol, cfg_eq->V_atol);
             type = cfg_eq->type;
             rk_type = cfg_eq->rk_type;
             bdf_order = cfg_eq->bdf_order;
+            solution_size = cfg_eq->solution_size;
+            problem_formulation = cfg_eq->problem_formulation;
 
         } else {
+        //    if (!initialCall) reducedTimeEndEQ(ts, solverStruct.time_eq);
+            changeFormulation(ts, time, timeop, cfg_eq, cfg_as, initialCall);
             setTolerancesVector(ts, timeop, cfg_as->solution_size, cfg_as->S_rtol, cfg_as->S_atol,   
                                  cfg_as->psi_rtol, cfg_as->psi_atol, cfg_as->V_rtol, cfg_as->V_atol);
             type = cfg_as->type;
             rk_type = cfg_as->rk_type;
             bdf_order = cfg_as->bdf_order;
+            solution_size = cfg_as->solution_size;
+            problem_formulation = cfg_as->problem_formulation;
         }
-        // integrator type 
-        CHKERRTHROW(TSSetType(ts, type.c_str()));
 
-        // rk settings
-        if (type == "rk")
-            CHKERRTHROW(TSRKSetType(ts, rk_type.c_str()));
-        // bdf settings
-        if (type == "bdf") setBDFParameters(ts, bdf_order, cfg, solverStruct);
+        CHKERRTHROW(TSSetUp(ts));
 
-        if (enterEQphase) {
-            if (type == "rk") {
-                std::cout << "Solve the problem as a " << cfg_eq->solution_size <<  " " << 
-                cfg_eq->problem_formulation << " with the explicit Runge-Kutta method " << rk_type << std::endl;
-            } else if (type == "bdf") {
-                std::string cardinal = (bdf_order==1) ? "st" : (bdf_order==2) ? "nd" : (bdf_order==3) ? "rd" : "th" ;
-                std::cout << "Solve the problem as a " << cfg_eq->solution_size <<  " " << 
-                cfg_eq->problem_formulation << " with the implicit " << 
-                bdf_order << cardinal << " order BDF method " << std::endl; 
-            }
-        } else {
-            if (type == "rk") {
-                std::cout << "Solve the problem as a " << cfg_as->solution_size <<  " " << 
-                cfg_as->problem_formulation << " with the explicit Runge-Kutta method " << rk_type << std::endl;
-            } else if (type == "bdf") {
-                std::string cardinal = (bdf_order==1) ? "st" : (bdf_order==2) ? "nd" : (bdf_order==3) ? "rd" : "th" ;
-                std::cout << "Solve the problem as a " << cfg_as->solution_size <<  " " << 
-                cfg_as->problem_formulation << " with the implicit " << 
-                bdf_order << cardinal << " order BDF method " << std::endl; 
-            }
+        // some output prints
+        if (type == "rk") {
+            std::cout << "Solve the problem as a " << solution_size <<  " " << 
+            problem_formulation << " with the explicit Runge-Kutta method " << rk_type << std::endl;
+        } else if (type == "bdf") {
+            std::string cardinal = (bdf_order==1) ? "st" : (bdf_order==2) ? "nd" : (bdf_order==3) ? "rd" : "th" ;
+            std::cout << "Solve the problem as a " << solution_size <<  " " << 
+            problem_formulation << " with the implicit " << 
+            bdf_order << cardinal << " order BDF method " << std::endl; 
         }
     }
-
-    /**
-     * Set up the BDF scheme
-     * @param ts TS instance
-     * @param order order of the BDF scheme
-     * @param cfg general configuration to see whether use manual implmentations or not
-     * @param solverStruct contains the pointer to the manual implementations
-     */
-    template<typename T>
-    static void setBDFParameters(TS ts, int order, 
-        const std::optional<tndm::SolverConfigGeneral>& cfg, T& solverStruct){
-        CHKERRTHROW(TSBDFSetOrder(ts, order));
-
-        // set nonlinear solver settings
-        SNES snes;
-        KSP snes_ksp;
-        PC snes_pc;
-        
-        CHKERRTHROW(TSGetSNES(ts, &snes));
-
-        if (cfg->bdf_custom_error_evaluation)
-            ts->ops->evaluatewlte = *solverStruct.customErrorFct;     // manual LTE evaluation
-
-        if (cfg->bdf_custom_Newton_iteration) {                       // manual Newton iteration
-            CHKERRTHROW(SNESSetType(snes, SNESSHELL));
-            CHKERRTHROW(SNESShellSetContext(snes, &ts));
-            CHKERRTHROW(SNESShellSetSolve(snes, *solverStruct.customNewtonFct));
-        }
-
-        CHKERRTHROW(SNESGetKSP(snes, &snes_ksp));
-        CHKERRTHROW(KSPGetPC(snes_ksp, &snes_pc));
-        CHKERRTHROW(KSPSetType(snes_ksp, cfg->ksp_type.c_str()));
-        CHKERRTHROW(PCSetType(snes_pc, cfg->pc_type.c_str()));
-        CHKERRTHROW(TSSetMaxSNESFailures(ts, -1));
-
-        double atol = 1e-50;    // absolute tolerance (default = 1e-50) 
-        double rtol = 1e-8;     // relative tolerance (default = 1e-8)  
-        double stol = 1e-8;     // relative tolerance (default = 1e-8)  
-        int maxit = 50;         // maximum number of iteration (default = 50)    
-        int maxf = -1;          // maximum number of function evaluations (default = 1000)  
-        CHKERRTHROW(SNESSetTolerances(snes, atol, rtol, stol, maxit, maxf));
-        CHKERRTHROW(SNESSetFromOptions(snes));
-
-        CHKERRTHROW(TSSetTimeStep(ts, 0.1));
-
-    }
-
 
     /**
      * Change formulation of the problem. e.g. from extended ODE -> compact DAE
@@ -496,92 +565,116 @@ private:
         auto& solverStruct = timeop.getSolverParameters();
         auto& cfg = timeop.getGeneralSolverConfiguration();
 
-        DM dm;
-        DMTS tsdm;
-        CHKERRTHROW(TSGetDM(ts,&dm));                    
+        if (initialCall || (cfg_prev->solution_size != cfg_prev->solution_size) ||
+            (cfg_prev->problem_formulation != cfg_prev->problem_formulation)) {
+
+            DM dm;
+            DMTS tsdm;
+            CHKERRTHROW(TSGetDM(ts,&dm));
+            CHKERRTHROW(DMGetDMTS(dm,&tsdm));
+
+            CHKERRTHROW(TSReset(ts));
+
+            if (cfg_next->solution_size == "compact") {
+                if (initialCall || (cfg_prev->solution_size == "extended")) {
+                    // change the size of the solution vector
+                    timeop.setExtendedFormulation(false);
+                    if (!initialCall) timeop.makeSystemSmall(*solverStruct.state_compact, *solverStruct.state_extended);
+                }
+                CHKERRTHROW(TSSetSolution(ts, solverStruct.state_compact->vec()));
+                if (cfg_next->problem_formulation == "ode"){
+                    CHKERRTHROW(TSSetEquationType(ts, TS_EQ_EXPLICIT));
+                    CHKERRTHROW(TSSetRHSFunction(ts, nullptr, RHSFunctionCompactODE<TimeOp>, &timeop));
+                    if (cfg_next->type == "bdf") {
+                        CHKERRTHROW(TSSetRHSJacobian(ts, timeop.getJacobianCompactODE(), timeop.getJacobianCompactODE(), RHSJacobianCompactODE<TimeOp>, &timeop));
+                    }
+                    tsdm->ops->ifunction = NULL;
+                    tsdm->ops->ijacobian = NULL;
+
+                } else if (cfg_next->problem_formulation == "dae"){
+                    solverStruct.needRegularizationCompactDAE = true;
+                    CHKERRTHROW(TSSetEquationType(ts, TS_EQ_IMPLICIT));
+                    CHKERRTHROW(TSSetPreStage(ts, functionPreStage<TimeOp>));
+                    CHKERRTHROW(TSSetPostStage(ts, functionPostStage<TimeOp>));
+                    CHKERRTHROW(TSSetIFunction(ts, nullptr, LHSFunctionCompactDAE<TimeOp>, &timeop));
+                    CHKERRTHROW(TSSetIJacobian(ts, timeop.getJacobianCompactDAE(), timeop.getJacobianCompactDAE(), LHSJacobianCompactDAE<TimeOp>, &timeop));
+                    tsdm->ops->rhsfunction = NULL;
+                    tsdm->ops->rhsjacobian = NULL;
+                }
+            } else if (cfg_next->solution_size == "extended") {
+                if (initialCall || (cfg_prev->solution_size == "compact")) {
+                    // change the size of the solution vector
+                    timeop.setExtendedFormulation(true);
+                    timeop.makeSystemBig(time, *solverStruct.state_compact, *solverStruct.state_extended);
+                }
+                CHKERRTHROW(TSSetSolution(ts, solverStruct.state_extended->vec()));
+                if (cfg_next->problem_formulation == "ode"){
+                    CHKERRTHROW(TSSetEquationType(ts, TS_EQ_EXPLICIT));
+                    CHKERRTHROW(TSSetRHSFunction(ts, nullptr, RHSFunctionExtendedODE<TimeOp>, &timeop));
+                    if (cfg_next->type == "bdf") {
+                        CHKERRTHROW(TSSetRHSJacobian(ts, timeop.getJacobianExtendedODE(), timeop.getJacobianExtendedODE(), RHSJacobianExtendedODE<TimeOp>, &timeop));
+                    }
+                    tsdm->ops->ifunction = NULL;
+                    tsdm->ops->ijacobian = NULL;
+
+                } else if (cfg_next->problem_formulation == "dae"){
+                    CHKERRTHROW(TSSetEquationType(ts, TS_EQ_IMPLICIT));
+                    CHKERRTHROW(TSSetPreStage(ts, functionPreStage<TimeOp>));       // remove that again!!
+                    CHKERRTHROW(TSSetIFunction(ts, nullptr, LHSFunctionExtendedDAE<TimeOp>, &timeop));
+                    CHKERRTHROW(TSSetIJacobian(ts, timeop.getJacobianExtendedDAE(), timeop.getJacobianExtendedDAE(), LHSJacobianExtendedDAE<TimeOp>, &timeop));
+                    tsdm->ops->rhsfunction = NULL;
+                    tsdm->ops->rhsjacobian = NULL;
+                }
+            }
+
+            // set adapter parameters (for dynamic time-stepping)
+            CHKERRTHROW(DMClearGlobalVectors(dm));  // to remove old solution vectors
+            TSAdapt adapt;
+            CHKERRTHROW(TSGetAdapt(ts, &adapt));
+            CHKERRTHROW(TSAdaptSetType(adapt, TSADAPTBASIC));
+            if (cfg->adapt_wnormtype == "2") {ts->adapt->wnormtype = NormType::NORM_2; }    // this is very hacky 
+            else if (cfg->adapt_wnormtype == "infinity") {ts->adapt->wnormtype = NormType::NORM_INFINITY; }
+            else { std::cerr<<"Unknown norm! use \"2\" or \"infinity\""<<std::endl; }
+            if (cfg->custom_time_step_adapter) adapt->ops->choose = TSAdaptChoose_Custom;
+
+            // Store the seas operator in the context if needed
+            CHKERRTHROW(TSSetApplicationContext(ts, &timeop));
+
+            // apply changes at switch between aseismic slip and eaqrthquake phases
+            CHKERRTHROW(TSSetPostEvaluate(ts, functionPostEvaluate<TimeOp>));
+
+            // if a BDF method is used, start with a timestep size of maximal 0.1
+            if (cfg_next->type == "bdf") {
+                double h;
+                CHKERRTHROW(TSGetTimeStep(ts, &h));
+                h = PetscMin(h,0.1);
+                CHKERRTHROW(TSSetTimeStep(ts, h));
+            }
+
+            // Overwrite settings by command line options
+            CHKERRTHROW(TSSetFromOptions(ts));        
+        }
+
+        // for the compact ODE formulation, add Jacobian matrices
+        if ((cfg_next->solution_size == "compact") && 
+            (cfg_next->problem_formulation == "ode") && 
+            (cfg_next->type == "bdf"))
+                CHKERRTHROW(TSSetRHSJacobian(ts, timeop.getJacobianCompactODE(), 
+                    timeop.getJacobianCompactODE(), RHSJacobianCompactODE<TimeOp>, &timeop));
+        if ((cfg_next->solution_size == "extended") && 
+            (cfg_next->problem_formulation == "ode") && 
+            (cfg_next->type == "bdf"))
+                CHKERRTHROW(TSSetRHSJacobian(ts, timeop.getJacobianExtendedODE(), 
+                    timeop.getJacobianExtendedODE(), RHSJacobianExtendedODE<TimeOp>, &timeop));
         
-        if (cfg_next->solution_size == "compact") {
-            if (initialCall || (cfg_prev->solution_size == "extended")) {
-                // change the size of the solution vector
-                timeop.setExtendedFormulation(false);
-                if (!initialCall) timeop.makeSystemSmall(*solverStruct.state_compact, *solverStruct.state_extended);
-            }
-            CHKERRTHROW(TSSetSolution(ts, solverStruct.state_compact->vec()));
-            if (cfg_next->problem_formulation == "ode"){
-                CHKERRTHROW(TSSetEquationType(ts, TS_EQ_EXPLICIT));
-                CHKERRTHROW(TSSetRHSFunction(ts, nullptr, RHSFunctionCompactODE<TimeOp>, &timeop));
-                if (cfg_next->type == "bdf")
-                    CHKERRTHROW(TSSetRHSJacobian(ts, timeop.getJacobianCompactODE(), timeop.getJacobianCompactODE(), RHSJacobianCompactODE<TimeOp>, &timeop));
-                CHKERRTHROW(DMGetDMTS(dm,&tsdm));
-                tsdm->ops->ifunction = NULL;
-                tsdm->ops->ijacobian = NULL;
+        // integrator type 
+        CHKERRTHROW(TSSetType(ts, cfg_next->type.c_str()));
 
-            } else if (cfg_next->problem_formulation == "dae"){
-                CHKERRTHROW(TSSetEquationType(ts, TS_EQ_IMPLICIT));
-                CHKERRTHROW(TSSetIFunction(ts, nullptr, LHSFunctionCompactDAE<TimeOp>, &timeop));
-                CHKERRTHROW(TSSetIJacobian(ts, timeop.getJacobianCompactDAE(), timeop.getJacobianCompactDAE(), LHSJacobianCompactDAE<TimeOp>, &timeop));
-                CHKERRTHROW(DMGetDMTS(dm,&tsdm));
-                tsdm->ops->rhsfunction = NULL;
-                tsdm->ops->rhsjacobian = NULL;
-            }
-        } else if (cfg_next->solution_size == "extended") {
-            if (initialCall || (cfg_prev->solution_size == "compact")) {
-                // change the size of the solution vector
-                timeop.setExtendedFormulation(true);
-                timeop.makeSystemBig(time, *solverStruct.state_compact, *solverStruct.state_extended);
-            }
-            CHKERRTHROW(TSSetSolution(ts, solverStruct.state_extended->vec()));
-            if (cfg_next->problem_formulation == "ode"){
-                CHKERRTHROW(TSSetEquationType(ts, TS_EQ_EXPLICIT));
-                CHKERRTHROW(TSSetRHSFunction(ts, nullptr, RHSFunctionExtendedODE<TimeOp>, &timeop));
-                if (cfg_next->type == "bdf")  
-                    CHKERRTHROW(TSSetRHSJacobian(ts, timeop.getJacobianExtendedODE(), timeop.getJacobianExtendedODE(), RHSJacobianExtendedODE<TimeOp>, &timeop));
-                CHKERRTHROW(DMGetDMTS(dm,&tsdm));
-                tsdm->ops->ifunction = NULL;
-                tsdm->ops->ijacobian = NULL;
-
-            } else if (cfg_next->problem_formulation == "dae"){
-                CHKERRTHROW(TSSetEquationType(ts, TS_EQ_IMPLICIT));
-                CHKERRTHROW(TSSetIFunction(ts, nullptr, LHSFunctionExtendedDAE<TimeOp>, &timeop));
-                CHKERRTHROW(TSSetIJacobian(ts, timeop.getJacobianExtendedDAE(), timeop.getJacobianExtendedDAE(), LHSJacobianExtendedDAE<TimeOp>, &timeop));
-                CHKERRTHROW(DMGetDMTS(dm,&tsdm));
-                tsdm->ops->rhsfunction = NULL;
-                tsdm->ops->rhsjacobian = NULL;
-            }
-        }
-
-        // set adapter parameters (for dynamic time-stepping)
-        CHKERRTHROW(DMClearGlobalVectors(dm));  // to remove old solution vectors
-        TSAdapt adapt;
-        CHKERRTHROW(TSGetAdapt(ts, &adapt));
-        CHKERRTHROW(TSAdaptSetType(adapt, TSADAPTBASIC));
-        if (cfg->adapt_wnormtype == "2") {ts->adapt->wnormtype = NormType::NORM_2; }    // this is very hacky 
-        else if (cfg->adapt_wnormtype == "infinity") {ts->adapt->wnormtype = NormType::NORM_INFINITY; }
-        else { std::cerr<<"Unknown norm! use \"2\" or \"infinity\""<<std::endl; }
-        if (cfg->custom_time_step_adapter) adapt->ops->choose = TSAdaptChoose_Custom;
-
-        // Store the seas operator in the context if needed
-        CHKERRTHROW(TSSetApplicationContext(ts, &timeop));
-
-        // apply changes at switch between aseismic slip and eaqrthquake phases
-        CHKERRTHROW(TSSetPostEvaluate(ts, updateAfterTimeStep<TimeOp>));
-
-        // Overwrite settings by command line options
-        CHKERRTHROW(TSSetFromOptions(ts));
-
-        // if a compact DAE is solved, the first step should have stol=0 in SNES (I don't know why)
-        if ((cfg_next->solution_size == "compact") && (cfg_next->problem_formulation == "dae")) {
-            SNES snes;
-            CHKERRTHROW(TSGetSNES(ts, &snes));
-            double atol = 1e-50;    // absolute tolerance (default = 1e-50) 
-            double rtol = 1e-15;     // relative tolerance (default = 1e-8)  
-            double stol = 0;        // relative tolerance (default = 1e-8)  
-            int maxit = 50;         // maximum number of iteration (default = 50)    
-            int maxf = -1;          // maximum number of function evaluations (default = 1000)  
-            CHKERRTHROW(SNESSetTolerances(snes, atol, rtol, stol, maxit, maxf));
-            CHKERRTHROW(SNESSetFromOptions(snes));
-            solverStruct.checkFirstcompactDAE = true;
-        }
+        // rk settings
+        if (cfg_next->type == "rk")
+            CHKERRTHROW(TSRKSetType(ts, cfg_next->rk_type.c_str()));
+        // bdf settings
+        if (cfg_next->type == "bdf") setBDFParameters(ts, cfg_next->bdf_order, cfg, solverStruct);
     }
 
 
@@ -646,121 +739,133 @@ private:
     }
 
 
-
     /**
-     * This function is executed at the end of each succesfull timestep. Used to update tolerances
+     * Sets the tolerances for the nonlinear solver
      * @param ts the TS context
      */
-    template <typename TimeOp>
-    static PetscErrorCode updateAfterTimeStep(TS ts){
-        TimeOp* seasop;
-        CHKERRTHROW(TSGetApplicationContext(ts, &seasop));
+    static void setSNESTolerances(TS ts) {
+        SNES snes;
+        CHKERRTHROW(TSGetSNES(ts, &snes));
+        double atol = 1e-50;                          // absolute tolerance (default = 1e-50) 
+        double rtol = 1e-50;                          // relative tolerance (default = 1e-8)  
+        double stol = 1e-8;                          // relative tolerance (default = 1e-8)                         
+        int maxit = 10;                              // maximum number of iteration (default = 50)    
+        int maxf  = -1;                              // maximum number of function evaluations (default = 1000)  
+        CHKERRTHROW(SNESSetTolerances(snes, atol, rtol, stol, maxit, maxf));
+    }
 
-        auto& solverStruct = seasop->getSolverParameters();
+    /**
+     * Set up the BDF scheme
+     * @param ts TS instance
+     * @param order order of the BDF scheme
+     * @param solution_size compact or extended 
+     * @param cfg general configuration to see whether use manual implementations or not
+     * @param solverStruct contains the pointer to the manual implementations
+     */
+    template <typename CFG>
+    static void setBDFParameters(TS ts, int order, 
+        const std::optional<tndm::SolverConfigGeneral>& cfg, CFG& solverStruct){
 
-        if (solverStruct.checkAS && (seasop->VMax() > seasop->getV0())){          // change from as -> eq
-            std::cout << "Enter earthquake phase" << std::endl;
-            switchBetweenASandEQ(ts, *seasop, true, false);
-            solverStruct.checkAS = false;
-        } else if (!solverStruct.checkAS && (seasop->VMax() < seasop->getV0())){  // change from eq -> as
-            std::cout << "Exit earthquake phase" << std::endl;
-            switchBetweenASandEQ(ts, *seasop, false, false);
-            solverStruct.checkAS = true;
+       if (order > 0) CHKERRTHROW(TSBDFSetOrder(ts, order));
+
+        // set nonlinear solver settings
+        SNES snes;
+        KSP snes_ksp;
+        PC snes_pc;
+        
+        CHKERRTHROW(TSGetSNES(ts, &snes));
+
+        if (cfg->bdf_custom_error_evaluation)
+            ts->ops->evaluatewlte = *solverStruct.customErrorFct;     // manual LTE evaluation
+
+        if (cfg->bdf_custom_Newton_iteration) {                       // manual Newton iteration
+            CHKERRTHROW(SNESSetType(snes, SNESSHELL));
+            CHKERRTHROW(SNESShellSetContext(snes, &ts));
+            CHKERRTHROW(SNESShellSetSolve(snes, *solverStruct.customNewtonFct));
         }
+        SNESType type;
+        SNESGetType(snes,&type);
+        CHKERRTHROW(SNESGetKSP(snes, &snes_ksp));
+        CHKERRTHROW(KSPGetPC(snes_ksp, &snes_pc));
+        CHKERRTHROW(KSPSetType(snes_ksp, cfg->ksp_type.c_str()));
+        CHKERRTHROW(PCSetType(snes_pc, cfg->pc_type.c_str()));
+        CHKERRTHROW(TSSetMaxSNESFailures(ts, -1));
 
-        // reset stol=1e-8 of SNES afther the first time step (suppose that you are still in the aseismic slip at the first time step)
-        auto const& cfg = seasop->getAseismicSlipSolverConfiguration();
-        if ((cfg->solution_size == "compact") && (cfg->problem_formulation == "dae")) {
-            if (solverStruct.checkFirstcompactDAE) {
-                SNES snes;
-                CHKERRTHROW(TSGetSNES(ts, &snes));
-                double atol = 1e-50;    // absolute tolerance (default = 1e-50) 
-                double rtol = 1e-8;     // relative tolerance (default = 1e-8)  
-                double stol = 1e-8;     // relative tolerance (default = 1e-8)  
-                int maxit = 50;         // maximum number of iteration (default = 50)    
-                int maxf = -1;          // maximum number of function evaluations (default = 1000)  
-                CHKERRTHROW(SNESSetTolerances(snes, atol, rtol, stol, maxit, maxf));
-                CHKERRTHROW(SNESSetFromOptions(snes));
-                solverStruct.checkFirstcompactDAE = false;
-            }
-        }
-        // Vec Xx;   Only for manual error evaluation
-        // double* xx;
-        // CHKERRTHROW(TSGetSolution(ts,&Xx));        
-        // VecGetArray(Xx, &xx); // for some reason needed if BDF order > 4
-        // VecRestoreArray(Xx, &xx); // for some reason needed if BDF order > 4
-
-        return 0;
+        setSNESTolerances(ts);
     }
 
     /**
      * Own implementation of the Newton algorithm (not used, only for testing purposes)
      * @param snes solving context
-     * @param xout final solution vector 
+     * @param x solution vector 
      */
-     static PetscErrorCode solveNewton(SNES snes, Vec xout){
+     static PetscErrorCode solveNewton(SNES snes, Vec x){
         // get TS context
-        void* ctx;
-        CHKERRTHROW(SNESShellGetContext(snes, &ctx));
-        TS* ts_void = reinterpret_cast<TS*>(ctx);
-        TS ts = *ts_void;
 
         KSP ksp;
         CHKERRTHROW(SNESGetKSP(snes, &ksp));        
 
+        Vec f;                          // residual
+        Vec ratio;                      // J(f(u))^{-1}f(u)
+        Mat J,J_pre;                    // Jacobi matrices
+        double res, res_rel, res_prev;  // norm of the residual
+        double atol, rtol, stol;
+        int maxit, maxf;
+                
+        SNESConvergedReason reason;
 
-        Vec x;         // solution vector
-        Vec f;         // residual
-        Mat J;         // Jacobi matrix
-        Mat J_pat;         // Jacobi matrix
-        double res;    // norm of the residual
-
-        Vec ratio;     // J(f(u))^{-1}f(u)
-
-
-        CHKERRTHROW(TSGetSolution(ts, &x));     
-        CHKERRTHROW(TSGetRHSJacobian(ts, &J_pat, nullptr, nullptr, nullptr));    // just to get the size of the matrices
-
+        PetscFunctionBegin;
+        CHKERRTHROW(SNESGetJacobian(snes, &J, &J_pre, nullptr, nullptr));
         CHKERRTHROW(VecDuplicate(x, &f));
         CHKERRTHROW(VecDuplicate(x, &ratio));
-        CHKERRTHROW(MatDuplicate(J_pat, MAT_DO_NOT_COPY_VALUES, &J));
-        
-        CHKERRTHROW(VecCopy(x, xout));      // solution from last time step as initial guess
-        
+        CHKERRTHROW(SNESGetTolerances(snes, &atol, &rtol, &stol, &maxit, &maxf));
 
-        CHKERRTHROW(SNESTSFormFunction(snes, xout, f, ts));    //evaluate RHS of the ODE
-
+        CHKERRTHROW(SNESComputeFunction(snes, x, f));    //evaluate RHS of the ODE
         CHKERRTHROW(VecNorm(f, NORM_INFINITY, &res));
+        SNESSetConvergedReason(snes, SNES_CONVERGED_ITERATING);
+        std::cout << "absolute residual: "<<res<<std::endl;
 
-        int n = 0;
-        while (res > 1e-12) {
-            n++;
-            CHKERRTHROW(SNESTSFormJacobian(snes, xout, J, J, ts));  // get the Jacobian
-            CHKERRTHROW(KSPSetOperators(ksp, J, J));
-            CHKERRTHROW(KSPSolve(ksp, f, ratio));     // solve the Jacobian system
-            CHKERRTHROW(VecAXPY(xout, -1, ratio));     // update the solution vector
-            CHKERRTHROW(SNESTSFormFunction(snes, xout, f, ts));    // evaluate RHS of the ODE
-            CHKERRTHROW(VecNorm(f, NORM_INFINITY, &res));       // and its norm
-            double *y;
-            VecGetArray(f, &y);
+        for(int n = 0; n < maxit; n++) {
+            CHKERRTHROW(SNESComputeJacobian(snes, x, J, J_pre));  // get the Jacobian
+            CHKERRTHROW(KSPSetOperators(ksp, J, J_pre));
+            CHKERRTHROW(KSPSolve(ksp, f, ratio));                 // solve the Jacobian system
+            CHKERRTHROW(VecAXPY(x, -1, ratio));                   // update the solution vector
+            CHKERRTHROW(SNESComputeFunction(snes, x, f));         // evaluate the algebraic function
 
-            std::cout << "residual: " << std::endl;
-            for (int i = 0; i < 30; ++i){
-                std::cout << y[i] << ", ";
+            res_prev = res;
+            CHKERRTHROW(VecNorm(f, NORM_INFINITY, &res));         // and its norm
+            CHKERRTHROW(VecMaxPointwiseDivide(f,x,&res_rel));
+            std::cout << "absolute residual: "<<res<<", relative residual: " << res_rel << std::endl;
+
+            // not converged
+            if ((res_prev - res) / res_prev < stol) {
+                SNESSetConvergedReason(snes, SNES_DIVERGED_FNORM_NAN);
+                CHKERRTHROW(VecDestroy(&f));
+                CHKERRTHROW(VecDestroy(&ratio));
+                PetscFunctionReturn(0);
             }
-            std::cout << std::endl;
-            std::cout << std::endl;
 
-            VecRestoreArray(f, &y);
-
+            // converged
+            if (res < atol) {
+                SNESSetConvergedReason(snes, SNES_CONVERGED_FNORM_ABS);
+                CHKERRTHROW(VecDestroy(&f));
+                CHKERRTHROW(VecDestroy(&ratio));
+                PetscFunctionReturn(0);
+            }
+            if (res_rel < rtol) {
+                SNESSetConvergedReason(snes, SNES_CONVERGED_FNORM_RELATIVE);
+                CHKERRTHROW(VecDestroy(&f));
+                CHKERRTHROW(VecDestroy(&ratio));
+                PetscFunctionReturn(0);
+            }            
         }
 
         CHKERRTHROW(VecDestroy(&f));
         CHKERRTHROW(VecDestroy(&ratio));
-        CHKERRTHROW(MatDestroy(&J));
-        
 
-        return 0;
+        SNESSetConvergedReason(snes, SNES_DIVERGED_MAX_IT );
+
+        PetscFunctionReturn(0);
     }
 
 
@@ -821,26 +926,7 @@ private:
         TSErrorWeightedNorm(ts,X,Z,wnormtype,wlte,&wltea,&wlter);
 
         std::cout << "local truncation error: " << *wlte << std::endl;
-        // double *x, *y;
-        // VecGetArray(bdf->work[0], &x);
-        // VecGetArray(bdf->work[1], &y);
 
-        // std::cout << "bdf->work[0]: " << std::endl;
-        // for (i = 0; i < 30; ++i){
-        //      std::cout << x[i]<< ", ";
-        //  }
-        // std::cout << std::endl;
-        // std::cout << "bdf->work[1]: " << std::endl;
-        // for (i = 0; i < 30; ++i){
-        //      std::cout << y[i] << ", ";
-        // }
-        // std::cout << std::endl;
-        // std::cout << std::endl;
-
-        //  VecRestoreArray(bdf->work[0], &x);
-        //  VecRestoreArray(bdf->work[1], &y);
-
-        // restore BDF order
         CHKERRTHROW(TSBDFSetOrder(ts, *order));
 
         CHKERRTHROW(VecAXPY(Z,-1,X));
@@ -927,10 +1013,180 @@ private:
         }
         h_lte = h * PetscClipInterval(hfac_lte,adapt->clip[0],adapt->clip[1]);
 
-//        *next_h = PetscClipInterval(h_lte,adapt->dt_min,adapt->dt_max);
+    //        *next_h = PetscClipInterval(h_lte,adapt->dt_min,adapt->dt_max);
         *next_h = 1.1 * h;
         *wlte   = enorm;
         return(0);
+    }
+
+
+    /**
+     * Calculate the cofficients for the Lagrangian extrapolation
+     * @param n number of interpolation points
+     * @param t current time
+     * @param T vector with the times at these points
+     * @param dL vector with the coefficients
+     */
+    PETSC_STATIC_INLINE void LagrangeBasisDers(PetscInt n,PetscReal t,const PetscReal T[],PetscScalar dL[])
+    {
+    PetscInt  k,j,i;
+    for (k=0; k<n; k++)
+        for (dL[k]=0, j=0; j<n; j++)
+        if (j != k) {
+            PetscReal L = 1/(T[k] - T[j]);
+            for (i=0; i<n; i++)
+            if (i != j && i != k)
+                L *= (t - T[i])/(T[k] - T[i]);
+            dL[k] += L;
+        }
+    }
+
+    static PetscErrorCode TSBDF_VecLTE(TS ts,PetscInt order,Vec lte)
+    {
+        TS_BDF         *bdf = (TS_BDF*)ts->data;
+        PetscInt       i,n = order+1;
+        PetscReal      *time = bdf->time;
+        Vec            *vecs = bdf->work;
+        PetscScalar    a[8],b[8],alpha[8];
+        PetscErrorCode ierr;
+
+        PetscFunctionBegin;
+        LagrangeBasisDers(n+0,time[0],time,a); a[n] =0;
+        LagrangeBasisDers(n+1,time[0],time,b);
+        for (i=0; i<n+1; i++) alpha[i] = (a[i]-b[i])/a[0];
+        ierr = VecZeroEntries(lte);CHKERRQ(ierr);
+        ierr = VecMAXPY(lte,n+1,alpha,vecs);CHKERRQ(ierr);
+        PetscFunctionReturn(0);
+    }
+
+    template <typename TimeOp> 
+    static PetscErrorCode adaptBDFOrder(TS ts, PetscInt& new_order)
+    {
+        TimeOp* seasop;
+        CHKERRTHROW(TSGetApplicationContext(ts, &seasop));
+        const auto& cfg = seasop->getGeneralSolverConfiguration();
+
+        TS_BDF         *bdf = (TS_BDF*)ts->data;
+        PetscInt       k = bdf->k;
+        PetscReal      wlte,wltea,wlter, best_lte;
+        Vec            X = bdf->work[0], Y = bdf->vec_lte;
+        PetscErrorCode ierr;
+
+        PetscFunctionBegin;
+        k = PetscMin(k,bdf->n-1);
+        new_order = PetscMax(1,k-1);
+        best_lte = 1.0;
+
+        double * x;
+
+        for (int i = PetscMax(1,k-1); i <= PetscMin(bdf->n-1,k+1); i++ ) {
+            ierr = TSBDF_VecLTE(ts,i,Y);CHKERRQ(ierr);
+            ierr = VecAXPY(Y,1,X);CHKERRQ(ierr);
+            ierr = TSErrorWeightedNorm(ts,X,Y,ts->adapt->wnormtype,&wlte,&wltea,&wlter);CHKERRQ(ierr);
+            if (wlte < best_lte) {
+                best_lte = wlte;
+                new_order = i;
+            }            
+        }
+        PetscFunctionReturn(0);
+    }
+
+
+    /**
+     * Resets the time to 0 at the beginning of the earthquake because of bad precision
+     * @param ts TS instance
+     * @param time_eq variable to store the time at the earthquake start
+     */
+    static PetscErrorCode reducedTimeBeginEQ(TS ts, double& time_eq){
+        TS_BDF         *bdf = (TS_BDF*)ts->data;
+        PetscInt       n = (PetscInt)(sizeof(bdf->work)/sizeof(Vec));
+
+        PetscFunctionBegin;
+        time_eq = bdf->time[n-1];
+        for (int i = 0; i < n; i++) bdf->time[i] -= time_eq;
+
+        ts->ptime -= time_eq;
+        PetscFunctionReturn(0);
+    }
+
+
+
+    /**
+     * Restores the time at the end of the earthquake
+     * @param ts TS instance
+     * @param time_eq variable to retrieve the time at the earthquake start
+     */
+    static PetscErrorCode reducedTimeEndEQ(TS ts, double& time_eq){
+        TS_BDF         *bdf = (TS_BDF*)ts->data;
+        PetscInt       n = (PetscInt)(sizeof(bdf->work)/sizeof(Vec));
+
+        PetscFunctionBegin;
+        for (int i = 0; i < n; i++) bdf->time[i] += time_eq;
+
+        ts->ptime += time_eq;
+
+        time_eq = 0.;
+        PetscFunctionReturn(0);
+    }
+
+
+    /**
+     * Resets the time to 0 at the end of each step
+     * @param ts TS instance
+     * @param time_eq variable to store the time at the earthquake start
+     */
+    static PetscErrorCode reducedTimeEachStep(TS ts, double& time_eq){
+        TS_BDF         *bdf = (TS_BDF*)ts->data;
+        PetscInt       n = (PetscInt)(sizeof(bdf->work)/sizeof(Vec));
+        double         time_increase;
+
+        PetscFunctionBegin;
+        time_increase = bdf->time[n-1];
+        time_eq += time_increase;
+        for (int i = 0; i < n; i++) bdf->time[i] -= time_increase;
+        ts->ptime -= time_increase;
+        PetscFunctionReturn(0);
+    }
+
+
+    /**
+     * Performs the fourth order RK scheme (wihout error correction) 
+     * @param ts TS instance
+     * @param t previous simulation time
+     * @param dt time step size to current simulation time
+     * @param X solution vector at previous time
+     * @param Y solution vector at current time
+     * @param f function to evaluate the right-hand side
+     * @param ctx pointer to the SEAS instance
+     */
+    static PetscErrorCode RK4(TS ts, double t, double dt, Vec& X, Vec& Y, PetscErrorCode (*f)(TS,PetscReal,Vec,Vec,void*), void* ctx){
+        Vec F[4];      // working vector for the right hand-side
+        double a[4];
+
+        for(int i = 0; i < 4; i++) CHKERRTHROW(VecDuplicate(X, &F[i]));
+
+        CHKERRTHROW(VecCopy(X,Y));  // Y is a working vector for now
+        f(ts, t + 0.0 * dt, Y, F[0], ctx);
+
+        CHKERRTHROW(VecAXPY( Y, 0.5 * dt, F[0]));
+        f(ts, t + 0.5 * dt, Y, F[1], ctx);
+
+        CHKERRTHROW(VecWAXPY(Y, 0.5 * dt, F[1], X));
+        f(ts, t + 0.5 * dt, Y, F[2], ctx);
+
+        CHKERRTHROW(VecWAXPY(Y, 1.0 * dt, F[2], X));
+        f(ts, t + 1.0 * dt, Y, F[3], ctx);
+
+        a[0] = 1./6. * dt;
+        a[1] = 1./3. * dt;
+        a[2] = 1./3. * dt;
+        a[3] = 1./6. * dt;
+
+        CHKERRTHROW(VecCopy(X,Y));  // Y is now the next solution vector
+        CHKERRTHROW(VecMAXPY(Y, 4, a, F));
+
+        return 0;
+
     }
 
     std::shared_ptr<PetscBlockVector> state_;

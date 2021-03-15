@@ -139,7 +139,7 @@ public:
      * @return the maximal velocity encountered in this element
      * */
     double lhsCompactDAE(std::size_t faultNo, double time, Matrix<double> const& traction,
-                              Vector<double const>& state, Vector<double>& state_der, Vector<double>& result,
+                              Vector<double const>& state, Vector<double const>& state_der, Vector<double>& result,
                               LinearAllocator<double>&) const;               
 
     /**
@@ -154,7 +154,7 @@ public:
      * @return the maximal velocity encountered in this element
      * */
     double lhsExtendedDAE(std::size_t faultNo, double time, Matrix<double> const& traction,
-                              Vector<double const>& state, Vector<double>& state_der, Vector<double>& result,
+                              Vector<double const>& state, Vector<double const>& state_der, Vector<double>& result,
                               LinearAllocator<double>&) const;               
 
     /**
@@ -192,14 +192,29 @@ public:
      * - assign the derivative of dg/dpsi
      * @param faultNo index of the current fault
      * @param traction matrix with sigma and tau at all nodes in the element
-     * @param state current solution vector [S,psi,:] needed
+     * @param state current solution vector [S,psi] needed
      * @param state_der derivatives of the current solution vector [V,:] needed
      * @param result vector with the derivatives df/dV, df/dpsi, psi, V, g 
      * @param . some scratch
      * */
-    void getJacobianQuantities(std::size_t faultNo, double time, Matrix<double> const& traction,
+    void getJacobianQuantitiesCompact(std::size_t faultNo, double time, Matrix<double> const& traction,
+               Vector<double const>& state, Vector<double const>& state_der, Vector<double>& result, LinearAllocator<double>&) const;
+    void getJacobianQuantitiesCompact(std::size_t faultNo, double time, Matrix<double> const& traction,
                Vector<double const>& state, Vector<double>& state_der, Vector<double>& result, LinearAllocator<double>&) const;
-    void getJacobianQuantities(std::size_t faultNo, double time, Matrix<double> const& traction,
+
+    /**
+     * Evaluate some derivatives for the Jacobian 
+     * - assign the derivative of df/dV
+     * - assign the derivative of df/dpsi
+     * - assign the derivative of dg/dV
+     * - assign the derivative of dg/dpsi
+     * @param faultNo index of the current fault
+     * @param traction matrix with sigma and tau at all nodes in the element
+     * @param state current solution vector [S,psi,V] needed
+     * @param result vector with the derivatives df/dV, df/dpsi, psi, V, g 
+     * @param . some scratch
+     * */
+    void getJacobianQuantitiesExtended(std::size_t faultNo, double time, Matrix<double> const& traction,
                Vector<double const>& state, Vector<double>& result, LinearAllocator<double>&) const;
 
     /**
@@ -396,39 +411,39 @@ double RateAndState<Law>::rhsExtendedODE(std::size_t faultNo, double time,
 
 template <class Law>
 double RateAndState<Law>::lhsCompactDAE(std::size_t faultNo, double time, Matrix<double> const& traction,
-                              Vector<double const>& state, Vector<double>& state_der, Vector<double>& result,
+                              Vector<double const>& state, Vector<double const>& state_der, Vector<double>& result,
                               LinearAllocator<double>&) const {
     double VMax = 0.0;
     std::size_t nbf = space_.numBasisFunctions();
     std::size_t index = faultNo * nbf;
-    auto s_mat = mat(state);
-    auto s_der_mat = mat(state_der);
-    auto r_mat = mat(result);
+    auto s_mat      = mat(state);
+    auto s_der_mat  = mat(state_der);
+    auto r_mat      = mat(result);
     for (std::size_t node = 0; node < nbf; ++node) {
-        auto sn      = traction(node, 0);
-        auto tau_vec = law_.getTauVec(index + node, get_tau(node, traction));
+        auto sn         = traction(node, 0);
+        auto tau_vec    = law_.getTauVec(index + node, get_tau(node, traction));
 
-        auto psi     = s_mat(node, PsiIndex);        
-        auto psi_dot = s_der_mat(node, PsiIndex);
+        auto psi        = s_mat(node, PsiIndex);        
+        auto psi_dot    = s_der_mat(node, PsiIndex);
 
         std::array<double, TangentialComponents> Vi;
         for (std::size_t t = 0; t < TangentialComponents; ++t) {
-            Vi[t] = s_der_mat(node, t);
+            Vi[t]       = s_der_mat(node, t);
         }
 
         double V = norm(Vi);
         VMax = std::max(VMax, V);
 
-        r_mat(node, 0)        = law_.friction_law(index + node, sn, get_tau(node, traction), psi, V);
+        r_mat(node, 0)          = law_.friction_law(index + node, sn, get_tau(node, traction), psi, V);
         if (TangentialComponents == 2)
-               r_mat(node, 1) = Vi[0] / V - tau_vec[0] / norm(tau_vec);
-        r_mat(node, PsiIndex) = law_.state_rhs(index + node, V, psi) - psi_dot;
+            r_mat(node, 1)      = Vi[0] / V - tau_vec[0] / norm(tau_vec);
+        r_mat(node, PsiIndex)   = law_.state_rhs(index + node, V, psi) - psi_dot;
     }
     return VMax;
 }
 template <class Law>
 double RateAndState<Law>::lhsExtendedDAE(std::size_t faultNo, double time, Matrix<double> const& traction,
-                              Vector<double const>& state, Vector<double>& state_der, Vector<double>& result,
+                              Vector<double const>& state, Vector<double const>& state_der, Vector<double>& result,
                               LinearAllocator<double>&) const {
     double VMax = 0.0;
     std::size_t nbf = space_.numBasisFunctions();
@@ -517,21 +532,23 @@ double RateAndState<Law>::applyMaxFrictionLaw(std::size_t faultNo, double time, 
 
 
 template <class Law>
-void RateAndState<Law>::getJacobianQuantities(std::size_t faultNo, double time, Matrix<double> const& traction,
-               Vector<double const>& state, Vector<double>& state_der, Vector<double>& result, LinearAllocator<double>&) const {
+void RateAndState<Law>::getJacobianQuantitiesCompact(std::size_t faultNo, double time, Matrix<double> const& traction,
+               Vector<double const>& state, Vector<double const>& state_der, Vector<double>& result, LinearAllocator<double>&) const {
     auto s_mat = mat(state);
     auto s_der_mat = mat(state_der);
     std::size_t nbf = space_.numBasisFunctions();
     std::size_t index = faultNo * nbf;
     for (std::size_t node = 0; node < nbf; ++node) {
+
         auto sn = traction(node, 0);
         auto psi = s_mat(node, PsiIndex);
-        auto tau = get_tau(node, traction);
+
         std::array<double, TangentialComponents> Vi;
         for (std::size_t t = 0; t < TangentialComponents; ++t) {
             Vi[t] = s_der_mat(node, t);
         }
         double V = norm(Vi);
+
         result(0 * nbf + node) = law_.df_dV(index + node, sn, V, psi);
         result(1 * nbf + node) = law_.df_dpsi(index + node, sn, V, psi);
         result(2 * nbf + node) = law_.dg_dV();
@@ -540,7 +557,33 @@ void RateAndState<Law>::getJacobianQuantities(std::size_t faultNo, double time, 
 }
 
 template <class Law>
-void RateAndState<Law>::getJacobianQuantities(std::size_t faultNo, double time, Matrix<double> const& traction,
+void RateAndState<Law>::getJacobianQuantitiesCompact(std::size_t faultNo, double time, Matrix<double> const& traction,
+               Vector<double const>& state, Vector<double>& state_der, Vector<double>& result, LinearAllocator<double>&) const {
+    auto s_mat = mat(state);
+    auto s_der_mat = mat(state_der);
+    std::size_t nbf = space_.numBasisFunctions();
+    std::size_t index = faultNo * nbf;
+    for (std::size_t node = 0; node < nbf; ++node) {
+
+        auto sn = traction(node, 0);
+        auto psi = s_mat(node, PsiIndex);
+
+        std::array<double, TangentialComponents> Vi;
+        for (std::size_t t = 0; t < TangentialComponents; ++t) {
+            Vi[t] = s_der_mat(node, t);
+        }
+        double V = norm(Vi);
+
+        result(0 * nbf + node) = law_.df_dV(index + node, sn, V, psi);
+        result(1 * nbf + node) = law_.df_dpsi(index + node, sn, V, psi);
+        result(2 * nbf + node) = law_.dg_dV();
+        result(3 * nbf + node) = law_.dg_dpsi(psi);           
+    }
+}
+
+
+template <class Law>
+void RateAndState<Law>::getJacobianQuantitiesExtended(std::size_t faultNo, double time, Matrix<double> const& traction,
                Vector<double const>& state, Vector<double>& result, LinearAllocator<double>&) const {
     auto s_mat = mat(state);
     std::size_t nbf = space_.numBasisFunctions();

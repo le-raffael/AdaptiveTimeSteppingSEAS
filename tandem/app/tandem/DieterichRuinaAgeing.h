@@ -81,6 +81,7 @@ public:
      * */
     double sn_pre(std::size_t index) const { return p_[index].get<SnPre>(); }
 
+
     /**
      * get tau_pre
      * @param index of the current node

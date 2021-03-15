@@ -31,7 +31,7 @@ t_max = 9460800
 
 [solver]
 bdf_custom_error_evaluation = false
-bdf_custom_Newton_iteration = false
+bdf_custom_Newton_iteration = true
 custom_time_step_adapter = false
 adapt_wnormtype = "infinity"
 ksp_type = "preonly"
@@ -40,19 +40,6 @@ pc_factor_mat_solver_type = "mumps"
 
     [solver.aseismic_slip]
     solution_size = "compact"
-    problem_formulation="ode"
-    type = "rk"
-    rk_type = "5dp"
-    bdf_order = 4
-    S_atol = 1e-7
-    S_rtol = 0
-    psi_atol = 1.0e-7
-    psi_rtol = 0
-    V_atol = 0
-    V_rtol = 1e-7
-
-    [solver.earthquake]
-    solution_size = "extended"
     problem_formulation="dae"
     type = "bdf"
     rk_type = "5dp"
@@ -62,7 +49,20 @@ pc_factor_mat_solver_type = "mumps"
     psi_atol = 1.0e-7
     psi_rtol = 0
     V_atol = 0
-    V_rtol = 1e-7
+    V_rtol = 0
+
+    [solver.earthquake]
+    solution_size = "compact"
+    problem_formulation="dae"
+    type = "bdf"
+    rk_type = "5dp"
+    bdf_order = 4
+    S_atol = 1e-7
+    S_rtol = 0
+    psi_atol = 1.0e-7
+    psi_rtol = 0
+    V_atol = 0
+    V_rtol = 0
 
 
 
