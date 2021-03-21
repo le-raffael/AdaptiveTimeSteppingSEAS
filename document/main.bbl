@@ -1,25 +1,18 @@
-\begin{thebibliography}{Jam78}
+\begin{thebibliography}{Rap97}
 
 \bibitem[Bro65]{BroydenIteration}
 C.~Broyden.
 \newblock A class of methods for solving nonlinear simultaneous equations.
 \newblock {\em Mathematics of Computation}, 19:577--593, 1965.
 
-\bibitem[Jam78]{generalizedInverseSolutionSet}
-M.~James.
-\newblock The generalised inverse.
-\newblock {\em The Mathematical Gazette}, 62(420):109–114, 1978.
-
-\bibitem[Pen55]{MoorePenroseInverse}
-R.~Penrose.
-\newblock A generalized inverse for matrices.
-\newblock {\em Mathematical Proceedings of the Cambridge Philosophical
-  Society}, 51(3):406–413, 1955.
+\bibitem[Olv14]{introductionPartialDiffEquations}
+Peter~J. Olver.
+\newblock {\em Introduction to Partial Differential Equations}.
+\newblock Springer International Publishing, 2014.
 
 \bibitem[Rap97]{NewtonRaphsonMethod}
 Joseph Raphson.
-\newblock {\em Numerical Initial Value Problems in Ordinary Differential
-  Equations}.
+\newblock {\em Analysis Æequationum Universalis}.
 \newblock Th. Braddyll, 1697.
 
 \bibitem[Roa01]{10.1115/1.1436090}

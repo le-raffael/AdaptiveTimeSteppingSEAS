@@ -13,6 +13,7 @@
 #include "petscpc.h" 
 #include <petscdm.h>
 #include <petsc/private/tsimpl.h>   // hack to directly access petsc stuff of the library
+#include <petsc/private/snesimpl.h>   
 
 #include "tandem/RateAndStateBase.h"
 #include "tandem/SeasWriter.h"
@@ -357,7 +358,7 @@ private:
 
         // copy settings to solver struct
         solverStruct.customErrorFct = &evaluateEmbeddedMethodBDF;
-        solverStruct.customNewtonFct = &solveNewton;
+        solverStruct.customNewtonFct = &solveNewton<TimeOp>;
         solverStruct.checkAS = true;
         solverStruct.current_solver_cfg = cfg_as;
         solverStruct.state_compact = state_compact_;
@@ -384,12 +385,7 @@ private:
         auto& solverStruct = seasop->getSolverParameters();
         auto const& cfg    = seasop->getGeneralSolverConfiguration();
 
-        // Reset the divergence test before each stage
-        seasop->resetDivergenceTest();
-
         PetscFunctionBegin;
-        TS_BDF *bdf = (TS_BDF*)ts->data;
-
         // initialize the SNES solver with an explicit Rk4
         if (solverStruct.needRegularizationCompactDAE) {
             solverStruct.needRegularizationCompactDAE = false;
@@ -404,7 +400,7 @@ private:
 
     /**
      * Performs actions after each stage
-     * - Recognises if the SNES solver failed because of own diverged test, and restart the step with accurate estimate for the solution vector
+     * - in the 2nd order ODE formulation, if an implicit method is used, the slip is calculated separately after the Newton iteration
      * @param ts TS context
      * @param t current simulation time
      * @param k stage index
@@ -413,28 +409,28 @@ private:
     template <typename TimeOp> 
     static PetscErrorCode functionPostStage(TS ts, double t, int k, Vec* Y) {
         TimeOp* seasop;
-        SNES snes;
-        SNESConvergedReason reason;
 
         PetscFunctionBegin;
         CHKERRTHROW(TSGetApplicationContext(ts, &seasop));
-        CHKERRTHROW(TSGetSNES(ts, &snes));
-        CHKERRTHROW(SNESGetConvergedReason(snes, &reason));
+        auto& solverStruct = seasop->getSolverParameters();
 
-        if (reason == SNES_DIVERGED_FNORM_NAN) {
-            TS_BDF *bdf = (TS_BDF*)ts->data;
-            double dt = bdf->time[0] - bdf->time[1];
-            RK4(ts, bdf->time[1], dt, bdf->work[1], bdf->work[0], RHSFunctionCompactODE<TimeOp>, seasop);
-            CHKERRTHROW(SNESSetConvergedReason(snes, SNES_CONVERGED_ITS));
+        if (solverStruct.useExtendedODE && solverStruct.useImplicitSolver){
+            TS_BDF         *bdf = (TS_BDF*)ts->data;
+            PetscInt       i,n = PetscMax(bdf->k,1) + 1;
+            Vec            vecs[7];
+            PetscScalar    alpha[7];
+            PetscErrorCode ierr;
+            double shift;
 
-            // PetscReal dt,new_dt;
-            // TSGetTimeStep(ts,&dt);
-            // new_dt = dt / ts->adapt->scale_solve_failed * 0.5;
-            // TSSetTimeStep(ts,new_dt);
+            LagrangeBasisDers(n,bdf->time[0],bdf->time,alpha);
+            for (i=1; i<n; i++) {
+                vecs[i] = bdf->transientvar ? bdf->tvwork[i] : bdf->work[i];
+            }
+            shift = PetscRealPart(alpha[0]);
 
-//            auto& solverStruct = seasop->getSolverParameters();
-//            solverStruct.needRegularizationCompactDAE = true;
+            seasop->setSlipAfterNewtonIteration(*Y,n,vecs,alpha,shift);
         }
+
         PetscFunctionReturn(0);
     }
 
@@ -465,7 +461,7 @@ private:
 
 
 
-        if ((solverStruct.current_solver_cfg->type == "bdf") && 
+        if ((solverStruct.useImplicitSolver) && 
             (solverStruct.current_solver_cfg->bdf_order == 0)) {
             int next_order;
             int order;
@@ -475,6 +471,7 @@ private:
             CHKERRTHROW(TSBDFSetOrder(ts, next_order));
         }
 //        reducedTimeEachStep(ts, solverStruct.time_eq);
+
         // VecGetArray(Xx, &xx); // for some reason needed if BDF order > 4
         // VecRestoreArray(Xx, &xx); // for some reason needed if BDF order > 4
 
@@ -515,7 +512,7 @@ private:
 
         // change formulation, tolerances and fetch solver parameters
         if (enterEQphase) {
-        //    if (!initialCall) reducedTimeBeginEQ(ts, solverStruct.time_eq);
+            if (!initialCall) reducedTimeBeginEQ(ts, solverStruct.time_eq);
             changeFormulation(ts, time, timeop, cfg_as, cfg_eq, initialCall);
             setTolerancesVector(ts, timeop, cfg_eq->solution_size, cfg_eq->S_rtol, cfg_eq->S_atol,   
                                  cfg_eq->psi_rtol, cfg_eq->psi_atol, cfg_eq->V_rtol, cfg_eq->V_atol);
@@ -526,7 +523,7 @@ private:
             problem_formulation = cfg_eq->problem_formulation;
 
         } else {
-        //    if (!initialCall) reducedTimeEndEQ(ts, solverStruct.time_eq);
+            if (!initialCall) reducedTimeEndEQ(ts, solverStruct.time_eq);
             changeFormulation(ts, time, timeop, cfg_eq, cfg_as, initialCall);
             setTolerancesVector(ts, timeop, cfg_as->solution_size, cfg_as->S_rtol, cfg_as->S_atol,   
                                  cfg_as->psi_rtol, cfg_as->psi_atol, cfg_as->V_rtol, cfg_as->V_atol);
@@ -538,6 +535,8 @@ private:
         }
 
         CHKERRTHROW(TSSetUp(ts));
+
+        CHKERRTHROW(TSAdaptSetClip(ts->adapt, 0.1, 10));
 
         // some output prints
         if (type == "rk") {
@@ -565,8 +564,8 @@ private:
         auto& solverStruct = timeop.getSolverParameters();
         auto& cfg = timeop.getGeneralSolverConfiguration();
 
-        if (initialCall || (cfg_prev->solution_size != cfg_prev->solution_size) ||
-            (cfg_prev->problem_formulation != cfg_prev->problem_formulation)) {
+        if (initialCall || (cfg_prev->solution_size != cfg_next->solution_size) ||
+            (cfg_prev->problem_formulation != cfg_next->problem_formulation)) {
 
             DM dm;
             DMTS tsdm;
@@ -574,6 +573,7 @@ private:
             CHKERRTHROW(DMGetDMTS(dm,&tsdm));
 
             CHKERRTHROW(TSReset(ts));
+            solverStruct.useExtendedODE = false;
 
             if (cfg_next->solution_size == "compact") {
                 if (initialCall || (cfg_prev->solution_size == "extended")) {
@@ -595,7 +595,6 @@ private:
                     solverStruct.needRegularizationCompactDAE = true;
                     CHKERRTHROW(TSSetEquationType(ts, TS_EQ_IMPLICIT));
                     CHKERRTHROW(TSSetPreStage(ts, functionPreStage<TimeOp>));
-                    CHKERRTHROW(TSSetPostStage(ts, functionPostStage<TimeOp>));
                     CHKERRTHROW(TSSetIFunction(ts, nullptr, LHSFunctionCompactDAE<TimeOp>, &timeop));
                     CHKERRTHROW(TSSetIJacobian(ts, timeop.getJacobianCompactDAE(), timeop.getJacobianCompactDAE(), LHSJacobianCompactDAE<TimeOp>, &timeop));
                     tsdm->ops->rhsfunction = NULL;
@@ -609,10 +608,12 @@ private:
                 }
                 CHKERRTHROW(TSSetSolution(ts, solverStruct.state_extended->vec()));
                 if (cfg_next->problem_formulation == "ode"){
+                    solverStruct.useExtendedODE = true;
                     CHKERRTHROW(TSSetEquationType(ts, TS_EQ_EXPLICIT));
                     CHKERRTHROW(TSSetRHSFunction(ts, nullptr, RHSFunctionExtendedODE<TimeOp>, &timeop));
                     if (cfg_next->type == "bdf") {
                         CHKERRTHROW(TSSetRHSJacobian(ts, timeop.getJacobianExtendedODE(), timeop.getJacobianExtendedODE(), RHSJacobianExtendedODE<TimeOp>, &timeop));
+                        CHKERRTHROW(TSSetPostStage(ts, functionPostStage<TimeOp>));
                     }
                     tsdm->ops->ifunction = NULL;
                     tsdm->ops->ijacobian = NULL;
@@ -671,10 +672,14 @@ private:
         CHKERRTHROW(TSSetType(ts, cfg_next->type.c_str()));
 
         // rk settings
-        if (cfg_next->type == "rk")
+        if (cfg_next->type == "rk") {
             CHKERRTHROW(TSRKSetType(ts, cfg_next->rk_type.c_str()));
+            solverStruct.useImplicitSolver = false;
         // bdf settings
-        if (cfg_next->type == "bdf") setBDFParameters(ts, cfg_next->bdf_order, cfg, solverStruct);
+        } else if (cfg_next->type == "bdf") {
+            setBDFParameters(ts, timeop, cfg_next->bdf_order, cfg, solverStruct);
+            solverStruct.useImplicitSolver = true;
+        }
     }
 
 
@@ -747,8 +752,8 @@ private:
         SNES snes;
         CHKERRTHROW(TSGetSNES(ts, &snes));
         double atol = 1e-50;                          // absolute tolerance (default = 1e-50) 
-        double rtol = 1e-50;                          // relative tolerance (default = 1e-8)  
-        double stol = 1e-8;                          // relative tolerance (default = 1e-8)                         
+        double rtol = 1e-50;                          // relative tolerance (default = 1e-8)
+        double stol = 1e-8;                          // relative tolerance (default = 1e-8)
         int maxit = 10;                              // maximum number of iteration (default = 50)    
         int maxf  = -1;                              // maximum number of function evaluations (default = 1000)  
         CHKERRTHROW(SNESSetTolerances(snes, atol, rtol, stol, maxit, maxf));
@@ -762,8 +767,8 @@ private:
      * @param cfg general configuration to see whether use manual implementations or not
      * @param solverStruct contains the pointer to the manual implementations
      */
-    template <typename CFG>
-    static void setBDFParameters(TS ts, int order, 
+    template <typename CFG, typename TimeOp>
+    static void setBDFParameters(TS ts, TimeOp& seasop, int order, 
         const std::optional<tndm::SolverConfigGeneral>& cfg, CFG& solverStruct){
 
        if (order > 0) CHKERRTHROW(TSBDFSetOrder(ts, order));
@@ -780,11 +785,9 @@ private:
 
         if (cfg->bdf_custom_Newton_iteration) {                       // manual Newton iteration
             CHKERRTHROW(SNESSetType(snes, SNESSHELL));
-            CHKERRTHROW(SNESShellSetContext(snes, &ts));
+            CHKERRTHROW(SNESShellSetContext(snes, &seasop));
             CHKERRTHROW(SNESShellSetSolve(snes, *solverStruct.customNewtonFct));
         }
-        SNESType type;
-        SNESGetType(snes,&type);
         CHKERRTHROW(SNESGetKSP(snes, &snes_ksp));
         CHKERRTHROW(KSPGetPC(snes_ksp, &snes_pc));
         CHKERRTHROW(KSPSetType(snes_ksp, cfg->ksp_type.c_str()));
@@ -795,76 +798,84 @@ private:
     }
 
     /**
-     * Own implementation of the Newton algorithm (not used, only for testing purposes)
+     * Custom implementation of the Newton algorithm 
      * @param snes solving context
      * @param x solution vector 
      */
-     static PetscErrorCode solveNewton(SNES snes, Vec x){
-        // get TS context
+    template <typename TimeOp> 
+    static PetscErrorCode solveNewton(SNES snes, Vec x){
 
-        KSP ksp;
-        CHKERRTHROW(SNESGetKSP(snes, &ksp));        
-
-        Vec f;                          // residual
-        Vec ratio;                      // J(f(u))^{-1}f(u)
-        Mat J,J_pre;                    // Jacobi matrices
-        double res, res_rel, res_prev;  // norm of the residual
+        Vec f = snes->vec_func;                     // rhs function for the KSP solver
+        Vec Newton_step = snes->vec_sol_update;     // J(f(u))^{-1}f(u)
+        Mat J,J_pre;                                // Jacobi matrices
+        double norm_f, norm_init, norm_dx, norm_x, norm_f_prev;  // norm of the residual
         double atol, rtol, stol;
         int maxit, maxf;
-                
+
+        void* ctx;
+        TimeOp* seasop;
+        KSP ksp;        
         SNESConvergedReason reason;
 
         PetscFunctionBegin;
+        SNESSetConvergedReason(snes, SNES_CONVERGED_ITERATING);
+
+        CHKERRTHROW(SNESShellGetContext(snes, &ctx));
+        seasop = reinterpret_cast<TimeOp*>(ctx);        
+        auto& solverStruct = seasop->getSolverParameters();
+
+        if (!f)             CHKERRTHROW(VecDuplicate(x, &f));
+        if (!Newton_step)   CHKERRTHROW(VecDuplicate(x, &Newton_step));
+
         CHKERRTHROW(SNESGetJacobian(snes, &J, &J_pre, nullptr, nullptr));
-        CHKERRTHROW(VecDuplicate(x, &f));
-        CHKERRTHROW(VecDuplicate(x, &ratio));
         CHKERRTHROW(SNESGetTolerances(snes, &atol, &rtol, &stol, &maxit, &maxf));
 
+        CHKERRTHROW(SNESGetKSP(snes, &ksp));
+
         CHKERRTHROW(SNESComputeFunction(snes, x, f));    //evaluate RHS of the ODE
-        CHKERRTHROW(VecNorm(f, NORM_INFINITY, &res));
-        SNESSetConvergedReason(snes, SNES_CONVERGED_ITERATING);
-        std::cout << "absolute residual: "<<res<<std::endl;
+        if (solverStruct.useExtendedODE) seasop->updateRHSNewtonIteration(f);
+
+        CHKERRTHROW(VecNorm(f, NORM_INFINITY, &norm_f));
+        norm_init = norm_f;
 
         for(int n = 0; n < maxit; n++) {
             CHKERRTHROW(SNESComputeJacobian(snes, x, J, J_pre));  // get the Jacobian
-            CHKERRTHROW(KSPSetOperators(ksp, J, J_pre));
-            CHKERRTHROW(KSPSolve(ksp, f, ratio));                 // solve the Jacobian system
-            CHKERRTHROW(VecAXPY(x, -1, ratio));                   // update the solution vector
+            CHKERRTHROW(KSPSetOperators(ksp, J, J_pre));          // set it to the KSP
+            CHKERRTHROW(KSPSolve(ksp, f, Newton_step));           // solve the Jacobian system
+            CHKERRTHROW(VecAXPY(x, -1, Newton_step));             // update the solution vector
+
             CHKERRTHROW(SNESComputeFunction(snes, x, f));         // evaluate the algebraic function
+            if (solverStruct.useExtendedODE) seasop->updateRHSNewtonIteration(f);
 
-            res_prev = res;
-            CHKERRTHROW(VecNorm(f, NORM_INFINITY, &res));         // and its norm
-            CHKERRTHROW(VecMaxPointwiseDivide(f,x,&res_rel));
-            std::cout << "absolute residual: "<<res<<", relative residual: " << res_rel << std::endl;
-
-            // not converged
-            if ((res_prev - res) / res_prev < stol) {
-                SNESSetConvergedReason(snes, SNES_DIVERGED_FNORM_NAN);
-                CHKERRTHROW(VecDestroy(&f));
-                CHKERRTHROW(VecDestroy(&ratio));
-                PetscFunctionReturn(0);
-            }
+            norm_f_prev = norm_f;
+            CHKERRTHROW(VecNorm(f, NORM_INFINITY, &norm_f));      // calculate some nomrs
+            CHKERRTHROW(VecNorm(Newton_step, NORM_INFINITY, &norm_dx));
+            CHKERRTHROW(VecNorm(x, NORM_INFINITY, &norm_x));
 
             // converged
-            if (res < atol) {
+            if (norm_f < atol) {
+//                std::cout << "converged with the absolute residual " << norm_f << " after " << n+1 << " iterations " << std::endl;
                 SNESSetConvergedReason(snes, SNES_CONVERGED_FNORM_ABS);
-                CHKERRTHROW(VecDestroy(&f));
-                CHKERRTHROW(VecDestroy(&ratio));
                 PetscFunctionReturn(0);
             }
-            if (res_rel < rtol) {
+            if (norm_f / norm_init < rtol) {
+//                std::cout << "converged with the relative residual " << norm_f / norm_init << " after " << n+1 << " iterations " << std::endl;
                 SNESSetConvergedReason(snes, SNES_CONVERGED_FNORM_RELATIVE);
-                CHKERRTHROW(VecDestroy(&f));
-                CHKERRTHROW(VecDestroy(&ratio));
                 PetscFunctionReturn(0);
-            }            
+            }
+            if (norm_dx / norm_x < stol) {
+//                std::cout << "converged because of the relative change in x  " << norm_dx / norm_x  << " reached after " << n+1 << " iterations " << std::endl;
+                SNESSetConvergedReason(snes, SNES_CONVERGED_SNORM_RELATIVE);
+                PetscFunctionReturn(0);
+            }
+            // if (norm_f_prev < norm_f) {     // only used for absolute best convergence
+            //     solverStruct.FMax = norm_f; // = f_norm for the absolute error
+            //     SNESSetConvergedReason(snes, SNES_CONVERGED_SNORM_RELATIVE);
+            //     PetscFunctionReturn(0);
+            // }
         }
 
-        CHKERRTHROW(VecDestroy(&f));
-        CHKERRTHROW(VecDestroy(&ratio));
-
         SNESSetConvergedReason(snes, SNES_DIVERGED_MAX_IT );
-
         PetscFunctionReturn(0);
     }
 
@@ -880,12 +891,8 @@ private:
         // presolve processing
         TS_BDF          *bdf = (TS_BDF*)ts->data;
         PetscReal      wltea,wlter;
-        Vec            X = bdf->work[0], Y = bdf->vec_lte, Z;
-
-        CHKERRTHROW(TSBDFGetOrder(ts, order));
-        CHKERRTHROW(TSBDFSetOrder(ts, *order-1));
-
-        PetscInt       n = PetscMax(bdf->k,1) + 1;
+        Vec            X = bdf->work[0], Y = bdf->vec_lte;
+        PetscInt       n;
         Vec            V,V0;
         Vec            vecs[7];
         PetscScalar    alpha[7];
@@ -893,19 +900,13 @@ private:
         V = bdf->vec_dot;
         V0 = bdf->vec_wrk;
 
-        // get Lagrangian polynomials from time steps
-        PetscInt  k,j,i;
-        for (k=0; k<n; k++)
-            for (alpha[k]=0, j=0; j<n; j++)
-            if (j != k) {
-                PetscReal L = 1/(bdf->time[k] - bdf->time[j]);
-                for (i=0; i<n; i++)
-                if (i != j && i != k)
-                    L *= (bdf->time[0] - bdf->time[i])/(bdf->time[k] - bdf->time[i]);
-                alpha[k] += L;
-            }
+        PetscFunctionBegin;
+        n = PetscMin(bdf->k+2, bdf->n);
+        *order = n-1;
 
-        for (i=1; i<n; i++) {
+        // get Lagrangian polynomials from time steps
+        LagrangeBasisDers(n,bdf->time[0],bdf->time,alpha);
+        for (int i=1; i<n; i++) {
                 vecs[i] = bdf->transientvar ? bdf->tvwork[i] : bdf->work[i];
         }
 
@@ -913,26 +914,18 @@ private:
         VecMAXPY(V0,n-1,alpha+1,vecs+1);
         bdf->shift = PetscRealPart(alpha[0]);
 
-        V = nullptr;
-        V0 = nullptr;
-
         // solve nonlinear system
-        CHKERRTHROW(VecDuplicate(X, &Z));    
-        CHKERRTHROW(VecCopy(X, Z));     // initial guess is previous time step
-//        CHKERRTHROW(VecCopy(bdf->work[1], Z));     // initial guess is previous time step
-        SNESSolve(ts->snes,nullptr,Z);
+        CHKERRTHROW(VecCopy(X, Y));
+        SNESSolve(ts->snes,nullptr,Y);
 
         // calculate the error between both solutions
-        TSErrorWeightedNorm(ts,X,Z,wnormtype,wlte,&wltea,&wlter);
+        TSErrorWeightedNorm(ts,X,Y,wnormtype,wlte,&wltea,&wlter);
 
-        std::cout << "local truncation error: " << *wlte << std::endl;
+        CHKERRTHROW(VecAXPY(Y,-1,X));
 
-        CHKERRTHROW(TSBDFSetOrder(ts, *order));
-
-        CHKERRTHROW(VecAXPY(Z,-1,X));
-        CHKERRTHROW(VecCopy(Z, Y));
-        CHKERRTHROW(VecDestroy(&Z));     
-        return 0;
+        V = nullptr;
+        V0 = nullptr;
+        PetscFunctionReturn(0);
     }
         
 
@@ -948,77 +941,76 @@ private:
      * @param wltea absolute LTE
      * @param wlter relative LTE
      */
-    static PetscErrorCode TSAdaptChoose_Custom(TSAdapt adapt,TS ts,PetscReal h,PetscInt *next_sc,PetscReal *next_h,PetscBool *accept,PetscReal *wlte,PetscReal *wltea,PetscReal *wlter) {
-        Vec            Y;
-        DM             dm;
-        PetscInt       order  = PETSC_DECIDE;
-        PetscReal      enorm  = -1;
-        PetscReal      enorma,enormr;
-        PetscReal      safety = adapt->safety;
-        PetscReal      hfac_lte,h_lte;
+static PetscErrorCode TSAdaptChoose_Custom(TSAdapt adapt,TS ts,PetscReal h,PetscInt *next_sc,PetscReal *next_h,PetscBool *accept,PetscReal *wlte,PetscReal *wltea,PetscReal *wlter)
+{
+  Vec            Y;
+  DM             dm;
+  PetscInt       order  = PETSC_DECIDE;
+  PetscReal      enorm  = -1;
+  PetscReal      enorma,enormr;
+  PetscReal      safety = adapt->safety;
+  PetscReal      hfac_lte,h_lte;
+  PetscErrorCode ierr;
 
-        *next_sc = 0;   /* Reuse the same order scheme */
-        *wltea   = -1;  /* Weighted absolute local truncation error is not used */
-        *wlter   = -1;  /* Weighted relative local truncation error is not used */
+  PetscFunctionBegin;
+  *next_sc = 0;   /* Reuse the same order scheme */
+  *wltea   = -1;  /* Weighted absolute local truncation error is not used */
+  *wlter   = -1;  /* Weighted relative local truncation error is not used */
 
-        if (ts->ops->evaluatewlte) {
-            TSEvaluateWLTE(ts,adapt->wnormtype,&order,&enorm);
-            std::cout << "previous time step size: " << h << " with error norm: " << enorm << std::endl;
-            enorm = 0.1;
-            if (enorm >= 0 && order < 1) SETERRQ1(PetscObjectComm((PetscObject)adapt),PETSC_ERR_ARG_OUTOFRANGE,"Computed error order %D must be positive",order);
-        } else if (ts->ops->evaluatestep) {
-            if (adapt->candidates.n < 1) SETERRQ(PetscObjectComm((PetscObject)adapt),PETSC_ERR_ARG_WRONGSTATE,"No candidate has been registered");
-            if (!adapt->candidates.inuse_set) SETERRQ1(PetscObjectComm((PetscObject)adapt),PETSC_ERR_ARG_WRONGSTATE,"The current in-use scheme is not among the %D candidates",adapt->candidates.n);
-            order = adapt->candidates.order[0];
-            TSGetDM(ts,&dm);
-            DMGetGlobalVector(dm,&Y);
-            TSEvaluateStep(ts,order-1,Y,NULL);
-            TSErrorWeightedNorm(ts,ts->vec_sol,Y,adapt->wnormtype,&enorm,&enorma,&enormr);
-            DMRestoreGlobalVector(dm,&Y);
-        }
+  if (ts->ops->evaluatewlte) {
+    ierr = TSEvaluateWLTE(ts,adapt->wnormtype,&order,&enorm);CHKERRQ(ierr);
+    if (enorm >= 0 && order < 1) SETERRQ1(PetscObjectComm((PetscObject)adapt),PETSC_ERR_ARG_OUTOFRANGE,"Computed error order %D must be positive",order);
+  } else if (ts->ops->evaluatestep) {
+    if (adapt->candidates.n < 1) SETERRQ(PetscObjectComm((PetscObject)adapt),PETSC_ERR_ARG_WRONGSTATE,"No candidate has been registered");
+    if (!adapt->candidates.inuse_set) SETERRQ1(PetscObjectComm((PetscObject)adapt),PETSC_ERR_ARG_WRONGSTATE,"The current in-use scheme is not among the %D candidates",adapt->candidates.n);
+    order = adapt->candidates.order[0];
+    ierr = TSGetDM(ts,&dm);CHKERRQ(ierr);
+    ierr = DMGetGlobalVector(dm,&Y);CHKERRQ(ierr);
+    ierr = TSEvaluateStep(ts,order-1,Y,NULL);CHKERRQ(ierr);
+    ierr = TSErrorWeightedNorm(ts,ts->vec_sol,Y,adapt->wnormtype,&enorm,&enorma,&enormr);CHKERRQ(ierr);
+    ierr = DMRestoreGlobalVector(dm,&Y);CHKERRQ(ierr);
+  }
 
-        if (enorm < 0) {
-            *accept  = PETSC_TRUE;
-            *next_h  = h;            /* Reuse the old step */
-            *wlte    = -1;           /* Weighted local truncation error was not evaluated */
-            return(0);
-        }
+  if (enorm < 0) {
+    *accept  = PETSC_TRUE;
+    *next_h  = h;            /* Reuse the old step */
+    *wlte    = -1;           /* Weighted local truncation error was not evaluated */
+    PetscFunctionReturn(0);
+  }
 
-        /* Determine whether the step is accepted of rejected */
-        if (enorm > 1) {
-            if (!*accept) safety *= adapt->reject_safety; /* The last attempt also failed, shorten more aggressively */
-            if (h < (1 + PETSC_SQRT_MACHINE_EPSILON)*adapt->dt_min) {
-            PetscInfo2(adapt,"Estimated scaled local truncation error %g, accepting because step size %g is at minimum\n",(double)enorm,(double)h);
-            *accept = PETSC_TRUE;
-            } else if (adapt->always_accept) {
-            PetscInfo2(adapt,"Estimated scaled local truncation error %g, accepting step of size %g because always_accept is set\n",(double)enorm,(double)h);
-            *accept = PETSC_TRUE;
-            } else {
-            PetscInfo2(adapt,"Estimated scaled local truncation error %g, rejecting step of size %g\n",(double)enorm,(double)h);
-            *accept = PETSC_FALSE;
-            }
-        } else {
-            PetscInfo2(adapt,"Estimated scaled local truncation error %g, accepting step of size %g\n",(double)enorm,(double)h);
-            *accept = PETSC_TRUE;
-        }
-
-        /* The optimal new step based purely on local truncation error for this step. */
-        if (enorm > 0)
-            hfac_lte = safety * PetscPowReal(enorm,((PetscReal)-1)/order);
-        else
-            hfac_lte = safety * PETSC_INFINITY;
-        if (adapt->timestepjustdecreased){
-            hfac_lte = PetscMin(hfac_lte,1.0);
-            adapt->timestepjustdecreased--;
-        }
-        h_lte = h * PetscClipInterval(hfac_lte,adapt->clip[0],adapt->clip[1]);
-
-    //        *next_h = PetscClipInterval(h_lte,adapt->dt_min,adapt->dt_max);
-        *next_h = 1.1 * h;
-        *wlte   = enorm;
-        return(0);
+  /* Determine whether the step is accepted of rejected */
+  if (enorm > 1) {
+    if (!*accept) safety *= adapt->reject_safety; /* The last attempt also failed, shorten more aggressively */
+    if (h < (1 + PETSC_SQRT_MACHINE_EPSILON)*adapt->dt_min) {
+      ierr = PetscInfo2(adapt,"Estimated scaled local truncation error %g, accepting because step size %g is at minimum\n",(double)enorm,(double)h);CHKERRQ(ierr);
+      *accept = PETSC_TRUE;
+    } else if (adapt->always_accept) {
+      ierr = PetscInfo2(adapt,"Estimated scaled local truncation error %g, accepting step of size %g because always_accept is set\n",(double)enorm,(double)h);CHKERRQ(ierr);
+      *accept = PETSC_TRUE;
+    } else {
+      ierr = PetscInfo2(adapt,"Estimated scaled local truncation error %g, rejecting step of size %g\n",(double)enorm,(double)h);CHKERRQ(ierr);
+      *accept = PETSC_FALSE;
     }
+  } else {
+    ierr = PetscInfo2(adapt,"Estimated scaled local truncation error %g, accepting step of size %g\n",(double)enorm,(double)h);CHKERRQ(ierr);
+    *accept = PETSC_TRUE;
+  }
 
+  /* The optimal new step based purely on local truncation error for this step. */
+  if (enorm > 0)
+    hfac_lte = safety * PetscPowReal(enorm,((PetscReal)-1)/order);
+  else
+    hfac_lte = safety * PETSC_INFINITY;
+  if (adapt->timestepjustdecreased){
+    hfac_lte = PetscMin(hfac_lte,1.0);
+    adapt->timestepjustdecreased--;
+  }
+  h_lte = h * PetscClipInterval(hfac_lte,adapt->clip[0],adapt->clip[1]);
+
+  *next_h = PetscClipInterval(h_lte,adapt->dt_min,adapt->dt_max);
+  *wlte   = enorm;
+  PetscFunctionReturn(0);
+}
 
     /**
      * Calculate the cofficients for the Lagrangian extrapolation
@@ -1068,14 +1060,14 @@ private:
 
         TS_BDF         *bdf = (TS_BDF*)ts->data;
         PetscInt       k = bdf->k;
-        PetscReal      wlte,wltea,wlter, best_lte;
+        PetscReal      wlte,wltea,wlter, hfac, best_hfac;
         Vec            X = bdf->work[0], Y = bdf->vec_lte;
         PetscErrorCode ierr;
 
         PetscFunctionBegin;
         k = PetscMin(k,bdf->n-1);
         new_order = PetscMax(1,k-1);
-        best_lte = 1.0;
+        best_hfac = 0.0;
 
         double * x;
 
@@ -1083,8 +1075,9 @@ private:
             ierr = TSBDF_VecLTE(ts,i,Y);CHKERRQ(ierr);
             ierr = VecAXPY(Y,1,X);CHKERRQ(ierr);
             ierr = TSErrorWeightedNorm(ts,X,Y,ts->adapt->wnormtype,&wlte,&wltea,&wlter);CHKERRQ(ierr);
-            if (wlte < best_lte) {
-                best_lte = wlte;
+            hfac = PetscPowReal(wlte,((PetscReal)-1)/(i+1));
+            if (best_hfac < hfac) {
+                best_hfac = hfac;
                 new_order = i;
             }            
         }

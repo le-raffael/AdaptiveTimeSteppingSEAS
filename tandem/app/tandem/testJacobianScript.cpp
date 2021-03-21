@@ -89,132 +89,131 @@ void solve_Jacobian(LocalSimplexMesh<DomainDimension> const& mesh, Config const&
     std::cout << "Test the Jacobian for a symmetric domain with " <<numFaultElements 
               << " fault elements" << std::endl;
 
-    double dt = 1e8;    
-    double nextTime = dt;
+
+    double dt_list[3] = {1e5, 1e6, 1e7};
+    for (int dt_count = 0; dt_count < 3; dt_count++) {
+
+        double dt = dt_list[dt_count];
+        double nextTime = dt;
+
+        // initialize full solution vector
+        PetscBlockVector xB = PetscBlockVector(blockSize, numFaultElements, seasop->comm());
+        seasop->initial_condition(xB);
+        seasop->initialize_Jacobian(blockSize, 1.5 * blockSize);
+        VectorXd x_init(totalSize);
+        writeBlockToEigen(xB, x_init);
+
+        // get handle for the right hand side
+        auto rhs = [seasop, nextTime](VectorXd& x) ->  VectorXd {
+            PetscBlockVector xBlock(blockSize, numFaultElements, MPI_COMM_WORLD);
+            PetscBlockVector fBlock(blockSize, numFaultElements, MPI_COMM_WORLD);
+            writeEigenToBlock(x, xBlock);
+            seasop->rhsCompactODE(nextTime, xBlock, fBlock, true);  // executes the Jacobian update
+            VectorXd f(totalSize);
+            writeBlockToEigen(fBlock, f);
+            return f;
+            };
 
 
-    // initialize full solution vector
-    PetscBlockVector xB = PetscBlockVector(blockSize, numFaultElements, seasop->comm());
-    seasop->initial_condition(xB);
-    VectorXd x_init(totalSize);
-    writeBlockToEigen(xB, x_init);
-
-    // get handle for the right hand side
-    auto rhs = [seasop, nextTime](VectorXd& x) ->  VectorXd {
-        PetscBlockVector xBlock(blockSize, numFaultElements, MPI_COMM_WORLD);
-        PetscBlockVector fBlock(blockSize, numFaultElements, MPI_COMM_WORLD);
-        writeEigenToBlock(x, xBlock);
-        seasop->rhsCompactODE(nextTime, xBlock, fBlock, true);  // executes the Jacobian update
-        VectorXd f(totalSize);
-        writeBlockToEigen(fBlock, f);
-        return f;
-        };
-
-    double tol = 1e-7;
-
-    /* **************************************************
-     * test of the Jacobian on an easy Newton Iteration *
-     ************************************************** */
-    std::cout << "Newton iteration with the implicit Euler " << std::endl; 
+        /* **************************************************
+        * test of the Jacobian on an easy Newton Iteration *
+        ************************************************** */
+        std::cout << "Test for timestep size " << dt << std::endl;
+        std::cout << "Newton iteration with the implicit Euler " << std::endl; 
 
 
-    VectorXd x = x_init;
+        VectorXd x = x_init;
 
-    // 0. first guess (explicit Euler)    
-    // VectorXd x_n = x + dt * rhs(x);
- 
-    // 0. first guess (midpoint Euler - RK2)    
-    // VectorXd intermediate = x + 0.5 * dt * rhs(x);
-    // VectorXd x_n = x + dt * rhs(intermediate);
+        // 0. first guess (explicit Euler)    
+        // VectorXd x_n = x + dt * rhs(x);
+    
+        // 0. first guess (midpoint Euler - RK2)    
+        // VectorXd intermediate = x + 0.5 * dt * rhs(x);
+        // VectorXd x_n = x + dt * rhs(intermediate);
 
-    dt = 1e5;
+        VectorXd x_n = x_init;
 
-    VectorXd x_n = x_init;
+        // 1. first evaluation of the implicit Euler with the guess
+        VectorXd fx_n = -x_n + x_init + dt * rhs(x_n);
 
-    // 1. first evaluation of the implicit Euler with the guess
-    VectorXd fx_n = -x_n + x_init + dt * rhs(x_n);
+        // 2. initialize the Jacobi matrix
+        seasop->updateJacobianCompactODE(seasop->getJacobianCompactODE());
+        MatrixXd J = JacobianImplicitEuler(seasop->getJacobianCompactODE(), dt);
 
-    // 2. initialize the Jacobi matrix
-    MatrixXd J = JacobianImplicitEuler(seasop->getJacobianCompactODE(), dt);
+        int k = 0;
 
-    int k = 0;
+        double err_norm = fx_n.norm();
+        double err_norm_prev = 1e10;
 
-    double maxErrorPSI=0;
-    double maxErrorS=0;
+        while (err_norm < err_norm_prev){
+    //    while (fx_n.squaredNorm() > tol * tol){
+            std::cout << err_norm << ", ";
+            k++;
+            // 4. calculate next iteration step
+            x_n = x_n - J.fullPivLu().solve(fx_n);
 
-    while (fx_n.squaredNorm() > tol * tol){
-        k++;
-        for ( int noFault = 0; noFault < numFaultElements; ++noFault){
-            for (int i = 0; i < nbf; i++){
-                maxErrorS = std::max(maxErrorS, abs(fx_n(noFault * blockSize + i)));
-                maxErrorPSI = std::max(maxErrorPSI, abs(fx_n(noFault * blockSize + i+nbf)));
-            }
+            // 5. update Jacobian
+            fx_n = -x_n + x_init + dt * rhs(x_n);
+            seasop->updateJacobianCompactODE(seasop->getJacobianCompactODE());
+            J = JacobianImplicitEuler(seasop->getJacobianCompactODE(), dt);
+            err_norm_prev = err_norm;
+            err_norm = fx_n.norm();
         }
-        std::cout<<"iteration " << k << " with norm: " << fx_n.norm() << ", max error in S: "<<maxErrorS<< " and max error in PSI: "<< maxErrorPSI << std::endl;
-        maxErrorS = 0;
-        maxErrorPSI = 0;
-        // 4. calculate next iteration step
-        x_n = x_n - J.fullPivLu().solve(fx_n);
+        std::cout << fx_n.norm() << std::endl;
+        VectorXd solutionDirect = x_n;
 
-        // 5. update Jacobian
-        fx_n = -x_n + x_init + dt * rhs(x_n);
-        J = JacobianImplicitEuler(seasop->getJacobianCompactODE(), dt);
+
+        J = 1 / dt * (J + MatrixXd::Identity(totalSize, totalSize));
+
+        /* ***********************************************************
+        * verification of the Jacobian on an easy Broyden Iteration *
+        *********************************************************** */
+        std::cout << " Broyden iteration on the same problem " << std::endl;
+
+        VectorXd x_n_1 = x_init;
+
+        // 0. first guess (explicit Euler)    
+        // x_n = x_n_1 + dt * rhs(x_n_1);
+        x_n = x_n_1;
+
+
+        // 1. first evaluation of the implicit Euler with the guess
+        VectorXd f_n = -x_n + x_init + dt * rhs(x_n);
+
+        // 2. initialize the Jacobi matrix
+        seasop->updateJacobianCompactODE(seasop->getJacobianCompactODE());
+        MatrixXd J_b = JacobianImplicitEuler(seasop->getJacobianCompactODE(), dt);
+
+        // difference to the previous iteration step
+        VectorXd dx_n(totalSize);
+        VectorXd df_n(totalSize);
+        VectorXd f_n_1(totalSize);
+
+        for(k=0; k < 30; k++){
+            std::cout<< f_n.norm() << ", ";
+            x_n_1 = x_n;
+            f_n_1 = f_n;
+
+            // 4. calculate next iteration step
+            x_n = x_n_1 - J_b.fullPivLu().solve(f_n);
+            f_n = -x_n + x_init + dt * rhs(x_n);
+
+            dx_n = x_n - x_n_1;
+            df_n = f_n - f_n_1;
+
+            // 5. update Jacobian
+            J_b = J_b + (df_n - J_b * dx_n) / (dx_n.squaredNorm()) * dx_n.transpose();
+        }
+
+        J_b = 1.0 / dt * (J_b + MatrixXd::Identity(totalSize, totalSize));
+
+        std::cout<< f_n.norm() << std::endl;
+        MatrixXd diff = J - J_b;
+    
+        std::cout << "L2-norm of the difference between the Jacobians: " << diff.norm() << std::endl;
+        std::cout << "inf-norm of the difference between the Jacobians: " << diff.lpNorm<Infinity>() << std::endl;
+
     }
-    std::cout << "final norm: "<<fx_n.norm()<<std::endl;
-    VectorXd solutionDirect = x_n;
-
-
-    J = 1 / dt * (J + MatrixXd::Identity(totalSize, totalSize));
-
-    /* ***********************************************************
-     * verification of the Jacobian on an easy Broyden Iteration *
-     *********************************************************** */
-    std::cout << " Broyden iteration on the same problem " << std::endl;
-
-    VectorXd x_n_1 = x_init;
-
-    // 0. first guess (explicit Euler)    
-    x_n = x_n_1 + dt * rhs(x_n_1);
-
-
-    // 1. first evaluation of the implicit Euler with the guess
-    VectorXd f_n = -x_n + x_init + dt * rhs(x_n);
-
-    // 2. initialize the Jacobi matrix 
-    MatrixXd J_b = JacobianImplicitEuler(seasop->getJacobianCompactODE(), dt);
-
-    // difference to the previous iteration step
-    VectorXd dx_n(totalSize);
-    VectorXd df_n(totalSize);
-    VectorXd f_n_1(totalSize);
-
-    k = 0;
-
-    while (f_n.squaredNorm() > tol * tol){
-        k++;
-        std::cout<<"iteration " << k << " with norm: " << f_n.norm() << std::endl;
-        x_n_1 = x_n;
-        f_n_1 = f_n;
-
-        // 4. calculate next iteration step
-        x_n = x_n_1 - J_b.fullPivLu().solve(f_n);
-        f_n = -x_n + x_init + dt * rhs(x_n);
-
-        dx_n = x_n - x_n_1;
-        df_n = f_n - f_n_1;
-
-        // 5. update Jacobian
-        J_b = J_b + (df_n - J_b * dx_n) / (dx_n.squaredNorm()) * dx_n.transpose();
-    }
-
-    J_b = 1.0 / dt * (J_b + MatrixXd::Identity(totalSize, totalSize));
-
-    std::cout << "final norm: "<<f_n.norm()<<std::endl;
-    MatrixXd diff = J - J_b;
- 
-    std::cout << "L2-norm of the difference between the Jacobians: " << diff.norm() << std::endl;
-    std::cout << "inf-norm of the difference between the Jacobians: " << diff.lpNorm<Infinity>() << std::endl;
-
 };
 
 

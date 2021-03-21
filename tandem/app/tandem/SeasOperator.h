@@ -13,9 +13,6 @@
 #include <petscvec.h>
 #include <petscksp.h>
 #include <petscsnes.h>
-#include <petsc/private/snesimpl.h>   
-#include <petsc/private/kspimpl.h>
-//#include <../src/snes/impls/ls/lsimpl.h>
 
 #include <Eigen/Dense>
 
@@ -44,6 +41,8 @@ public:
 
         bool checkAS;                     // true if it is a period of aseismic slip, false if it is an eartquake    
         bool needRegularizationCompactDAE=false;  // true if it is the first step of the compact DAE (need to set stol = 0)
+        bool useExtendedODE=false;        // true if the current formulation is the extended ODE
+        bool useImplicitSolver=true;      // true if the solver is implicit (e.g. BDF)
 
         double time_eq = 0.;              // stores the time at the beginning of the earthquake 
 
@@ -52,10 +51,10 @@ public:
 
         std::optional<tndm::SolverConfigSpecific> current_solver_cfg;
 
-        std::shared_ptr<PetscBlockVector> state_compact;        
-        std::shared_ptr<PetscBlockVector> state_extended;        
+        std::shared_ptr<PetscBlockVector> state_compact;
+        std::shared_ptr<PetscBlockVector> state_extended;
 
-    }; 
+    };
 
 
     /**
@@ -128,7 +127,7 @@ public:
         vector.end_access(access_handle);
 
         // Initialize the Jacobian matrix
-        JacobianQuantities_ = new PetscBlockVector(4 * lop_->space().numBasisFunctions(), numLocalElements(), comm());
+        JacobianQuantities_ = new PetscBlockVector(10 * lop_->space().numBasisFunctions(), numLocalElements(), comm());
     }
 
     /**
@@ -190,6 +189,7 @@ public:
      * @param PetscCall evaluate the Jacobian only if the function is called by the Petsc time solver
      */
     template <typename BlockVector> void rhsCompactODE(double time, BlockVector& state, BlockVector& result, bool PetscCall) {
+        time += solverParameters_.time_eq;
         adapter_->solve(time, state);
 
         auto scratch = make_scratch();
@@ -234,6 +234,7 @@ public:
      * @param PetscCall evaluate the Jacobian only if the function is called by the Petsc time solver
      */
     template <typename BlockVector> void rhsExtendedODE(double time, BlockVector& state, BlockVector& result, bool PetscCall) {
+        time += solverParameters_.time_eq;
         if (error_extended_ODE_ >= 0) adapter_->solve(time, state);
 
         auto scratch = make_scratch();
@@ -258,7 +259,7 @@ public:
 
             double VMax = lop_->rhsExtendedODE(faultNo, time, state_block, result_block, scratch, solverParameters_.checkAS);
 
-            lop_->getJacobianQuantitiesExtended(faultNo, time, traction, state_block, JacobianQuantities_block, scratch);
+            lop_->getJacobianQuantities2ndOrderODE(faultNo, time, traction, state_block, JacobianQuantities_block, scratch);
 
             if (error_extended_ODE_ >= 0) error_extended_ODE_ = std::max(error_extended_ODE_, 
                 lop_->applyMaxFrictionLaw(faultNo, time, traction, state_block, scratch));
@@ -272,6 +273,8 @@ public:
 
         // calculate the misssing entry dV/dt
         calculateSlipRateExtendedODE(result, time);
+
+        // if (PetscCall) testJacobianMatricesExtendedODE(state, result, time, false);
 
         evaluation_rhs_count++;
     }
@@ -301,7 +304,6 @@ public:
             return state.get_block(in_handle, faultNo);
         });
         VMax_ = 0.0;
-        double FMax = 0.0;
         for (std::size_t faultNo = 0, num = numLocalElements(); faultNo < num; ++faultNo) {
             adapter_->traction(faultNo, traction, scratch);
 
@@ -330,11 +332,7 @@ public:
             //     std::cout << result_block(i) << " ";
             // }
             // std::cout<<std::endl;
-            for (int i = 0; i < block_size(); ++i) {
-                FMax = std::max(FMax, std::abs(result_block(i)));
-            }
         }
-        solverParameters_.FMax = FMax;
         adapter_->end_traction();
         state_der.end_access_readonly(in_der_handle);
         state.end_access_readonly(in_handle);
@@ -368,8 +366,7 @@ public:
         adapter_->begin_traction([&state, &in_handle](std::size_t faultNo) {
             return state.get_block(in_handle, faultNo);
         });
-        VMax_ = 0.0;        
-        double FMax = 0.0;
+        VMax_ = 0.0;
         for (std::size_t faultNo = 0, num = numLocalElements(); faultNo < num; ++faultNo) {
             adapter_->traction(faultNo, traction, scratch);
 
@@ -383,11 +380,7 @@ public:
             lop_->getJacobianQuantitiesExtended(faultNo, time, traction, state_block, JacobianQuantities_block, scratch);
 
             VMax_ = std::max(VMax_, VMax);
-            for (int i = 0; i < block_size(); ++i) {     
-                FMax = std::max(FMax, std::abs(result_block(i)));
-            }
         }
-        solverParameters_.FMax = FMax;                  
         adapter_->end_traction();
         state_der.end_access_readonly(in_der_handle);
         state.end_access_readonly(in_handle);
@@ -396,8 +389,6 @@ public:
 
         evaluation_rhs_count++;
     }
-
-
 
     /**
      * write solution vector to Finite difference format (see state() in rate and state)
@@ -527,10 +518,10 @@ public:
        totalSize = bs_extended * numFaultElements;
 
         // ----------------- initialize Jacobian matices to 0 ----------------- //
-        CHKERRTHROW(MatCreateSeqDense(comm(), totalSize, totalSize, NULL, &Jacobian_extended_ode_));
-        CHKERRTHROW(MatZeroEntries(Jacobian_extended_ode_));
         CHKERRTHROW(MatCreateSeqDense(comm(), totalSize, totalSize, NULL, &Jacobian_extended_dae_));
         CHKERRTHROW(MatZeroEntries(Jacobian_extended_dae_));
+        CHKERRTHROW(MatCreateSeqDense(comm(), totalSize, totalSize, NULL, &Jacobian_extended_ode_));
+        CHKERRTHROW(MatZeroEntries(Jacobian_extended_ode_));
 
         // -------------------- initialize constant df/dS --------------------- //
         initialize_df_dS();
@@ -617,6 +608,120 @@ public:
      */
     void updateJacobianExtendedODE(Mat& Jac){  
 
+        using namespace Eigen;
+
+        size_t blockSize = this->block_size();
+        size_t numFaultElements = this->numLocalElements();
+        size_t nbf = lop_->space().numBasisFunctions();
+        size_t totalSize = blockSize * numFaultElements;
+        size_t numFaultNodes = nbf * numFaultElements;
+
+        // fill vectors     
+        VectorXd df_dV_vec(numFaultNodes);                             
+        VectorXd df_dpsi_vec(numFaultNodes);
+        VectorXd dg_dV_vec(numFaultNodes);                             
+        VectorXd dg_dpsi_vec(numFaultNodes);
+        VectorXd dxi_dV_vec(numFaultNodes);                             
+        VectorXd dxi_dpsi_vec(numFaultNodes);
+        VectorXd dzeta_dV_vec(numFaultNodes);                             
+        VectorXd dzeta_dpsi_vec(numFaultNodes);
+        VectorXd V_vec(numFaultNodes);
+        VectorXd g_vec(numFaultNodes);
+        VectorXd A_V_vec = VectorXd::Zero(numFaultNodes);
+
+        auto accessRead = JacobianQuantities_->begin_access_readonly();
+        for (int noFault = 0; noFault < numFaultElements; noFault++){
+            auto derBlock = JacobianQuantities_->get_block(accessRead, noFault);    
+            for(int i = 0; i<nbf; i++){ 
+                df_dV_vec(      noFault * nbf + i ) = derBlock(0 * nbf + i);
+                df_dpsi_vec(    noFault * nbf + i ) = derBlock(1 * nbf + i);
+                dg_dV_vec(      noFault * nbf + i ) = derBlock(2 * nbf + i);
+                dg_dpsi_vec(    noFault * nbf + i ) = derBlock(3 * nbf + i);
+                dxi_dV_vec(     noFault * nbf + i ) = derBlock(4 * nbf + i);
+                dxi_dpsi_vec(   noFault * nbf + i ) = derBlock(5 * nbf + i);
+                dzeta_dV_vec(   noFault * nbf + i ) = derBlock(6 * nbf + i);
+                dzeta_dpsi_vec( noFault * nbf + i ) = derBlock(7 * nbf + i);
+                V_vec(          noFault * nbf + i ) = derBlock(8 * nbf + i);
+                g_vec(          noFault * nbf + i ) = derBlock(9 * nbf + i);
+            }
+        }
+        JacobianQuantities_->end_access_readonly(accessRead);
+
+        // fill the Jacobian
+        int S_i;
+        int PSI_i;
+        int V_i;
+        int V_j;
+        int n_i;
+        int n_j;
+
+        CHKERRTHROW(MatZeroEntries(Jac));
+
+        const double* df_dS;
+        double* J;
+
+        CHKERRTHROW(MatDenseGetArrayRead(df_dS_, &df_dS));
+
+        // Fill the vectors A_V
+        for (int j = 0; j < numFaultNodes; j++){
+            for (int i = 0; i < numFaultNodes; i++){
+                A_V_vec(i) = df_dS[i + j * numFaultNodes] * V_vec(j);
+            }
+        }
+
+        auto dVdt_handle = dV_dt_->begin_access_readonly();
+        CHKERRTHROW(MatDenseGetArrayWrite(Jac, &J));
+        for (int noFault = 0; noFault < numFaultElements; noFault++){
+            auto C = dV_dt_->get_block(dVdt_handle, noFault);
+            for (int i = 0; i < nbf; i++){                  // row iteration
+                S_i = noFault * blockSize + i;
+                PSI_i = noFault * blockSize + 
+                        RateAndStateBase::TangentialComponents     * nbf + i;
+                V_i = noFault * blockSize + 
+                       (RateAndStateBase::TangentialComponents +1) * nbf + i;
+                n_i = noFault * nbf + i;
+                
+                J[S_i   + S_i   * totalSize] = 1.0;
+                J[PSI_i + PSI_i * totalSize] = dg_dpsi_vec(n_i);    // dg/dpsi
+                J[PSI_i + V_i   * totalSize] = dg_dV_vec(n_i);      // dg/dV
+                J[V_i   + PSI_i * totalSize] =                      // dh/dpsi
+                    - dxi_dpsi_vec(n_i) * (C(i) + 
+                                           A_V_vec(n_i) + 
+                                           df_dpsi_vec(n_i) * g_vec(n_i) ) - 
+                     (dzeta_dpsi_vec(n_i) * g_vec(n_i) + 
+                      df_dpsi_vec(n_i) * dg_dpsi_vec(n_i)) / df_dV_vec(n_i);
+                 J[V_i   + V_i   * totalSize] =                      // dh/dV
+                    - dxi_dV_vec(n_i) * (C(i) + 
+                                         A_V_vec(n_i) + 
+                                         df_dpsi_vec(n_i) * g_vec(n_i) ) - 
+                     (dzeta_dV_vec(n_i) * g_vec(n_i) + 
+                      df_dpsi_vec(n_i) * dg_dV_vec(n_i)) / df_dV_vec(n_i) ;
+
+                for (int noFault2 = 0; noFault2 < numFaultElements; noFault2++){
+                    for(int j = 0; j < nbf; j++) {          // column iteration
+
+                        V_j = noFault * blockSize + 
+                              (RateAndStateBase::TangentialComponents +1) * nbf + j;
+                        n_j = noFault2 * nbf + j;
+
+                        // dense components in dh/dV
+                        J[V_i   + V_j * totalSize  ] -= df_dS[n_i + n_j * numFaultNodes] / df_dV_vec(n_i);
+                    }
+                }
+            }
+        }
+        // std::cout << "J: "<<std::endl<<"[ "; 
+        // for (int n_i = 0; n_i < totalSize; n_i++){                  
+        //     for (int n_j = 0; n_j < totalSize; n_j++){
+        //         std::cout << J[n_i   + n_j * totalSize  ] << " ";
+        //     }
+        //     (n_i+1 == totalSize) ? std::cout << "]" : std::cout << "; ";
+        //     std::cout << std::endl;
+        // }
+
+        dV_dt_->end_access_readonly(dVdt_handle);
+        CHKERRTHROW(MatDenseRestoreArrayRead(df_dS_, &df_dS));
+        CHKERRTHROW(MatDenseRestoreArrayWrite(Jac, &J));
     }
  
     /**
@@ -671,7 +776,6 @@ public:
         double ratio;
         for (int i = 0; i < numFaultNodes; ++i) {
             ratio = sigma * df_dV_vec(i) / df_dS[i + i * numFaultNodes];
-            std::cout << sigma << ": dg/dpsi: " << dg_dpsi_vec(i) << ", df/dS: "<< df_dS[i + i * numFaultNodes] << std::endl;
             solverParameters_.ratio_addition = std::max(solverParameters_.ratio_addition, std::abs(ratio));
         }
 
@@ -740,7 +844,7 @@ public:
                 dg_dpsi_vec( noFault * nbf + i ) = derBlock(3 * nbf + i);
             }
         }
-
+        
         JacobianQuantities_->end_access_readonly(accessRead);
 
         // fill the Jacobian
@@ -789,20 +893,6 @@ public:
                 }
             }
         }
-        // std::cout << "df/dV: "   << std::endl << df_dV_vec   << std::endl
-        //           << "df/dpsi: " << std::endl << df_dpsi_vec << std::endl   
-        //           << "dg/dV: "   << std::endl << dg_dV_vec   << std::endl   
-        //           << "dg/dpsi: " << std::endl << dg_dpsi_vec << std::endl;
-
-        // std::cout << "Jacobian for sigma="<<sigma<< " is: " << std::endl<< "[ ";
-        // for (int i = 0; i < totalSize; ++i){
-        //     for (int j = 0; j < totalSize; ++j){
-        //         std::cout << J[i + j * totalSize] << " ";
-        //     }            
-        //     (i+1 == totalSize) ? std::cout << "]" : std::cout << "; "; 
-        //     std::cout << std::endl;
-        // }
-        // std::cout << std::endl<<std::endl; 
 
         CHKERRTHROW(MatDenseRestoreArrayRead(df_dS_, &df_dS));
         CHKERRTHROW(MatDenseRestoreArrayWrite(Jac, &J));
@@ -829,8 +919,6 @@ public:
     void setExtendedFormulation(bool is) { lop_->setExtendedFormulation(is); }
 
     void setTSInstance(TS ts) { ts_ = ts; }
-
-    void resetDivergenceTest() { solverParameters_.FMax = -1.0; }
 
     /**
      * Allocate memory in scratch
@@ -890,6 +978,82 @@ public:
 
         double ratio = tau_min / den;
         std::cout << " allowed ratio is: " << ratio << std::endl;
+    }
+
+    /**
+     * Only for the 2nd order ODE formulation:
+     * set the components of the slip to 0 in the rhs of the Newton iteration
+     * @param f rhs vector with 3 block elements
+     */
+    void updateRHSNewtonIteration(Vec& f){
+        size_t blockSize = this->block_size();
+        size_t numFaultElements = this->numLocalElements();
+        size_t nbf = lop_->space().numBasisFunctions();
+        size_t tc = RateAndStateBase::TangentialComponents;
+
+        double *s;
+
+        CHKERRTHROW(VecGetArray(f, &s));
+
+        for (int noFault = 0; noFault < numFaultElements; ++noFault){
+            for(int i = 0; i < nbf; ++i){
+                for (int t = 0; t < tc; t++){       
+                    s[noFault*blockSize + t*nbf + i] = 0.0;
+                }
+            }
+        }
+
+        CHKERRTHROW(VecRestoreArray(f, &s));
+    }
+
+    /**
+     * Only for the 2nd order ODE formulation:
+     * calculate the slip after the Newton iteration: V = shift*S + V0
+     * @param state the solution vector to write to 
+     * @param n amount of last steps to consider
+     * @param vecs array of vectors with the solutions at the last step
+     * @param alpha array of coefficients 
+     * @param shift parameter from the timestep size and the of the BDF scheme
+     */
+    void setSlipAfterNewtonIteration(Vec& state, size_t n, Vec vecs[7], double alpha[7], double shift){
+        size_t blockSize = this->block_size();
+        size_t numFaultElements = this->numLocalElements();
+        size_t nbf = lop_->space().numBasisFunctions();
+        size_t tc = RateAndStateBase::TangentialComponents;
+
+        double       *s;
+        const double *v;
+
+        CHKERRTHROW(VecGetArray(state, &s));
+
+        for (int noFault = 0; noFault < numFaultElements; ++noFault){   // start with V
+            for(int i = 0; i < nbf; ++i){
+                for (int t = 0; t < tc; t++){
+                    s[noFault*blockSize + t*nbf + i] = s[noFault*blockSize + (tc+t+1)*nbf + i];
+                }
+            }
+        }
+        for(int k = 1; k < n; k++){                                     // substract V0
+            CHKERRTHROW(VecGetArrayRead(vecs[k], &v));  
+            for (int noFault = 0; noFault < numFaultElements; ++noFault){
+                for(int i = 0; i < nbf; ++i){
+                    for (int t = 0; t < tc; t++){
+                        s[noFault*blockSize + t*nbf + i] -= alpha[k] * v[noFault*blockSize + t*nbf + i];
+                    }
+                }
+            }
+            CHKERRTHROW(VecRestoreArrayRead(vecs[k], &v));
+        }
+        for (int noFault = 0; noFault < numFaultElements; ++noFault){   // divide by shift
+            for(int i = 0; i < nbf; ++i){
+                for (int t = 0; t < tc; t++){
+                    s[noFault*blockSize + t*nbf + i] /= shift;
+                }
+            }
+        }
+        CHKERRTHROW(VecRestoreArray(state, &s));
+
+
     }
 
     private:
@@ -1059,7 +1223,7 @@ public:
                 n_i = noFault * nbf + i;
  
                 dxdt(V_i) = const_dVdt(i);
-                dxdt(V_i) += df_dpsi_vec(n_i) * dxdt(PSI_i);  // = -dF/dpsi * dpsi/dt
+                dxdt(V_i) += df_dpsi_vec(n_i) * dxdt(PSI_i);  // = dF/dpsi * dpsi/dt
                 
                 for (int noFault2 = 0; noFault2 < numFaultElements; noFault2++){ 
                     auto dSdt = rhs.get_block(out_handle, noFault2);
@@ -1082,6 +1246,7 @@ public:
 
     }
 
+
     /**
      * Implements the Dirac delta function
      * @param i row index
@@ -1101,11 +1266,11 @@ public:
      * @param full print full matrices with relative differences or only the max value
      */
      template <typename BlockVector>
-     void testJacobianMatrices(BlockVector& state, BlockVector& rhs, double time, bool full){
+     void testJacobianMatricesCompactODE(BlockVector& state, BlockVector& rhs, double time, bool full){
 
         using namespace Eigen;
 
-        updateJacobianCompactODE();
+        updateJacobianCompactODE(Jacobian_compact_ode_);
 
         size_t blockSize = this->block_size();
         size_t numFaultElements = this->numLocalElements();
@@ -1192,7 +1357,7 @@ public:
                     }
                 }
 
-                if (full) ((j+1 == nbf) && (faultNo_j + 1 == numFaultElements)) ? std::cout << "]" : std::cout << "; "; 
+                if (full) ((j+1 == blockSize) && (faultNo_j + 1 == numFaultElements)) ? std::cout << "]" : std::cout << "; "; 
                 if (full) std::cout << std::endl;
                 f_left.end_access_readonly(f_l);
                 f_right.end_access_readonly(f_r);
@@ -1471,6 +1636,99 @@ public:
 
     }
 
+    /**
+     * Approximates several Jacobian matrices in the system and compares them to the analytic expression
+     * @param state current state of the system
+     * @param rhs current rhs of the system
+     * @param time current time of the system
+     * @param full print full matrices with relative differences or only the max value
+     */
+     template <typename BlockVector>
+     void testJacobianMatricesExtendedODE(BlockVector& state, BlockVector& rhs, double time, bool full){
+
+        using namespace Eigen;
+
+        updateJacobianExtendedODE(Jacobian_extended_ode_);
+
+        size_t blockSize = this->block_size();
+        size_t numFaultElements = this->numLocalElements();
+        size_t nbf = lop_->space().numBasisFunctions();
+        size_t totalSize = (blockSize - nbf) * numFaultElements;
+        size_t numFaultNodes = nbf * numFaultElements;
+
+        int n_i;
+        int n_j;
+
+        double max_rel_diff = 0;
+
+        const double* F_x;
+        CHKERRTHROW(MatDenseGetArrayRead(Jacobian_extended_ode_, &F_x));
+
+        double J_approx;
+        double J;
+
+        // --------------APPROXIMATE J ------------------- //
+       if (full) std::cout << "relative difference to the approximated J is: "<<std::endl<<"[ "; 
+        for (int faultNo_j = 0; faultNo_j < numFaultElements; ++faultNo_j){
+            for (int j = 0; j < blockSize; j++){
+                n_j = faultNo_j * blockSize + j;
+                PetscBlockVector x_left(blockSize, numFaultElements, comm());
+                PetscBlockVector x_right(blockSize, numFaultElements, comm());
+                PetscBlockVector f_left(blockSize, numFaultElements, comm());
+                PetscBlockVector f_right(blockSize, numFaultElements, comm());
+
+                CHKERRTHROW(VecCopy(state.vec(), x_left.vec()));
+                CHKERRTHROW(VecCopy(state.vec(), x_right.vec()));
+                
+                auto x_r = x_right.begin_access();
+                auto x_l = x_left.begin_access();
+                const auto x = state.begin_access_readonly();
+
+                auto x_l_block = x_left.get_block(x_l, faultNo_j);
+                auto x_r_block = x_right.get_block(x_r, faultNo_j);
+                auto x_block = rhs.get_block(x, faultNo_j);
+
+                double h = 1e-5 * abs(x_block(j));
+                x_l_block(j) -= h;
+                x_r_block(j) += h;
+
+                x_left.end_access(x_l);
+                x_right.end_access(x_r);
+                state.end_access_readonly(x);
+
+                rhsExtendedODE(time, x_left, f_left, false);
+                rhsExtendedODE(time, x_right, f_right, false);
+
+                const auto f_r = f_right.begin_access_readonly();
+                const auto f_l = f_left.begin_access_readonly();
+
+                for (int faultNo_i = 0; faultNo_i < numFaultElements; ++faultNo_i){
+                    auto f_l_block = f_left.get_block(f_l, faultNo_i);
+                    auto f_r_block = f_right.get_block(f_r, faultNo_i);
+                    for (int i = 0; i < blockSize; i++){                        
+                        n_i = faultNo_i * blockSize + i;
+
+                        J_approx = (f_r_block(i) - f_l_block(i)) / (2.0 * h);            
+                        J = F_x[n_i + n_j * totalSize];
+//                        if (full) std::cout << J_approx<< " ";
+                        if (full) std::cout << (J_approx?(J_approx - J) / J_approx:0) << " ";
+                        if (!full) max_rel_diff = std::max(max_rel_diff, 
+                                                  std::abs((J_approx?(J_approx - J) / J_approx:0)));
+                        if (abs(J_approx?(J_approx - J) / J_approx:0)>1) std::cout << "J: " << J << ", J_a: " << J_approx << " at " << n_i << ", " << n_j << std::endl;
+                    }
+                }
+
+                if (full) ((j+1 == blockSize) && (faultNo_j+1 == numFaultElements)) ? std::cout << "]" : std::cout << "; "; 
+                if (full) std::cout << std::endl;
+                f_left.end_access_readonly(f_l);
+                f_right.end_access_readonly(f_r);
+            }            
+        }
+        if (full) std::cout << std::endl << std::endl << std::endl;
+        if (!full) std::cout << "maximal relative difference between J and its approximate is " << max_rel_diff << std::endl;
+
+        CHKERRTHROW(MatDenseRestoreArrayRead(Jacobian_extended_ode_, &F_x));
+    }
 
     std::unique_ptr<LocalOperator> lop_;    // on fault: rate and state instance (handles ageing law and slip_rate)
     std::unique_ptr<SeasAdapter> adapter_;  // on domain: DG solver (handles traction and mechanical solver)

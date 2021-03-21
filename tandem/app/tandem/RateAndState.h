@@ -194,7 +194,7 @@ public:
      * @param traction matrix with sigma and tau at all nodes in the element
      * @param state current solution vector [S,psi] needed
      * @param state_der derivatives of the current solution vector [V,:] needed
-     * @param result vector with the derivatives df/dV, df/dpsi, psi, V, g 
+     * @param result vector with the derivatives 
      * @param . some scratch
      * */
     void getJacobianQuantitiesCompact(std::size_t faultNo, double time, Matrix<double> const& traction,
@@ -211,11 +211,31 @@ public:
      * @param faultNo index of the current fault
      * @param traction matrix with sigma and tau at all nodes in the element
      * @param state current solution vector [S,psi,V] needed
-     * @param result vector with the derivatives df/dV, df/dpsi, psi, V, g 
+     * @param result vector with the derivatives df/dV, df/dpsi
      * @param . some scratch
      * */
     void getJacobianQuantitiesExtended(std::size_t faultNo, double time, Matrix<double> const& traction,
                Vector<double const>& state, Vector<double>& result, LinearAllocator<double>&) const;
+
+    /**
+     * Evaluate some derivatives for the Jacobian 
+     * - assign the derivative of df/dV
+     * - assign the derivative of df/dpsi
+     * - assign the derivative of dg/dV
+     * - assign the derivative of dg/dpsi
+     * - assign the derivative of dxi/dV
+     * - assign the derivative of dxi/dpsi
+     * - assign the derivative of dzeta/dV
+     * - assign the derivative of dzeta/dpsi
+     * @param faultNo index of the current fault
+     * @param traction matrix with sigma and tau at all nodes in the element
+     * @param state current solution vector [S,psi,V] needed
+     * @param result vector with the derivatives
+     * @param . some scratch
+     * */
+    void getJacobianQuantities2ndOrderODE(std::size_t faultNo, double time, Matrix<double> const& traction,
+               Vector<double const>& state, Vector<double>& result, LinearAllocator<double>&) const;
+
 
     /**
      * Calculate derivatives of the ageing law dg/dpsi and dg/dS
@@ -391,7 +411,7 @@ double RateAndState<Law>::rhsExtendedODE(std::size_t faultNo, double time,
     auto s_mat = mat(state);
     auto r_mat = mat(result);
     for (std::size_t node = 0; node < nbf; ++node) {
-        auto sn = 0.0;      // Will it always stay like that?
+        auto sn = 0.0;
         auto psi = s_mat(node, PsiIndex);
         std::array<double, TangentialComponents> Vi;
         for (std::size_t t = 0; t < TangentialComponents; ++t) {
@@ -402,9 +422,9 @@ double RateAndState<Law>::rhsExtendedODE(std::size_t faultNo, double time,
         for (std::size_t t = 0; t < TangentialComponents; ++t) {
             r_mat(node, t) = Vi[t];            
         }
-        VMax = std::max(VMax, V);
-
         r_mat(node, PsiIndex) = law_.state_rhs(index + node, V, psi);
+
+        VMax = std::max(VMax, V);
     }
     return VMax;
 }
@@ -598,6 +618,31 @@ void RateAndState<Law>::getJacobianQuantitiesExtended(std::size_t faultNo, doubl
         result(1 * nbf + node) = law_.df_dpsi(index + node, sn, V, psi);
         result(2 * nbf + node) = law_.dg_dV();
         result(3 * nbf + node) = law_.dg_dpsi(psi);           
+    }
+}
+
+template <class Law>
+void RateAndState<Law>::getJacobianQuantities2ndOrderODE(std::size_t faultNo, double time, Matrix<double> const& traction,
+               Vector<double const>& state, Vector<double>& result, LinearAllocator<double>&) const {
+    auto s_mat = mat(state);
+    std::size_t nbf = space_.numBasisFunctions();
+    std::size_t index = faultNo * nbf;
+    for (std::size_t node = 0; node < nbf; ++node) {
+
+        auto sn  = traction(node, 0);
+        auto psi = s_mat(node, PsiIndex);
+        auto V   = s_mat(node, VIndex);
+
+        result(0 * nbf + node) = law_.df_dV(index + node, sn, V, psi);
+        result(1 * nbf + node) = law_.df_dpsi(index + node, sn, V, psi);
+        result(2 * nbf + node) = law_.dg_dV();
+        result(3 * nbf + node) = law_.dg_dpsi(psi);           
+        result(4 * nbf + node) = law_.dxi_dV(index + node, sn, V, psi);
+        result(5 * nbf + node) = law_.dxi_dpsi(index + node, sn, V, psi);
+        result(6 * nbf + node) = law_.dzeta_dV(index + node, sn, V, psi);
+        result(7 * nbf + node) = law_.dzeta_dpsi(index + node, sn, V, psi);
+        result(8 * nbf + node) = V;
+        result(9 * nbf + node) = law_.state_rhs(index + node, V, psi);
     }
 }
 

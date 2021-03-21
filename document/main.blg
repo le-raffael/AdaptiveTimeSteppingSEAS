@@ -1,48 +1,51 @@
 This is BibTeX, Version 0.99d (TeX Live 2017/Debian)
 Capacity: max_strings=100000, hash_size=100000, hash_prime=85009
 The top-level auxiliary file: main.aux
+A level-1 auxiliary file: FirstExperiments.aux
+A level-1 auxiliary file: TwoDimensionalSEASProblem.aux
+A level-1 auxiliary file: Extensions.aux
 The style file: alpha.bst
 Database file #1: literature.bib.bib
 Warning--empty journal in AutomControlAdaptTS
-You've used 6 entries,
+You've used 5 entries,
             2543 wiz_defined-function locations,
-            608 strings with 5323 characters,
-and the built_in function-call counts, 2055 in all, are:
-= -- 202
-> -- 48
-< -- 6
-+ -- 15
-- -- 12
-* -- 147
-:= -- 340
-add.period$ -- 18
-call.type$ -- 6
-change.case$ -- 29
-chr.to.int$ -- 6
-cite$ -- 7
-duplicate$ -- 91
-empty$ -- 176
-format.name$ -- 24
-if$ -- 413
+            599 strings with 5194 characters,
+and the built_in function-call counts, 1595 in all, are:
+= -- 153
+> -- 40
+< -- 5
++ -- 11
+- -- 10
+* -- 104
+:= -- 269
+add.period$ -- 15
+call.type$ -- 5
+change.case$ -- 23
+chr.to.int$ -- 5
+cite$ -- 6
+duplicate$ -- 77
+empty$ -- 137
+format.name$ -- 20
+if$ -- 320
 int.to.chr$ -- 1
 int.to.str$ -- 0
 missing$ -- 7
-newline$ -- 33
-num.names$ -- 18
-pop$ -- 26
+newline$ -- 28
+num.names$ -- 15
+pop$ -- 29
 preamble$ -- 1
-purify$ -- 36
+purify$ -- 30
 quote$ -- 0
-skip$ -- 63
+skip$ -- 52
 stack$ -- 0
-substring$ -- 161
-swap$ -- 5
-text.length$ -- 6
-text.prefix$ -- 6
+substring$ -- 98
+swap$ -- 4
+text.length$ -- 5
+text.prefix$ -- 5
 top$ -- 0
-type$ -- 44
+type$ -- 32
 warning$ -- 1
-while$ -- 19
-width$ -- 10
-write$ -- 78
+while$ -- 15
+width$ -- 8
+write$ -- 64
 (There was 1 warning)

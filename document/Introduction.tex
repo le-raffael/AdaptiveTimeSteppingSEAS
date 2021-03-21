@@ -1,0 +1,94 @@
+\chapter{Introduction and Motivation}
+\section{Earthquake Simulations}
+\subsection{Friction Laws}
+\subsection{Sequences of Eartquakes and Aseismic Slip}
+\section{Differential Algebraic Equations (DAE)}
+\section{Time-adaptive Time Integration Methods}
+general concept: compute in addition to the solution another, higher order approximation. The difference between the two solutions is the error approximation.
+With the estimate of the local truncation error, a new timestep size can be defined to match a set tolerance.
+\subsection{Explicit RK methods}
+Runge Kutta methods 4th order (Fehlberg and Dornand-Prince) -> reuse already computed coefficients for the higher order error evaluation
++ Bogacki-Shampine
+\subsection{Implicit BDF methods}
+Implicit methods are well-suited to solve stiff problems and allow for higher timesteps than explicit methods. Instead of evaluating the time-derivative in the right-hand side of an ODE for a known slution $\psi_n$, it is evaluated at the next timestep with $\psi_{n+1}$, which is not known. This requires solving an algebraic equation at each timestep without an analytic expression at hand for it. BDF (Backward Differentiation Formula) methods offer a convenient framework for implicit methods up to the order $p=6$. They are multi-step methods, where a method of order $p$ requires the solutions at the $p$ previous timesteps.  \\
+The first order BDF-scheme corresponds to the backward Euler method in \autoref{eq:BDF_coeffs_1st_order}.
+\begin{equation}
+    \label{eq:BDF_coeffs_1st_order}
+    \psi_{n+1} = \psi_n + h_{n}f(\psi_{n+1},V_{n+1})
+\end{equation}
+Next, we try to derive the second order BDF-scheme. Because of the adaptive time-stepping, the traditional coefficients of the BDF2 scheme cannot be used, but will be dependent of the current and previous timestep sizes $h_{n+1}$ and $h_n$. To find these coefficients, the Taylor polynomials of $\psi_n$ and $\psi_{n+1}$ are evaluated with respect to the unknown $\psi_{n+2}$. 
+\begin{align}
+    \label{eq:taylor-polynomialBDF1(1)}
+    \psi_{n} &= \psi_{n+2} - (h_{n} + h_{n+1})\frac{d\psi_{n+2}}{dt} + \frac{(h_{n} + h_{n+1})^2}{2}\frac{d^2\psi_{n+2}}{dt^2} + \mathcal{O}\left((h_{n} + h_{n+1})^3\right) \\
+    \label{eq:taylor-polynomialBDF1(2)}
+    \psi_{n+1} &= \psi_{n+2} - h_{n+1}\frac{d\psi_{n+2}}{dt} + \frac{h_{n+1}^2}{2}\frac{d^2\psi_{n+2}}{dt^2} + \mathcal{O}\left(h_{n+1}^3\right)
+\end{align}
+The idea is to add equations (\ref{eq:taylor-polynomialBDF1(1)}) and (\ref{eq:taylor-polynomialBDF1(2)}), where the latter is multiplied by a factor $\alpha$ in a way that the second-derivative term drops. The addition of the two Taylor-expansions yields: 
+\begin{equation}
+	\psi_{n} + \alpha \psi_{n+1} = (1+\alpha)\psi_{n+2} - \left(h_{n} + (1+\alpha)h_{n+1}\right)\frac{d\psi_{n+2}}{dt} + \frac{(h_{n} + h_{n+1})^2+\alpha h_{n+1}^2}{2}\frac{d^2\psi_{n+2}}{dt^2} + \mathcal{O}\left(h^3\right) \\
+\end{equation}
+By the choice of $\alpha$ in \autoref{eq:alpha}, the coefficient in front of the second time derivative of $\psi_{n+2}$ vanishes and the second order time adaptive BDF method is given by: \autoref{eq:BDF_coeffs_2nd_order}. 
+\begin{align}
+    \label{eq:alpha}
+    \alpha &= -\left(\frac{h_n}{h_{n+1}}\right)^2 - 2\frac{h_n}{h_{n+1}} - 1 \\
+	\label{eq:BDF_coeffs_2nd_order}
+    \psi_n + \alpha \psi_{n+1} -(1+\alpha)\psi_{n+2} &= -\left(h_n + (1+\alpha)h_{n+1}\right)f(\psi_{n+2}, V_{n+2})
+\end{align}
+Analogously, the time-adapative thirdd-order BDF3 scheme is given with the coefficients: 
+\begin{align}
+    \alpha &= -\frac{\left(h_n+h_{n+1}\right)\left(h_n+h_{n+1}+h_{n+2}\right)^2}
+    {h_{n+1}\left(h_{n+1}+h_{n+2}\right)^2} \\
+    \beta &= \frac{h_n\left(h_n+h_{n+1}+h_{n+2}\right)^2}
+    {h_{n}^2h_{n+1}}
+\end{align}
+\begin{equation}
+	\label{eq:BDF_coeffs_3rd_order}
+    \psi_n + \alpha \psi_{n+1} + \beta \psi_{n+2} -(1+\alpha+\beta)\psi_{n+3} = \left(h_n + (1+\alpha)h_{n+1} + (1+\alpha+\beta)h_{n+2}\right)f(\psi_{n+3},V_{n+3})
+\end{equation}
+A more general description of the time-adaptive BDF coefficients can be obtained with the derivatives of the Lagrange interpolation polynomial. If one has a BDF method of order $k$, the coefficients $\alpha_{n+i}$ in front of the previous $k$ solutions are needed to calculate the new solution $\psi_{n+k}$.
+\begin{equation}
+	\sum_{i=0}^{k}\alpha_{n+i}\psi_{n+i} = f(\psi_{n+k},V_{n+k}) \approx \dot{\psi}_{n+k}
+\end{equation} 
+
+To approximate the time derivative $\dot{\psi}_{n+k}$ at the new solution, one could find the polynomial $L(t)$ that interpolates all points $(t_{n+i}, \psi_{n+i})$ and calculate its derivative at the last point $t_{n+k}$. This polynomial $L(t)$ is exactly the Lagrangian interpolation polynomial, calculated as:
+\begin{equation}
+	L(t) = \sum_{i=0}^{k}\psi_{n+i}\ell_i(t) \qquad\text{with}\qquad \ell_i(t) = \prod_{\substack{0\le j\le k \\j \ne i}}\frac{t-t_{n+j}}{t_{n+i}-t_{n+j}}
+\end{equation}
+
+We want to express the derivative $\dot{L}(t)$ at the specific time $t=t_{n+k}$, so that we can approximate $\dot{\psi}_{n+k} \approx \dot{L}(t_{n+k})$ For that, we first need the derivatives of the Lagrange basis polynomials $\dot{\ell}_i(t)$. Because of $\dot{L}(t_{n+k}) = \sum_{i=0}^{k}\dot{\ell}_i(t_{n+k})\psi_{n+k}$, it can be seen that if we evaluate $\dot{\ell}_i(t)$ at the time $t=t_{n+k}$, we obtain exactly the wanted coefficients $\alpha_{n+i}$. The basis polynomials can be calculated with the product rule:
+\begin{equation}
+	\alpha_{n+i} := \dot{\ell}_i(t_{n+k}) = \sum_{\substack{0\le m\le k \\m \ne i}}\left[\frac{1}{t_{n+i}-t_{n+m}}\prod_{\substack{0\le j\le k \\j \ne i,m}}\frac{t_{n+k}-t_{n+j}}{t_{n+i}-t_{n+j}}\right]
+\end{equation}
+It can be verified that this general definition of $\alpha_{n+i}$ matches the previous expressions for the BDF coefficients of 1st, 2nd and 3rd order derived from Taylor expansions in Equations (\ref{eq:BDF_coeffs_1st_order}), (\ref{eq:BDF_coeffs_2nd_order}) and (\ref{eq:BDF_coeffs_3rd_order}).  \\
+
+\subsubsection{Error estimate with a higher-order BDF scheme}
+\label{sssec:errorEstimateBDFEmbeddedScheme}
+To evaluate the local truncation error at a given timestep, a similar approach as for the time-adaptive Runge-Kutta can be used. If a scheme of order $k$ is used, it involves solving the system a second time with order $k+1$. The error estimate is then the norm of the difference between the two calculated solutions. An obvious drawback of this method are the high computational costs, since the evaluation of the error estimate is as expensive as calculating the solution at the next timestep and requires to calculate the right-hand side of the ODE several times, which might be an expensive operation. Another limitation of this method is that the 6th order BDF scheme cannot be used for the time integration, since it implies to calculate a 7th order solution for the error estimate, which is not possible because the BDF method is only stable up to the order $k=6$. 
+
+\subsubsection{Error estimate with Lagrange polynomials}
+\label{sssec:errorEstimateBDFLagrange}
+With the derivatives of the Lagrangian polynomial, a new possibility to estimate the error appears. Once the solution $\psi_{n+k}$ is found, the derivative $\dot{\psi}_{n+k}$ is first approximated with the last $k$ solutions, which gives the coefficients $\alpha_i$, and then with the last $k+1$ solutions, which results in the set of coefficients $\beta_i$. Now, assume that the $k$th-order approximate results in a perturbed $\dot{\psi}'_{n+k}$ and the $(k+1)$th-order approximates the exact $\dot{\psi}_{n+k}$. We have:
+\begin{equation}
+	\sum_{i=0}^{k}\alpha_{n+i}\psi_{n+i} = \dot{\psi}'_{n+k} \qquad \text{and}\qquad \sum_{i=-1}^{k}\beta_{n+i}\psi_{n+i} = \dot{\psi}_{n+k} \\
+\end{equation}
+We now want to find the perturbation $\epsilon$ in $\psi_{n+k}$ which is the reason for the different approximations $\dot{\psi}_{n+k}$ and $\dot{\psi}'_{n+k}$. We set:
+\begin{align}
+	\sum_{i=0}^{k-1}\alpha_{n+i}\psi_{n+i} + \alpha_{n+k}(\psi_{n+k} + \epsilon) &= \sum_{i=-1}^{k}\beta_{n+i}\psi_{n+i} \\
+	\Leftrightarrow
+	\epsilon &= \frac{1}{\alpha_{n+k}}\left(\beta_{n-1}\psi_{n-1} + \sum_{i=0}^{k}(\beta_{n+i}-\alpha_{n+i})\psi_{n+i}\right)
+\end{align}
+This expression for $\epsilon$ can be used as an estimate for the local truncation error instead of calculating the difference to a higher order BDF method. The main advantage is that the nonlinear system does not need to be solved twice in one timestep.
+
+\subsubsection{Adaptive BDF order}
+\label{sssec:adaptiveBDFOrder}
+Which one of the six BDF methods is best appropriate to solve the problem is not an easy task to determine in ahead, as the ideal order of the scheme might change throughout the simulation. Generally speaking, a high order gives the best results when the timestep size remains approximately constant between the timestes, whereas low orders are more appropriate if the timestep size currently increases or decreases a lot. The idea is to find at the end of a timestep an optimal BDF order for the next step. \\
+If $k_n$ denotes the current order of the scheme, one can evaluate the error estimate if a scheme of order $k_n-1$, $k_n$ or $k_n+1$ was used. We then obtain three values for the error estimate $\epsilon_-$, $\epsilon$ and $\epsilon_+$. This is easy to calculate with the Lagrangian polynomials, since it only requires to calculate the coefficients $\alpha_i$ for the considered order and sum up the weighted solution vectors. For the embedded higher-order BDF scheme it is also possible, but requires then in total four executions of the Newton iteration in one step, which is very likely not worth it. \\
+Next, one calculates the factors $f_-$, $f$ and $f_+$ to change the timestep size $h_n$ from the current step to the next step $h_{n+1} = fh_n$. For the most basic timestep adapters with a safety factor $C$, this gives: 
+\begin{equation}
+	f_- = C{\epsilon_-}^{-1/k_n} \qquad \text{,}\qquad 
+	f   = C{\epsilon}^{-1/(k_n+1)} \qquad \text{and}\qquad 
+	f_+ = C{\epsilon_+}^{-1/(k_n+2)}
+\end{equation}
+One then finds the largest of the three factors, and decreases the order by one if it is $f_-$, remains at the same order if it is $f$ and increases the order by one if it is $f_+$. Of course, one has to ensure that the new order $k_{n+1}$ remains in the range $[1,6]$. 
+
+

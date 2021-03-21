@@ -25,62 +25,26 @@ The manufactured evolution of the state variable $\psi^*(t)$ can be calculated b
 \end{align}
 For any initial conditions $V_0 = V^*(0)$ and $\psi_0 = \psi^*(0)$, the solution of the DAE exists and with the expression $V(t) = V^*(t)$ $\psi(t) = \psi^*(t)$. Therefore, we know an analytical solution and the results of the numerical simulations can be directly compared to it. 
 
-\section{Error Evaluation}
-general concept: compute in addition to the solution another, higher order approximation. The difference between the two solutions is the error approximation
-\subsection{Explicit methods}
-Runge Kutta methods 4th order (Fehlberg and Dornand-Prince) -> reuse already computed coefficients for the higher order error evaluation
-\subsection{Implicit methods}
-Implicit methods are well-suited to solve stiff problems and allow for higher timesteps than explicit methods. Instead of evaluating the time-derivative of \autoref{eq:first_DAE_ODE} for a known value $\psi_n$, it is evaluated at the next timestep with $\psi_{n+1}$, which is not known. This requires solving an algebraic equation at each timestep without an analytic expression at hand for it. BDF (Backward Differentiation Formula) methods offer a convenient framework for implicit methods up to the order $p=6$. They are multi-step methods, where a method of order $p$ requires the solutions at the $p$ previous timesteps. To evaluate the local truncation error at a given timestep, the BDF method with the next highest order is used and the difference between the solutions is taken as the error estimate. \\
-The first order BDF-scheme corresponds to the backward Euler method in \autoref{eq:BDF1}.
+\section{Time integration}
+In this chapter, the Runge-Kutta-Fehlberg method (RKF4) of 4th order with an embedded 5th order error estimate is used as explicit method. \\
+For the implicit methods, we consider for now only the BDF schemes of first and second order with an error estimate of respectively 2nd and 3rd order. Both described methods to estimate the error, with an embedded higher-order evaluation of the scheme as described in \autoref{sssec:errorEstimateBDFEmbeddedScheme} and with the derivatives of the Lagrangian polynomials in \autoref{sssec:errorEstimateBDFLagrange} are used and compared. \\
+Because of the DAE form, the values of $\psi{n+1}$ in \autoref{eq:BDF_coeffs_1st_order} and $\psi{n+2}$ in \autoref{eq:BDF_coeffs_2nd_order} cannot be calculated analytically easily. To solve the equation, it is transformed into an algebraic equation, in which the right hand side is 0, to obtain the form:
 \begin{equation}
-    \label{eq:BDF1}
-    \psi_{n+1} = \psi_n + h_{n}f(\psi_{n+1},V_{n+1})
-\end{equation}
-The second order BDF-scheme is then needed to estimate the local truncation error. Because of the adaptive time-stepping, the traditional coefficients of BDF2 cannot be used, but will be dependent of the current and previous timestep sizes $h_{n+1}$ and $h_n$. To find these coefficients, the Taylor polynomials of $\psi_n$ and $\psi_{n+1}$ are evaluated with respect to the unknown $\psi_{n+2}$. 
-\begin{align}
-    \label{eq:taylor-polynomialBDF1(1)}
-    \psi_{n} &= \psi_{n+2} - (h_{n} + h_{n+1})\frac{d\psi_{n+2}}{dt} + \frac{(h_{n} + h_{n+1})^2}{2}\frac{d^2\psi_{n+2}}{dt^2} + \mathcal{O}\left((h_{n} + h_{n+1})^3\right) \\
-    \label{eq:taylor-polynomialBDF1(2)}
-    \psi_{n+1} &= \psi_{n+2} - h_{n+1}\frac{d\psi_{n+2}}{dt} + \frac{h_{n+1}^2}{2}\frac{d^2\psi_{n+2}}{dt^2} + \mathcal{O}\left(h_{n+1}^3\right)
-\end{align}
-The idea is to add equations (\ref{eq:taylor-polynomialBDF1(1)}) and (\ref{eq:taylor-polynomialBDF1(2)}), where the latter is multiplied by a factor $\alpha$ in a way that the second-derivative term drops. The addition of the two Taylor-expansions yields: 
-\begin{equation}
-	\psi_{n} + \alpha \psi_{n+1} = (1+\alpha)\psi_{n+2} - \left(h_{n} + (1+\alpha)h_{n+1}\right)\frac{d\psi_{n+2}}{dt} + \frac{(h_{n} + h_{n+1})^2+\alpha h_{n+1}^2}{2}\frac{d^2\psi_{n+2}}{dt^2} + \mathcal{O}\left(h^3\right) \\
-\end{equation}
-By the choice of $\alpha$ in \autoref{eq:alpha}, the coefficient in front of the second time derivative of $\psi_{n+2}$ vanishes and the second order time adaptive BDF method is given by \autoref{eq:BDF2}. 
-\begin{align}
-    \label{eq:alpha}
-    \alpha &= -\left(\frac{h_n}{h_{n+1}}\right)^2 - 2\frac{h_n}{h_{n+1}} - 1 \\
-    \label{eq:BDF2}
-    -(1+\alpha)\psi_{n+2} + \alpha \psi_{n+1} + \psi_n &= -\left(h_n + (1+\alpha)h_{n+1}\right)f(\psi_{n+2}, V_{n+2})
-\end{align}
-Because of the DAE form, the values of $\psi{n+1}$ in \autoref{eq:BDF1} and $\psi{n+2}$ in \autoref{eq:BDF2} cannot be calculated analytically. To solve the equation, it is transformed into an algebraic equation, in which the right hand side is 0, to obtain the form:
-\begin{equation}
-    F(\Psi) = 0
+F(\Psi) = 0
 \end{equation}
 where $\Psi$ stands respectively for $\psi_{n+1}$ and $\psi_{n+2}$. It is solved iteratively with the Newton-Raphson method \cite{NewtonRaphsonMethod} in \autoref{eq:NewtonRaphsonMethod1D} and the secant method to approximate the derivative $F'(\Psi) = \frac{d F(\Psi)}{d\psi}$ in \autoref{eq:SecantMethod}. 
 \begin{align}
-    \label{eq:NewtonRaphsonMethod1D}
-    \Psi_{k+1} &= \Psi_{k} + \frac{F\left(\Psi_k\right)}{F'\left(\Psi_k\right)} \\
-    \label{eq:SecantMethod}
-    F'\left(\Psi_k\right) &= \frac{F\left(\Psi_{k}\right) - F\left(\Psi_{k-1}\right)}{\Psi_{k} - \Psi_{k-1}}
+\label{eq:NewtonRaphsonMethod1D}
+\Psi_{k+1} &= \Psi_{k} + \frac{F\left(\Psi_k\right)}{F'\left(\Psi_k\right)} \\
+\label{eq:SecantMethod}
+F'\left(\Psi_k\right) &= \frac{F\left(\Psi_{k}\right) - F\left(\Psi_{k-1}\right)}{\Psi_{k} - \Psi_{k-1}}
 \end{align}
 The Newton-Raphson method converges in theory with second order, however the approximate of the derivative with the secant method, which bases on the first order finite differences, reduces the overall convergence of the iterative scheme to first order. The iteration is stopped as soon as the difference between two consecutive terms remains below a tolerance value. As initial value, one explicit Euler step is taken, and the Newton-Raphson method converges usually after less than three iterations. With the initial step, the BDF scheme needs about four evaluations of the DAE, and since it has to be executed twice for each considered timestep size (once for the solution and once for the error estimate) with a common initial step, it requires in total seven evaluations of the DAE, which is only one more than in the previously presented Runge-Kutta-Fehlberg method. \\
-Analogously, a second order method can be developed if we use the BDF2 scheme to calculate the solution and the BDF3 scheme to estimate the local truncation error. The time-adapative BDF3 scheme is given by: 
-\begin{align}
-    \alpha &= -\frac{\left(h_n+h_{n+1}\right)\left(h_n+h_{n+1}+h_{n+2}\right)^2}
-    {h_{n+1}\left(h_{n+1}+h_{n+2}\right)^2} \\
-    \beta &= \frac{h_n\left(h_n+h_{n+1}+h_{n+2}\right)^2}
-    {h_{n}^2h_{n+1}}
-\end{align}
-\begin{equation}
-    \psi_n + \alpha \psi_{n+1} + \beta \psi_{n+2} = (1+\alpha+\beta)\psi_{n+3} - \left(h_n + (1+\alpha)h_{n+1} + (1+\alpha+\beta)h_{n+2}\right)f(\psi_{n+3},V_{n+3})
-\end{equation}
 
 \section{Timestep Update}
 At each timestep, the goal is to maximise the size of the timestep $h_{n+1}$ under the condition that the local error  estimate $r_{n+1}$ remains inferior to an allowed tolerance $\epsilon$. The controller $C$ is a function 
 \begin{equation}
-    h_{n+1} = C(\epsilon, r_{n+1},h_n)
+h_{n+1} = C(\epsilon, r_{n+1},h_n)
 \end{equation}
 At each timestep, the controller is iteratively called until the step size allows a local error that fulfills the tolerance. In the ideal case, it only requires one iteration to find a new suitable timestep which is still as large as possible.
 

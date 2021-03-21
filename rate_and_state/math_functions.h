@@ -207,10 +207,63 @@ T ImplicitBDF3Method(std::vector<T>& X, T& error, std::function<T(T,T)> F, doubl
  
     return x_new;
 }
+template<typename T> 
+T errorLagrange1stOrder(std::vector<T>& X, double t, double dt, double dt_old, size_t step){
+    T x_np_1 = X[step+1];
+    T x_n = X[step];
+    T x_n_1 = X[step-1];
 
+    T frac = dt_old / dt;
+    T a = -frac*frac - 2.*frac - 1.;
+    T gamma = -(dt_old + (a+1.) * dt);
+
+    T secondOrderCoeffs[3] = {-1./gamma, -a/gamma , (a+1.)/gamma };
+
+
+    T firstOrderCoeffs[3] = {0., -1./dt, 1./dt };
+
+    T d[3];
+    for (int i = 0; i < 3; i++){
+        d[i] = (secondOrderCoeffs[i] - firstOrderCoeffs[i]) / firstOrderCoeffs[2];
+    }
+     
+    return d[0] * x_n_1 + d[1] * x_n + d[2] * x_np_1;
+}
 
 template<typename T> 
-void timeAdaptiveBDF12Method(std::vector<T>& X, T& error, std::function<T(T,T)> F, double t, double dt, double dt_old, size_t step) {
+T errorLagrange2ndOrder(std::vector<T>& X, double t, double dt, double dt_old, double dt_old_old, size_t step){
+    T x_np_1 = X[step+1];
+    T x_n = X[step];
+    T x_n_1 = X[step-1];
+    T x_n_2 = X[step-2];
+
+    T u = dt;
+    T v = dt + dt_old;
+    T w = dt + dt_old + dt_old_old;
+
+    T a = w*w * (w - u) / (v*v * (u - v));
+    T b = w*w * (v - w) / (u*u * (u - v));
+
+    T gamma = -(dt_old_old + (a+1) * dt_old + (1+a+b) * dt);
+
+    T thirdOrderCoeffs[4] = {-1./gamma, -a/gamma , -b/gamma, (1.+a+b)/gamma };
+
+    T frac = dt_old / dt;
+    a = -frac*frac - 2*frac - 1;
+    gamma = -(dt_old + (a+1) * dt);
+
+    T secondOrderCoeffs[4] = {0., -1./gamma, -a/gamma , (a+1)/gamma };
+
+    T d[4];
+    for (int i = 0; i < 4; i++){
+        d[i] = (thirdOrderCoeffs[i] - secondOrderCoeffs[i]) / secondOrderCoeffs[3];
+    }
+     
+    return d[0] * x_n_2 + d[1] * x_n_1 + d[2] * x_n + d[3] * x_np_1;
+}
+
+template<typename T> 
+void timeAdaptiveBDF12Method(std::vector<T>& X, T& error, T& errorLagrange, std::function<T(T,T)> F, double t, double dt, double dt_old, size_t step) {
     
 
     // Backwards Euler solution
@@ -230,11 +283,13 @@ void timeAdaptiveBDF12Method(std::vector<T>& X, T& error, std::function<T(T,T)> 
     } else {
         X[step+1] = firstOrderSolution;
     }
+    if (X.size() >= 2) errorLagrange = fabs(errorLagrange1stOrder(X, t, dt, dt_old, step));
+    std::cout << "method error estimate: "<< error << ", method Lagrange extrapolation: "<<errorLagrange << ", difference: "<<error - errorLagrange << std::endl; 
 }
 
 
 template<typename T> 
-void timeAdaptiveBDF23Method(std::vector<T>& X, T& error, std::function<T(T,T)> F, double t, double dt, double dt_old, double dt_old_old, size_t step) {
+void timeAdaptiveBDF23Method(std::vector<T>& X, T& error, T& errorLagrange, std::function<T(T,T)> F, double t, double dt, double dt_old, double dt_old_old, size_t step) {
     
 
     // Backwards Euler solution
@@ -242,18 +297,20 @@ void timeAdaptiveBDF23Method(std::vector<T>& X, T& error, std::function<T(T,T)> 
 
     T secondOrderSolution;
 
-
     // BDF2 for the error term
     if (X.size() >= 2) secondOrderSolution = ImplicitBDF3Method(X, error, F, t, dt, dt_old, dt_old_old, step);
 
     error = fabs(firstOrderSolution - secondOrderSolution);
-
 
     if (X.size() == step + 1) {
         X.push_back(firstOrderSolution);
     } else {
         X[step+1] = firstOrderSolution;
     }
+
+    if (X.size() >= 3) errorLagrange = fabs(errorLagrange2ndOrder(X, t, dt, dt_old, dt_old_old, step));
+
+    std::cout << "method error estimate: "<< error << ", method Lagrange extrapolation: "<<errorLagrange << ", difference: "<<error - errorLagrange << std::endl; 
 }
 
 #endif

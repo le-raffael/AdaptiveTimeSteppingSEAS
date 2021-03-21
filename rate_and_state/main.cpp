@@ -228,7 +228,7 @@ void solvePID(double endTime, PIController* controller,  std::string timeIntegra
     // file to print error estimates vs actual error
     std::ofstream fileErrorEstimate;
     fileErrorEstimate.open("../results/errorEstimate_"+timeIntegrator+".csv");
-    fileErrorEstimate << "time,local_err,err_expected" << std::endl;
+    fileErrorEstimate << "time,local_err,err_Lagrange,err_expected" << std::endl;
 
 
     // initialization of the solution vector
@@ -252,6 +252,7 @@ void solvePID(double endTime, PIController* controller,  std::string timeIntegra
     // adaptive time step parameters
     double localError = 0;
     double previouslocalError = 0;
+    double LagrangeError = 0;
     size_t iterationSteps = 0;
 
 
@@ -265,15 +266,13 @@ void solvePID(double endTime, PIController* controller,  std::string timeIntegra
     for (int i = 0; i<i_max;++i){
         RKF45(solution_vector, localError, func, time, dt, step);
 
- //       std::cout<<step<<": time: "<<time<<", timestep: "<<dt<<std::endl;
-
         dt_n_2 = dt_n_1;
         dt_n_1 = dt;
         time+= dt;
         step++;
 
         monitor(step, time, solution_vector, &dat);
-        fileErrorEstimate << time << "," << localError << "," << fabs(fabs(psi_star(time) - solution_vector[step])-previouslocalError) << std::endl;
+        fileErrorEstimate << time << "," << localError << "," <<0.0<<","<< fabs(fabs(psi_star(time) - solution_vector[step])-previouslocalError) << std::endl;
     }
 
 
@@ -296,8 +295,8 @@ void solvePID(double endTime, PIController* controller,  std::string timeIntegra
 
         if (timeIntegrator == "RKF45") RKF45(solution_vector, localError, func, time, dt, step);
         if (timeIntegrator == "RKDP45") RKDP45(solution_vector, localError, func, time, dt, step);
-        if (timeIntegrator == "BDF12") timeAdaptiveBDF12Method(solution_vector, localError, func, time, dt, dt_n_1, step);
-        if (timeIntegrator == "BDF23") timeAdaptiveBDF23Method(solution_vector, localError, func, time, dt, dt_n_1, dt_n_2, step);
+        if (timeIntegrator == "BDF12") timeAdaptiveBDF12Method(solution_vector, localError, LagrangeError, func, time, dt, dt_n_1, step);
+        if (timeIntegrator == "BDF23") timeAdaptiveBDF23Method(solution_vector, localError, LagrangeError, func, time, dt, dt_n_1, dt_n_2, step);
 
         iterationSteps++;
         while (localError > controller->errorTolerance){
@@ -305,16 +304,13 @@ void solvePID(double endTime, PIController* controller,  std::string timeIntegra
 
             if (timeIntegrator == "RKF45") RKF45(solution_vector, localError, func, time, dt, step);
             if (timeIntegrator == "RKDP45") RKDP45(solution_vector, localError, func, time, dt, step);
-            if (timeIntegrator == "BDF12") timeAdaptiveBDF12Method(solution_vector, localError, func, time, dt, dt_n_1, step);
-            if (timeIntegrator == "BDF23") timeAdaptiveBDF23Method(solution_vector, localError, func, time, dt, dt_n_1, dt_n_2, step);
+            if (timeIntegrator == "BDF12") timeAdaptiveBDF12Method(solution_vector, localError, LagrangeError, func, time, dt, dt_n_1, step);
+            if (timeIntegrator == "BDF23") timeAdaptiveBDF23Method(solution_vector, localError, LagrangeError, func, time, dt, dt_n_1, dt_n_2, step);
 
             iterationSteps++;
             if (iterationSteps > 1000) break; 
             if (dt < dt_min) dt = dt_min; break;
         }
-
-        // print metrics
-    //    std::cout<<step<<": time: "<<time<<", timestep: "<<dt<<std::endl;
 
         // update time iteration
         step++;
@@ -325,7 +321,7 @@ void solvePID(double endTime, PIController* controller,  std::string timeIntegra
         monitor(step, time, solution_vector, &dat);
         double trueLocalTruncationError = fabs(fabs(psi_star(time) - solution_vector[step]) -
                                           fabs(psi_star(time-dt_n_1) - solution_vector[step-1]));
-        fileErrorEstimate << time << "," << localError << "," << trueLocalTruncationError << std::endl;
+        fileErrorEstimate << time << "," << localError << ","<< LagrangeError << "," << trueLocalTruncationError << std::endl;
 
         previouslocalError = localError;
 

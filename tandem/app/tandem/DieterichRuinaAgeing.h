@@ -108,7 +108,7 @@ public:
     }
 
     /**
-     * calculate the partial derivative dg/dV ofg(V,psi)=0 w.r.t to the slip rate
+     * calculate the partial derivative dg/dV of g(V,psi)=0 w.r.t to the slip rate
 +     * @return deriviative dg/dV
      * */
     double dg_dV() const {
@@ -147,6 +147,79 @@ public:
         double twoV0 = 2.0 * cp_.V0;
         double e = exp(psi / a);
         return -snAbs * a * e / (twoV0 * sqrt((V * e / twoV0) * (V * e / twoV0) + 1)) - eta;
+    }
+
+
+    /**
+     * Calculate the derivative dxi/dpsi needed to set up the derivative dh/dpsi in the 2nd order ODE
+     * @param index of the current node
+     * @param sn at the current node
+     * @param V slip rate at the current node
+     * @param psi state variable at the current node
+     * @return deriviative dxi/dpsi
+     */
+    double dxi_dpsi(std::size_t index, double sn, double V, double psi) const {
+        auto a = p_[index].get<A>();
+        auto eta = p_[index].get<Eta>();
+        double snAbs = sn + p_[index].get<SnPre>();
+        double twoV0 = 2.0 * cp_.V0;
+        double p = sqrt(exp(2. * psi / a) * V * V / (twoV0 * twoV0) + 1.);
+        return       twoV0 * snAbs * exp(psi/a) / 
+          (p * pow(twoV0 * eta * p + a * snAbs * exp(psi/a), 2));
+    }
+
+    /**
+     * Calculate the derivative dxi/dV needed to set up the derivative dh/dV in the 2nd order ODE
+     * @param index of the current node
+     * @param sn at the current node
+     * @param V slip rate at the current node
+     * @param psi state variable at the current node
+     * @return deriviative dxi/dV
+     */
+    double dxi_dV(std::size_t index, double sn, double V, double psi) const {
+        auto a = p_[index].get<A>();
+        auto eta = p_[index].get<Eta>();
+        double snAbs = sn + p_[index].get<SnPre>();
+        double twoV0 = 2.0 * cp_.V0;
+        double p = sqrt(exp(2. * psi / a) * V * V / (twoV0 * twoV0) + 1.);
+        return       -a * snAbs * V * exp(3.*psi/a) / 
+          (twoV0 * p * pow(twoV0 * eta * p + a * snAbs * exp(psi/a), 2));
+    }
+
+    /**
+     * Calculate the derivative dzeta/dpsi needed to set up the derivative dh/dpsi in the 2nd order ODE
+     * @param index of the current node
+     * @param sn at the current node
+     * @param V slip rate at the current node
+     * @param psi state variable at the current node
+     * @return deriviative dzeta/dpsi
+     */
+    double dzeta_dpsi(std::size_t index, double sn, double V, double psi) const {
+        auto a = p_[index].get<A>();
+        auto eta = p_[index].get<Eta>();
+        double snAbs = sn + p_[index].get<SnPre>();
+        double twoV0 = 2.0 * cp_.V0;
+        double p = sqrt(exp(2. * psi / a) * V * V / (twoV0 * twoV0) + 1.);
+        return -snAbs * V * exp(psi/a) / 
+               (a * twoV0 * pow(p, 3));
+    }
+
+    /**
+     * Calculate the derivative dzeta/dV needed to set up the derivative dh/dV in the 2nd order ODE
+     * @param index of the current node
+     * @param sn at the current node
+     * @param V slip rate at the current node
+     * @param psi state variable at the current node
+     * @return deriviative dzeta/dV
+     */
+    double dzeta_dV(std::size_t index, double sn, double V, double psi) const {
+        auto a = p_[index].get<A>();
+        auto eta = p_[index].get<Eta>();
+        double snAbs = sn + p_[index].get<SnPre>();
+        double twoV0 = 2.0 * cp_.V0;
+        double p = sqrt(exp(2. * psi / a) * V * V / (twoV0 * twoV0) + 1.);
+        return -snAbs * exp(psi/a) / 
+               (twoV0 * pow(p, 3));
     }
 
     /**
