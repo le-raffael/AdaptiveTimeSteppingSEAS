@@ -31,14 +31,17 @@ struct SolverConfigSpecific {
     double V_atol;
     double psi_rtol;
     double psi_atol;
+    bool bdf_custom_error_evaluation;
+    bool bdf_custom_Newton_iteration;
+    bool bdf_custom_LU_solver;
+    bool custom_time_step_adapter;
+    std::string bdf_ksp_type;
+    std::string bdf_pc_type;
 };
 
 struct SolverConfigGeneral {
     bool use_monitor;
-    bool bdf_custom_error_evaluation;
-    bool bdf_custom_Newton_iteration;
     std::string adapt_wnormtype;
-    bool custom_time_step_adapter;
     std::string ksp_type;
     std::string pc_type;
     std::string pc_factor_mat_solver_type;

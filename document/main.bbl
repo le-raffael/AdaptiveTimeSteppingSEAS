@@ -1,5 +1,10 @@
 \begin{thebibliography}{Rap97}
 
+\bibitem[Axe93]{IterativeSolutionMethods}
+O.~Axelsson.
+\newblock {\em Iterative solution methods}.
+\newblock Cambridge ; New York : Cambridge University Press, 1993.
+
 \bibitem[Bro65]{BroydenIteration}
 C.~Broyden.
 \newblock A class of methods for solving nonlinear simultaneous equations.
@@ -24,5 +29,12 @@ Patrick~J. Roache.
 Gustaf S\"oderlind.
 \newblock Automatic control and adaptive time-stepping.
 \newblock 31(1-4):281--310, 2002.
+
+\bibitem[SS86]{GMRES}
+Youcef Saad and Martin~H. Schultz.
+\newblock Gmres: A generalized minimal residual algorithm for solving
+  nonsymmetric linear systems.
+\newblock {\em SIAM Journal on Scientific and Statistical Computing},
+  7(3):856--869, 1986.
 
 \end{thebibliography}

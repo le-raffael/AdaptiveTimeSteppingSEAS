@@ -354,6 +354,8 @@ private:
                 timeop.initialize_Jacobian(bs_compact, bs_extended);
                 timeop.initialize_secondOrderDerivative();
             }
+          // TODO: decide whether to keep or throw out 
+//        if (cfg_as->bdf_custom_LU_solver || cfg_eq->bdf_custom_LU_solver) timeop.calculateLU_dfDS();
 
 
         // copy settings to solver struct
@@ -385,14 +387,16 @@ private:
         auto& solverStruct = seasop->getSolverParameters();
         auto const& cfg    = seasop->getGeneralSolverConfiguration();
 
+        std::cout << "bonjour" << std::endl;
+
         PetscFunctionBegin;
         // initialize the SNES solver with an explicit Rk4
         if (solverStruct.needRegularizationCompactDAE) {
             solverStruct.needRegularizationCompactDAE = false;
 
-            TS_BDF *bdf = (TS_BDF*)ts->data;
+           TS_BDF *bdf = (TS_BDF*)ts->data;
 
-            double dt = bdf->time[0] - bdf->time[1];
+           double dt = bdf->time[0] - bdf->time[1];
             RK4(ts, bdf->time[1], dt, bdf->work[1], bdf->work[0], RHSFunctionCompactODE<TimeOp>, seasop);
         }
         PetscFunctionReturn(0);
@@ -414,7 +418,7 @@ private:
         CHKERRTHROW(TSGetApplicationContext(ts, &seasop));
         auto& solverStruct = seasop->getSolverParameters();
 
-        if (solverStruct.useExtendedODE && solverStruct.useImplicitSolver){
+        if ((solverStruct.current_formulation == TimeOp::SECOND_ORDER_ODE) && solverStruct.useImplicitSolver){
             TS_BDF         *bdf = (TS_BDF*)ts->data;
             PetscInt       i,n = PetscMax(bdf->k,1) + 1;
             Vec            vecs[7];
@@ -512,7 +516,7 @@ private:
 
         // change formulation, tolerances and fetch solver parameters
         if (enterEQphase) {
-            if (!initialCall) reducedTimeBeginEQ(ts, solverStruct.time_eq);
+    //        if (!initialCall) reducedTimeBeginEQ(ts, solverStruct.time_eq);
             changeFormulation(ts, time, timeop, cfg_as, cfg_eq, initialCall);
             setTolerancesVector(ts, timeop, cfg_eq->solution_size, cfg_eq->S_rtol, cfg_eq->S_atol,   
                                  cfg_eq->psi_rtol, cfg_eq->psi_atol, cfg_eq->V_rtol, cfg_eq->V_atol);
@@ -523,7 +527,7 @@ private:
             problem_formulation = cfg_eq->problem_formulation;
 
         } else {
-            if (!initialCall) reducedTimeEndEQ(ts, solverStruct.time_eq);
+    //        if (!initialCall) reducedTimeEndEQ(ts, solverStruct.time_eq);
             changeFormulation(ts, time, timeop, cfg_eq, cfg_as, initialCall);
             setTolerancesVector(ts, timeop, cfg_as->solution_size, cfg_as->S_rtol, cfg_as->S_atol,   
                                  cfg_as->psi_rtol, cfg_as->psi_atol, cfg_as->V_rtol, cfg_as->V_atol);
@@ -573,7 +577,6 @@ private:
             CHKERRTHROW(DMGetDMTS(dm,&tsdm));
 
             CHKERRTHROW(TSReset(ts));
-            solverStruct.useExtendedODE = false;
 
             if (cfg_next->solution_size == "compact") {
                 if (initialCall || (cfg_prev->solution_size == "extended")) {
@@ -582,7 +585,9 @@ private:
                     if (!initialCall) timeop.makeSystemSmall(*solverStruct.state_compact, *solverStruct.state_extended);
                 }
                 CHKERRTHROW(TSSetSolution(ts, solverStruct.state_compact->vec()));
+
                 if (cfg_next->problem_formulation == "ode"){
+                    solverStruct.current_formulation = TimeOp::FIRST_ORDER_ODE;
                     CHKERRTHROW(TSSetEquationType(ts, TS_EQ_EXPLICIT));
                     CHKERRTHROW(TSSetRHSFunction(ts, nullptr, RHSFunctionCompactODE<TimeOp>, &timeop));
                     if (cfg_next->type == "bdf") {
@@ -592,6 +597,7 @@ private:
                     tsdm->ops->ijacobian = NULL;
 
                 } else if (cfg_next->problem_formulation == "dae"){
+                    solverStruct.current_formulation = TimeOp::COMPACT_DAE;
                     solverStruct.needRegularizationCompactDAE = true;
                     CHKERRTHROW(TSSetEquationType(ts, TS_EQ_IMPLICIT));
                     CHKERRTHROW(TSSetPreStage(ts, functionPreStage<TimeOp>));
@@ -608,7 +614,7 @@ private:
                 }
                 CHKERRTHROW(TSSetSolution(ts, solverStruct.state_extended->vec()));
                 if (cfg_next->problem_formulation == "ode"){
-                    solverStruct.useExtendedODE = true;
+                    solverStruct.current_formulation = TimeOp::SECOND_ORDER_ODE;
                     CHKERRTHROW(TSSetEquationType(ts, TS_EQ_EXPLICIT));
                     CHKERRTHROW(TSSetRHSFunction(ts, nullptr, RHSFunctionExtendedODE<TimeOp>, &timeop));
                     if (cfg_next->type == "bdf") {
@@ -619,6 +625,7 @@ private:
                     tsdm->ops->ijacobian = NULL;
 
                 } else if (cfg_next->problem_formulation == "dae"){
+                    solverStruct.current_formulation = TimeOp::EXTENDED_DAE;
                     CHKERRTHROW(TSSetEquationType(ts, TS_EQ_IMPLICIT));
                     CHKERRTHROW(TSSetPreStage(ts, functionPreStage<TimeOp>));       // remove that again!!
                     CHKERRTHROW(TSSetIFunction(ts, nullptr, LHSFunctionExtendedDAE<TimeOp>, &timeop));
@@ -636,7 +643,9 @@ private:
             if (cfg->adapt_wnormtype == "2") {ts->adapt->wnormtype = NormType::NORM_2; }    // this is very hacky 
             else if (cfg->adapt_wnormtype == "infinity") {ts->adapt->wnormtype = NormType::NORM_INFINITY; }
             else { std::cerr<<"Unknown norm! use \"2\" or \"infinity\""<<std::endl; }
-            if (cfg->custom_time_step_adapter) adapt->ops->choose = TSAdaptChoose_Custom;
+
+            // TODO: activate again if an alternative timestep adapter has been implemented
+//            adapt->ops->choose = (cfg_next->custom_time_step_adapter)?TSAdaptChoose_Custom:NULL;
 
             // Store the seas operator in the context if needed
             CHKERRTHROW(TSSetApplicationContext(ts, &timeop));
@@ -677,7 +686,7 @@ private:
             solverStruct.useImplicitSolver = false;
         // bdf settings
         } else if (cfg_next->type == "bdf") {
-            setBDFParameters(ts, timeop, cfg_next->bdf_order, cfg, solverStruct);
+            setBDFParameters(ts, timeop, cfg_next, solverStruct);
             solverStruct.useImplicitSolver = true;
         }
     }
@@ -751,9 +760,9 @@ private:
     static void setSNESTolerances(TS ts) {
         SNES snes;
         CHKERRTHROW(TSGetSNES(ts, &snes));
-        double atol = 1e-50;                          // absolute tolerance (default = 1e-50) 
-        double rtol = 1e-50;                          // relative tolerance (default = 1e-8)
-        double stol = 1e-8;                          // relative tolerance (default = 1e-8)
+        double atol = 1e-10;                         // absolute tolerance (default = 1e-50) 
+        double rtol = 0.;                            // relative tolerance (default = 1e-8)
+        double stol = 0.;                            // relative tolerance (default = 1e-8)
         int maxit = 10;                              // maximum number of iteration (default = 50)    
         int maxf  = -1;                              // maximum number of function evaluations (default = 1000)  
         CHKERRTHROW(SNESSetTolerances(snes, atol, rtol, stol, maxit, maxf));
@@ -762,21 +771,23 @@ private:
     /**
      * Set up the BDF scheme
      * @param ts TS instance
-     * @param order order of the BDF scheme
      * @param solution_size compact or extended 
-     * @param cfg general configuration to see whether use manual implementations or not
+     * @param cfg specific configuration to see whether use manual implementations or not
      * @param solverStruct contains the pointer to the manual implementations
      */
     template <typename CFG, typename TimeOp>
-    static void setBDFParameters(TS ts, TimeOp& seasop, int order, 
-        const std::optional<tndm::SolverConfigGeneral>& cfg, CFG& solverStruct){
+    static void setBDFParameters(TS ts, TimeOp& seasop,
+        const std::optional<tndm::SolverConfigSpecific>& cfg, CFG& solverStruct){
 
-       if (order > 0) CHKERRTHROW(TSBDFSetOrder(ts, order));
+       if (cfg->bdf_order > 0) CHKERRTHROW(TSBDFSetOrder(ts, cfg->bdf_order));
 
         // set nonlinear solver settings
         SNES snes;
         KSP snes_ksp;
         PC snes_pc;
+        TS_BDF          *bdf = (TS_BDF*)ts->data;
+
+        solverStruct.previous_solution = &(bdf->work[1]);
         
         CHKERRTHROW(TSGetSNES(ts, &snes));
 
@@ -790,13 +801,12 @@ private:
         }
         CHKERRTHROW(SNESGetKSP(snes, &snes_ksp));
         CHKERRTHROW(KSPGetPC(snes_ksp, &snes_pc));
-        CHKERRTHROW(KSPSetType(snes_ksp, cfg->ksp_type.c_str()));
-        CHKERRTHROW(PCSetType(snes_pc, cfg->pc_type.c_str()));
+        CHKERRTHROW(KSPSetType(snes_ksp, cfg->bdf_ksp_type.c_str()));
+        CHKERRTHROW(PCSetType(snes_pc, cfg->bdf_pc_type.c_str()));
         CHKERRTHROW(TSSetMaxSNESFailures(ts, -1));
-
+        
         setSNESTolerances(ts);
     }
-
     /**
      * Custom implementation of the Newton algorithm 
      * @param snes solving context
@@ -811,6 +821,7 @@ private:
         double norm_f, norm_init, norm_dx, norm_x, norm_f_prev;  // norm of the residual
         double atol, rtol, stol;
         int maxit, maxf;
+        bool custom_solver;
 
         void* ctx;
         TimeOp* seasop;
@@ -823,59 +834,98 @@ private:
         CHKERRTHROW(SNESShellGetContext(snes, &ctx));
         seasop = reinterpret_cast<TimeOp*>(ctx);        
         auto& solverStruct = seasop->getSolverParameters();
+        custom_solver = solverStruct.current_solver_cfg->bdf_custom_LU_solver;
 
         if (!f)             CHKERRTHROW(VecDuplicate(x, &f));
         if (!Newton_step)   CHKERRTHROW(VecDuplicate(x, &Newton_step));
-
+        
         CHKERRTHROW(SNESGetJacobian(snes, &J, &J_pre, nullptr, nullptr));
         CHKERRTHROW(SNESGetTolerances(snes, &atol, &rtol, &stol, &maxit, &maxf));
 
         CHKERRTHROW(SNESGetKSP(snes, &ksp));
 
         CHKERRTHROW(SNESComputeFunction(snes, x, f));    //evaluate RHS of the ODE
-        if (solverStruct.useExtendedODE) seasop->updateRHSNewtonIteration(f);
+
+        if (solverStruct.current_formulation == TimeOp::SECOND_ORDER_ODE) 
+            seasop->updateRHSNewtonIteration(f);
 
         CHKERRTHROW(VecNorm(f, NORM_INFINITY, &norm_f));
         norm_init = norm_f;
 
+
+        int total_it_num=0;
         for(int n = 0; n < maxit; n++) {
             CHKERRTHROW(SNESComputeJacobian(snes, x, J, J_pre));  // get the Jacobian
-            CHKERRTHROW(KSPSetOperators(ksp, J, J_pre));          // set it to the KSP
-            CHKERRTHROW(KSPSolve(ksp, f, Newton_step));           // solve the Jacobian system
+            if (custom_solver) {
+                seasop->applyCustomLUSolver(Newton_step, f, J, ksp);
+            } else {
+                CHKERRTHROW(KSPSetOperators(ksp, J, J_pre));      // set it to the KSP
+                CHKERRTHROW(KSPSolve(ksp, f, Newton_step));       // solve the Jacobian system
+            }
             CHKERRTHROW(VecAXPY(x, -1, Newton_step));             // update the solution vector
 
             CHKERRTHROW(SNESComputeFunction(snes, x, f));         // evaluate the algebraic function
-            if (solverStruct.useExtendedODE) seasop->updateRHSNewtonIteration(f);
+            if (solverStruct.current_formulation == TimeOp::SECOND_ORDER_ODE) 
+                seasop->updateRHSNewtonIteration(f);
 
             norm_f_prev = norm_f;
             CHKERRTHROW(VecNorm(f, NORM_INFINITY, &norm_f));      // calculate some nomrs
             CHKERRTHROW(VecNorm(Newton_step, NORM_INFINITY, &norm_dx));
             CHKERRTHROW(VecNorm(x, NORM_INFINITY, &norm_x));
 
+            int it_num;
+            KSPGetIterationNumber(ksp, &it_num);
+            total_it_num += it_num;
+
+            // diverged
+            if (norm_f > norm_init) {
+                SNESSetConvergedReason(snes, SNES_DIVERGED_FUNCTION_DOMAIN );
+                std::cout << "diverged with norm " << norm_f << " after " << n+1 << " iterations -- Restart Newton step" << std::endl;
+                PetscFunctionReturn(0);
+            }
+
             // converged
             if (norm_f < atol) {
-//                std::cout << "converged with the absolute residual " << norm_f << " after " << n+1 << " iterations " << std::endl;
                 SNESSetConvergedReason(snes, SNES_CONVERGED_FNORM_ABS);
+                solverStruct.FMax = norm_f;
+                solverStruct.KSP_iteration_count = (double)total_it_num / (n+1);
+                // std::cout << "converged with norm " << norm_f << " after " << n+1 << " iterations with " 
+                //           << (double)total_it_num / (n+1) << " KSP iterations per step" << std::endl;
                 PetscFunctionReturn(0);
             }
             if (norm_f / norm_init < rtol) {
-//                std::cout << "converged with the relative residual " << norm_f / norm_init << " after " << n+1 << " iterations " << std::endl;
                 SNESSetConvergedReason(snes, SNES_CONVERGED_FNORM_RELATIVE);
+                solverStruct.FMax = norm_f;
+                solverStruct.KSP_iteration_count = (double)total_it_num / (n+1);
+                // std::cout << "converged with norm " << norm_f << " after " << n+1 << " iterations with " 
+                //           << (double)total_it_num / (n+1) << " KSP iterations per step" << std::endl;
                 PetscFunctionReturn(0);
             }
             if (norm_dx / norm_x < stol) {
-//                std::cout << "converged because of the relative change in x  " << norm_dx / norm_x  << " reached after " << n+1 << " iterations " << std::endl;
+                SNESSetConvergedReason(snes, SNES_CONVERGED_SNORM_RELATIVE);
+                solverStruct.FMax = norm_f;
+                solverStruct.KSP_iteration_count = (double)total_it_num / (n+1);
+                // std::cout << "converged with norm " << norm_f << " after " << n+1 << " iterations with " 
+                //           << (double)total_it_num / (n+1) << " KSP iterations per step" << std::endl;
+                PetscFunctionReturn(0);
+            }
+
+            // std::cout << "norm: "<<norm_f << std::endl;
+
+            if ((norm_f < 1e-7) && (std::abs(norm_f - norm_f_prev) / norm_f < 1e0)) {     // only used for absolute best convergence
+                solverStruct.FMax = norm_f; // = f_norm for the absolute error
+                solverStruct.KSP_iteration_count = (double)total_it_num / (n+1);
                 SNESSetConvergedReason(snes, SNES_CONVERGED_SNORM_RELATIVE);
                 PetscFunctionReturn(0);
             }
-            // if (norm_f_prev < norm_f) {     // only used for absolute best convergence
-            //     solverStruct.FMax = norm_f; // = f_norm for the absolute error
-            //     SNESSetConvergedReason(snes, SNES_CONVERGED_SNORM_RELATIVE);
-            //     PetscFunctionReturn(0);
-            // }
+
         }
 
-        SNESSetConvergedReason(snes, SNES_DIVERGED_MAX_IT );
+        solverStruct.FMax = norm_f;
+        solverStruct.KSP_iteration_count = (double)total_it_num / maxit;
+        // std::cout << "converged with norm " << norm_f << " after " << maxit-1 << " iterations with " 
+        //             << (double)total_it_num / maxit << " KSP iterations per step" << std::endl;
+        SNESSetConvergedReason(snes, SNES_CONVERGED_ITS );
         PetscFunctionReturn(0);
     }
 

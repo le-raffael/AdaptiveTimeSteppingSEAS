@@ -222,6 +222,7 @@ public:
                (twoV0 * pow(p, 3));
     }
 
+
     /**
      * Evaluate the friction law for given S, psi and V
      * @param index of the current node

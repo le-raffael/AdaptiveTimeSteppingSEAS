@@ -249,6 +249,15 @@ public:
     void getAgeingDerivatives(double delta, double psi, double dV_dS, double dV_dpsi, double& dg_dS, double& dg_dpsi);
 
     /**
+     * Calculate the maximum value of df/dpsi
+     * @param faultNo index of the current fault
+     * @param time current simulation time 
+     * @param state current solution vector
+     * @return maximum error factor
+     */
+    double calculateMaxFactorErrorPSI(std::size_t faultNo, double time, Vector<double const>& state) const;
+
+    /**
      * Extract some values from the current state
      * @param faultNo index of the current fault
      * @param state current solution vector
@@ -576,6 +585,7 @@ void RateAndState<Law>::getJacobianQuantitiesCompact(std::size_t faultNo, double
     }
 }
 
+
 template <class Law>
 void RateAndState<Law>::getJacobianQuantitiesCompact(std::size_t faultNo, double time, Matrix<double> const& traction,
                Vector<double const>& state, Vector<double>& state_der, Vector<double>& result, LinearAllocator<double>&) const {
@@ -652,6 +662,28 @@ void RateAndState<Law>::getAgeingDerivatives(double delta, double psi, double dV
     dg_dS = law_.dg_dS(psi, dV_dS);
     dg_dpsi = law_.dg_dpsi(delta, psi, dV_dpsi);
 }
+
+template <class Law>
+double RateAndState<Law>::calculateMaxFactorErrorPSI(std::size_t faultNo, double time, Vector<double const>& state) const {
+    auto s_mat = mat(state);
+    
+    std::size_t nbf = space_.numBasisFunctions();
+    std::size_t index = faultNo * nbf;
+
+    double max_dfdpsi = 1e9;
+
+    for (std::size_t node = 0; node < nbf; ++node) {
+
+        auto sn = 0.0;
+        auto psi = s_mat(node, PsiIndex);
+
+        double V       = s_mat(node, VIndex);
+
+        max_dfdpsi = std::max(max_dfdpsi, std::abs(law_.df_dpsi(index + node, sn, V, psi)));
+    }
+    return max_dfdpsi;
+}
+
 
 template <class Law>
 void RateAndState<Law>::state(std::size_t faultNo, Matrix<double> const& traction,

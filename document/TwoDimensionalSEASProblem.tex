@@ -299,7 +299,35 @@ The function $F$ has to be evaluated $2n$ times with the current solution vector
 \subsection{Practical limitations of the Jacobian matrices}
 The main advantage of implicit methods over explicit methods is to allow larger time steps without loss in accuracy. The program execution is therewith expected to be accelerated. The proposed calculation of the Jacobian matrix and its application in Newton iterations comes along with some drawbacks with respect to the required calculation effort. \\
 As described in \autoref{sssec:Jacobian_ODE}, the computation of the Jacobian matrix can be split up in one constant part $\frac{\partial \tau_p}{\partial S_l}$ that has to be evaluated once at the beginning of the simulation and only depends on the domain geometry and in one variable part, that needs to be updated after each evaluation of the solution vector $x_n$. The initialization can be quite computationally expensive, at it requires, for each column of $\frac{\partial \tau_p}{\partial S_l}$, to solve the Discontinuous Galerkin system for the entire domain with the corresponding unit vector as right-hand side vector. Each calculation of this linear system is approximately as expensive as performing one time iteration with an explicit solver, since solving the same linear system is the most expensive operation of a time iteration. For large domains with several hundreds or thousands of fault elements, which each contains a couple of fault nodes, this initialization operation takes a considerable amount of time. In comparison with an explicit scheme, a potential implicit method starts the race for the fastest solver with a penalty of about $n$ explicit time iterations, where $n$ is the total number of nodes on the fault. The advantages of implicit methods will therefore only pay off after a high number of iterations and make such methods of interest only if the simulated time frame is very long. \\
-Another potential drawback of the Newton method is that a linear system of size $n$ needs to be solved at each iteration step. This might still sound much less than solving for the displacement on the whole DG-domain of size $N$ as it is required to evaluate the right-hand side of the ODE at each iteration too. However, the DG system has a constant matrix $A$ whose LU-decomposition can be calculated once at the beginning of the simulation and each evaluation of the right-hand side only requires a backward substitution of complexity $\mathcal{O}\left(N^2\right)$. For the Jacobi matrix, such a pre.processing is not available since it changes along with the solution vector. Every calculation to solve the linear system in the Newton iteration is achieved with a complexity of the order $\mathcal{O}\left(n^3\right)$. In particular in large domains with many fault nodes the solver with cubic complexity may involve a substantially higher execution time than the one with quadratic complexity. Notwithstanding, for such large domains, the question has to be asked whether a direct solver is still appropriate or whether iterative solvers yield acceptable results. Such considerations are however beyond the scope of this thesis.
+Another potential drawback of the Newton method is that a linear system of size $n$ needs to be solved at each iteration step. This might still sound much less than solving for the displacement on the whole DG-domain of size $N$ as it is required to evaluate the right-hand side of the ODE at each iteration too. However, the DG system has a constant matrix $A$ whose LU-decomposition can be calculated once at the beginning of the simulation and each evaluation of the right-hand side only requires a backward substitution of complexity $\mathcal{O}\left(N^2\right)$. For the Jacobi matrix, such a pre.processing is not available since it changes along with the solution vector. Every calculation to solve the linear system in the Newton iteration is achieved with a complexity of the order $\mathcal{O}\left(n^3\right)$. In particular in large domains with many fault nodes the solver with cubic complexity may involve a substantially higher execution time than the one with quadratic complexity. 
+
+\subsection{Iterative solvers for the Jacobian matrices}
+\label{ssec:iterative_solver_Jacobian}
+As discussed in the previous section, a linear system of equations has to be solved at each Newton iteration, and since the Jacobian matrices depend on the current solution vector, an expensive LU decomposition in $\mathcal{O}\left(n^3\right)$ has to be calculated at each step. For the two DAE formulations, the system of equations can however be reformulated in a way that iterative methods can be applied effectively, reducing the complexity of each Newton step to $\mathcal{O}\left(kn^2\right)$, where $k$ is the number of iterations in the matrix solver. We use the fact that among all submatrices, that are used to set-up the Jacobian matrix, the only dense matrix is the constant term $\pdv{f}{S}$, and all other terms, are diagonal matrices. Let us consider the example of the Jacobian of the compact DAE formulation in \autoref{eq:Jacobian_compact_DAE}, with the linear system in which it appears in the Newton iteration. The dense term is denoted by the matrix $\mathbf{B}$ and all other block matrices $J_{ij}$ are diagonal.
+\begin{equation}
+	\begin{pmatrix}
+		\mathbf{B} & \mathbf{J}_{12} \\ 
+		\mathbf{J}_{21} & \mathbf{J}_{22} 
+	\end{pmatrix} \begin{pmatrix}
+		x_1 \\ x_2
+	\end{pmatrix} = \begin{pmatrix}
+		b_1 \\ b_2
+	\end{pmatrix} 
+\end{equation}
+The vector $x$ describes the change in each component at the current Newton step and is the searched unknown and $b$ contains the left-hand side of the DAE system. Under the assumption that there are no zero entries on the diagonals, we first transform the Jacobian matrix to a lower triangular block matrix and obtain the following modified system: 
+\begin{equation}
+	\begin{pmatrix}
+		\mathbf{B} - \mathbf{J}_{12}\mathbf{J}_{22}^{-1}\mathbf{J}_{21} & \mathbf{0} \\ 
+		\mathbf{J}_{12} & \mathbf{J}_{22} 
+	\end{pmatrix} \begin{pmatrix}
+		x_1 \\ x_2
+	\end{pmatrix} = \begin{pmatrix}
+		b_1 - \mathbf{J}_{12}\mathbf{J}_{22}^{-1}b_2 \\ b_2
+	\end{pmatrix} 
+\end{equation}
+Now, an iterative solver can be applied on the subsystem in the first line on the dense, but diagonally dominant to solve for the components in $x_1$. The components $x_2$ can then be easily derived in $\mathcal{O}(n)$ operations with a forward substitution. \\
+A similar transformation was obtained for the extended DAE formulation too, where the iterative solver is only required on a subsystem of size $n$ and where the missing components can be updated linearly in time. Without the reduction, no iterative methods that converges fast could be found. For the first order ODE formulation, such a Gaussian elimination is not expedient because two out of the four submatrices are dense, however iterative methods can directly be used on the entire Jacobian matrix.
+
 
 \section{Second Order Differential Equation}
 So far, the original problem in \autoref{ssec:physicalDescriptionSEAS2D} has been formulated as a first order ODE in \autoref{eq:ODE_formulation_SEAS}, in which the friction law is solved implicitly within each evaluation of the right-hand side, such that explicit time integrators can be used. The solution vector has a compact size and only includes the slip $S$ and the state variable $\psi$. Alternatively, the problem can be directly formulated as a DAE, where the solution vector is extended by the slip rate $V$, such that it can be solved through the friction law iteratively together with the time quantities $S$ and $\psi$. A compact form of the DAE has also been formulated, where the derivative slip rate is directly used in the friction law instead of introducing a new variable $V$. \\
@@ -422,21 +450,25 @@ For now, only the basic PETSc timestep adapter is used. The next timestep size i
 \begin{equation}
 	h_{n+1} = C\epsilon^{-1/\bar{k}}h_n
 \end{equation}
-The safety factor $C$ is set to 0.9, and the scaling from one timestep to another is restricted to values between 0.1 and 10. In the native PETSc implementation for BDF, this upper bound for the factor is set to 2, but this only matters for the first few timesteps, since the change between timestep sizes is generally below 2.
+The safety factor $C$ is set to 0.9, and the scaling from one timestep to another is restricted to values between 0.1 and 10. In the native PETSc implementation for BDF, this upper bound for the factor is set to 2, but this only matters for the very first timesteps, since the relative change between timestep sizes is generally below 2 afterwards.
 
 \subsubsection{Implementation of the BDF schemes}
 For the implicit methods, any BDF scheme of order 1 to 6 can be used. For the first few timesteps, not all necessary previous solutions are available yet to perform a $k$-order scheme. In this case, the highest possible order is used until the order $k$ is reached. If for example, a 4th order BDF scheme is required, the first three steps will be actually performed with the respective orders 1, 2 and 3. \\
 The native PETSc error estimate uses the Lagrangian polynomials as described in \autoref{sssec:errorEstimateBDFLagrange}. The second method with an embedded higher order execution of the BDF scheme from \autoref{sssec:errorEstimateBDFEmbeddedScheme}, was manually implemented and the user can choose between both possibilities. Again, in the first few steps, the solution vectors are not yet available to execute the BDF scheme of order $k+1$ for the error estimate. In this case, the error is evaluated with a lower order scheme $k-1$ until enough old solution vectors are available. \\
 Further, the adaptive BDF order finding from \autoref{sssec:adaptiveBDFOrder} has been implemented and is used if the user provided "0" for the BDF order. 
 
+\subsubsection{Switching between different methods}
+The simulation supports the use of different solvers and time integration methods for the aseismic slip phase and for the earthquake phase. To detect in which phase the simulation is currently in, the maximum slip rate $V_{max}$ at the current timestep is compared to the environment slip $V_0$. If $V_{max}>V_0$ is verified, it means that the simulation is currently in an earthquake, else wise it is in the aseismic slip. When the simulation detects a switch from one state to the other, and if a different problem formulation or integration method is defined by the users for both states, the program overwrites the PETSc configuration and restarts the solver at the current timestep with the new methods. It is thus possible, for instance, to use the compact DAE formulation for the aseismic slip and the 2nd order ODE formulation with an explicit Runge-Kutta scheme for the earthquake. 
+
 \subsection{Tolerances for the time integration}
-\subsubsection{Behaviour of the Error}
 Tolerances play a crucial role fort adaptive time-stepping methods. A proposed timestep is accepted only if the estimated error is inferior to a defined tolerance $t$, therefore a carefully chosen tolerance has a direct impact on the timestep size and consequently on the total number of time iterations to reach the final simulation time. If $u_i$ refers to all components of the solution vector and $u_i^{(e)}$ to the components of the embedded solution used for the error estimate, then a step is acceptable if following condition is fulfilled: 
 \begin{equation}
 \left\|\frac{u_i - u_i^{(e)}}{t_i}\right\|_\infty = \max_i \left|\frac{u_i - u_i^{(e)}}{t_i}\right|
 \quad \leq \quad 1
 \end{equation}
 The infinity norm is used because a too large deviation in one node of the fault can erroneously provoke an earthquake at a too early time and thus strongly affects the accuracy of the results for the whole system. If the 2-norm was used, as it is common for other applications, too large errors at some nodes may occur, which are then compensated by nodes where the actual and the embedded solutions match well. \\
+
+\subsubsection{Behaviour of the Error}
 The tolerance $t_i$ can be defined independently for each component of the solution vector. It is calculated for each time step with an absolute tolerance $t_i^a$ and a relative tolerance $t_i^r$. 
 \begin{equation}
 t_i = t_i^a + \max\left(u_i,u_i^{(e)}\right)t_i^r
@@ -449,7 +481,7 @@ Since some components of the solution vector correspond to the values of the sta
 	\label{fig:errrors1e-7}
 \end{figure}
 Over the whole simulation time, the state variable $\psi$ takes values close to $0.8$ on all fault nodes, leading to a total tolerance for the corresponding components of $t_\psi \approx 1.8 \cdot 10^{-7}$. The blue line, which draws the maximum absolute error, is clearly limited by this tolerance value and the light blue line of the relative error is located, as expected, by a factor $1/0.8$ above the absolute error. \\
-The error analysis of the slip presents a much less regular picture. The maximal absolute error lies always below the tolerance $t_S^a = 10^{-7}$, however the relative error reaches much higher values at the beginning of the simulation and before the earthquake event. The evolution of the extreme values of the slip in \autoref{fig:minmax1e-7} provides an explanation for these large errors. In the beginning, the slip at each node is below 1, thus the overall tolerance \\
+The error analysis of the slip presents a much less regular picture. The maximal absolute error lies always below the tolerance $t_S^a = 10^{-7}$, however the relative error reaches much higher values at the beginning of the simulation and before the earthquake event. The evolution of the extreme values of the slip in \autoref{fig:minmax1e-7} provides an explanation for these large errors. The maximum slip linearly increases, driven by the environment slip rate of the tectonic plates. On the open surface, the minimum slip is almost zero until the first earthquake. It then jumps to the next constant value, which is maintained until the subsequent earthquake. So, over the course of time, the slip increases overall. \\
 
 \begin{figure}[H]
 	\centering
@@ -458,8 +490,66 @@ The error analysis of the slip presents a much less regular picture. The maximal
 	\label{fig:minmax1e-7}
 \end{figure}
 
-\subsubsection{Switching between different methods}
-The simulation supports the use of different solvers and time integration methods for the aseismic slip phase and for the earthquake phase. To detect in which phase the simulation is currently in, the maximum slip rate $V_{max}$ at the current timestep is compared to the environment slip $V_0$. If $V_{max}>V_0$ is verified, it means that the simulation is currently in an earthquake, else wise it is in the aseismic slip. When the simulation detects a switch from one state to the other, and if a different problem formulation or integration method is defined by the users for both states, the program overwrites the PETSc configuration and restarts the solver at the current timestep with the new methods. It is thus possible, for instance, to use the compact DAE formulation for the aseismic slip and the 2nd order ODE formulation with an explicit Runge-Kutta scheme for the earthquake. 
+From a physical point of view, the exact value of the slip does not matter, as only the change during the earthquake and the difference between the extreme values are relevant to describe tectonic dynamics. Therefore, only an absolute tolerance should be defined and a relative tolerance for the slip is not reasonable. For very long simulations, the total slip reaches higher orders of magnitudes after several earthquakes and if a relative tolerance was defined for the slip, it means that that early earthquakes are solved with higher accuracy than later ones. \\
+In conclusion, it is sufficient to define absolute tolerances for the time integration of the slip and the state variable. Both quantities have values at a similar magnitude and setting $t_S^a = t_{\psi}^a = 10^{-7}$ is a safe bet. In a later section, we will investigate by how much this tolerance could be increased to allow for larger timesteps without a failure of the simulation.
+
+// TODO: change this section with conclusion absolute tolerance for $S$, relative for $\psi$, relative + absolute for $V$  //
+
+\subsubsection{Lower bound for the tolerances}
+For the 1st order ODE and both DAE formulations, the slip $S$ and the state variable $\psi$ are integrated over time and thus require tolerances. To get an idea about the range of values they can take, we estimate the smallest local truncation error in  $S$ and $\psi$ that can be achieved at all. For that, we use the fact that the friction law can only be calculated iteratively up to an error $\varepsilon_{max} < 10^{-12}$ and we assume that in the worst case this error propagates entirely to the slip $S$ or to the state variable $\psi$. The impact of a perturbation $\varepsilon^{\psi}$ or $\varepsilon^{S}$ on the friction law is set to $\varepsilon_{max}$ and is solved with a first order Taylor polynomial.
+
+\begin{align}
+&\begin{cases}
+	\varepsilon_{max} < f(S+\varepsilon^{S},\psi,V) - f(S,\psi,V) \\
+	\varepsilon_{max} < f(S,\psi+\varepsilon^{\psi},V) - f(S,\psi,V) 
+\end{cases} &&
+\Leftrightarrow&
+&\begin{cases}
+		\varepsilon_{max} < \left|\pdv{f_i}{S_j}\right|\mathbbm{1}_j \varepsilon^S + \mathcal{O}\left(\left(\varepsilon^S\right)^2\right) & \forall i \\[0.2cm]
+		\varepsilon_{max} < \left|\pdv{f_i}{\psi_j}\delta_{ij}\right|\varepsilon^\psi + \mathcal{O}\left(\left(\varepsilon^\psi\right)^2\right) & \forall i 
+\end{cases} \\
+&&&\Leftrightarrow &
+&\begin{cases}
+	\varepsilon^S > \left[\min_i\left|\pdv{f_i}{S_j}\right|\mathbbm{1}_j\right]^{-1}\varepsilon_{max}  \\[0.2cm]
+	\varepsilon^\psi > \left|\frac{\sigma_n}{2V_0}\frac{V_i e^{\frac{\psi_i}{a}}}{\sqrt{\frac{e^{2\psi_i/a}V_i^2}{4V_0^2} + 1}} \right|^{-1}\varepsilon_{max} & \forall i
+\end{cases}
+\end{align}
+In the first condition, $\mathbbm{1}$ denotes the one vector, so we try to find the minimum absolute row sum of the constant matrix $\pdv{f}{S}$. A look at the range of the absolute row sums in \autoref{tab:rangeCdotONE} tells that the searched value does not depend of the problem size, so a lower bound for the error in $S$ can be conveniently calculated by $\varepsilon^S > \varepsilon_{max}/0.257=4\cdot10^{-12}$.
+\begin{table}[H]
+	\centering 
+	\begin{tabular}{ | c | c c c c c |}
+		\hline	
+		Number of fault elements	& 21 	& 40 	& 80 	& 200 	& 400 	\\ \hline
+		Maximum absolute row sum    & 62.3	& 129	& 283	& 624 	& 1230	\\  
+		Minimum absolute row sum  	& 0.257	& 0.257 & 0.257	& 0.257 & 0.257 \\
+		\hline
+	\end{tabular}
+	\caption{Range of the components in $\pdv{f_i}{S_j}\mathbbm{1}_j$ for different problem sizes} 
+	\label{tab:rangeCdotONE}
+\end{table}
+
+In the second condition, the lower bound of the exponential term in the denominator $e^{2\psi_{min}/a_{max}} = e^{2 \cdot 0.5 / 0.025} \approx 5.5\cdot10^{34}$ is already extremely high, so that the term $+1$ can be neglected in the square root. Then, the expression simplifies dramatically as $\pdv{f}{\psi} \approx \sigma_n = 50$, which can be safely used for the lower bound of the error in $\varepsilon^\psi > \varepsilon_{max}/50 = 2\cdot10^{-14}$. \\
+For the second order ODE, the tolerance in $V$ is also required, so the same procedure is applied to determine a lower bound for the error term $\varepsilon^V$.
+\begin{align}
+	&\varepsilon_{max} < f(S,\psi,V+\varepsilon^{V}) - f(S,\psi,V)
+	&&\Leftrightarrow&&
+	\varepsilon_{max} < \left|\pdv{f_i}{V_j}\delta_{ij}\right|\varepsilon^V + \mathcal{O}\left(\left(\varepsilon^V\right)^2\right) & \forall i \\
+	&&&\Leftrightarrow &&
+	\varepsilon^V > \left|\frac{\sigma_n}{2V_0}\frac{ e^{\frac{\psi_i}{a}}}{\sqrt{\frac{e^{2\psi_i/a}V_i^2}{4V_0^2} + 1}} + \eta\right|^{-1}\varepsilon_{max} & \forall i
+\end{align}
+With the same approximation as earlier for the denominator, the expression simplifies to $\varepsilon^V > V_i\varepsilon_{max}/(\sigma_n + V_i\eta)$. As opposed to $\varepsilon^S$ and $\varepsilon^\psi$, the error depends on the maximum slip rate in the current iteration, which is in line with the postulate from the previous section that a relative tolerance definition for the slip rate is more appropriate. Sadly, the expression for the lower bound of $\varepsilon^V$ is not an affine function and can not be used as such as a tolerance. Instead, we can use the condition $\varepsilon^V > V_i\varepsilon_{max}/\sigma_n$, which is still a very accurate lower bound for most of the encountered slip rates. As seen in \autoref{fig:LowerBoundErrorEstimateV}, only for very high slip rates that occur at the peak of an earthquake, the linearized lower bound for $\varepsilon^V$ exceeds significantly the exact value.
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.5\textwidth]{images/ErrorRelationPSI_VAbsoluteRelative.png}
+	\caption{Lower bound for the error in the slip rate $V$ compared to its linear approximate in function of the slip rate}
+	\label{fig:LowerBoundErrorEstimateV}
+\end{figure}
+The proposed tolerances are only of theoretical nature, as they assume that the error only stems from the iterative solver of the friction law. However, the time integration would most likely fail because numerical errors or the sum of the LTE from the different stages of a RK scheme have not been considered. Moreover the error estimate itself is not exact, and, as already discussed in \autoref{ssec:QualityErrorEstimate_0D}, it tend to overestimate the local truncation error, which means that even if the error is within the tolerance, the program would not understand it as such. If one wants to run the simulation with maximal accuracy, it is wise to add a safety factor to the tolerances.
+
+\subsubsection{Upper bound for the tolerances}
+The discussion so far only tackled the question of the lowest possible tolerances to reach as accurate results as possible. However, such strict tolerances may severely affect the timestep size and by consequence the length of the simulation. For many applications, satisfactory results are already obtained for larger tolerances, and the aim of this section is to investigate it for SEAS. As there is no mathematical definition for \textit{satisfactory results} (unless convergence is the only requirement), we will run the simulation with the minimum possible tolerance described in the previous section and assess how the results deteriorate as the tolerances increase. \\
+We consider 
+
 
 \subsection{Newton Iteration}
 \label{ssec:ConvergenceNewtonIteration}
@@ -545,9 +635,9 @@ To obtain these results, the time integration itself has not been performed with
 	\begin{subfigure}[t]{0.32\textwidth}
 		\centering
 		\includegraphics[width=0.9\textwidth]{images/TANDEMConvergenceAnalysisCompactDAENewton_Size5.png}
-		\subcaption{$\infty$-norm of the residual in the Newton iterations at different time step sizes} 
+		\subcaption{$\infty$-norm of the residual in the Newton iterations at different time step sizes}
 		\label{fig:convergenceIssuesCompactDAENewtonIterations}
-\end{subfigure} 
+\end{subfigure}
 	\begin{subfigure}[t]{0.32\textwidth}
 		\centering
 		\includegraphics[width=1\textwidth]{images/TANDEMConvergenceAnalysisCompactDAEMaxResidual_Size5.png}
@@ -557,7 +647,7 @@ To obtain these results, the time integration itself has not been performed with
 	\begin{subfigure}[t]{0.32\textwidth}
 		\centering
 		\includegraphics[width=1\textwidth]{images/TANDEMConvergenceAnalysisCompactDAERatioInAddition_Size5.png}
-		\subcaption{Minimum achievable residual norms in function of the maximal ratio between the additive terms in the Jacobian matrix} 
+		\subcaption{Minimum achievable residual norms in function of the maximal ratio between the additive terms in the Jacobian matrix}
 		\label{fig:convergenceIssuesCompactDAEMaxResidual_vs_ratio}
 	\end{subfigure}
 	\caption{Convergence properties of the compact DAE formulation with the 4th order BDF method on a small domain with 5 fault elements}
@@ -590,6 +680,73 @@ This issue occurs only with the compact DAE formulation, because the Jacobian ma
 \end{figure}
 
 In conclusion, the compact DAE formulation fails for the earthquake and can only be applied in the aseismic slip phase. Since the accuracy decreases along with the timestep size, the usual strategy to restart a step with a smaller timestep size if the nonlinear did not converge only leads to an even worse accuracy and is unsuitable. For this limited purpose, it still offers advantages over other methods which will be discussed in a further section.
+
+\subsubsection{Iterative solvers for the Newton step update}
+In each Newton step, an expensive linear system has to be solved in $\mathcal{0}\left(n^3\right)$, which is the main bottleneck for simulations on large domain. To solve this issue, several iterative methods have been tested  instead of the classical Gaussian elimination. PETSc comes along with a broad range of Krylov methods with even more preconditioners. Very good results could already obtained with the simple Jacobi method \cite[p. 230]{IterativeSolutionMethods}. More advanced stationary iterative methods, such as Gauss-Seidel or SOR, were not used because their PETSc implementation skips the convergence test and always performs a fixed number of iterations. Further, a Krylov method has also been tested, the generalized minimal residual method (GMRES) \cite{GMRES}. In each iteration $k$, it minimizes the residual in the $k$th-Krylov of the Jacobian matrix $J$ and returns the exact solution at latest after $n$ steps, so the complexity is the same as for a direct method in the worst case. To better its performance, both a Jacobi and a Gauss-Seidel preconditioner have been used. \\
+The average number of iterations to solve the linear system, as well as the impact of its accuracy on the Newton iteration and on the total number of timesteps are shown in Tables \ref{tab:compactODE_iterativeSolversJacobian}-\ref{tab:extendedODE_iterativeSolversJacobian} for all four formulations. The simulation length has been choosen such that exactly one earthquake happens, except for the compact DAE formulation, which generally fails to converge for small timesteps. For the ODE formulations, the iterative solver is directly applied to the Jacobian matrix as it appears in the Newton iteration and for the DAE formulations, the system is first reduced as described in \autoref{ssec:iterative_solver_Jacobian}. This is especially crucial for the extended DAE formulation, since all methods fail to converge when directly applied to the Jacobian matrix. 
+
+\begin{table}[H]
+	\begin{tabular}{ | c || c c c | c |}
+		\hline
+		& Jacobi & Jacobi-GMRES & GS-GMRES & LU \\ \hline\hline
+		Average number of iterations per Newton step &  6.97  &    5.72   &    3.08  & -  \\
+		Average number of Newton steps & 3.28  &     3.28    &   3.28  &     3.27 \\
+		Average final Newton residual &   $1.07\cdot10^{-12}$  & $1.17\cdot10^{-12}$  & $1.33\cdot10^{-12}$  & $1.54\cdot10^{-12}$ \\		Total number of timesteps & 4896  &      4906    &    4904    &    4901 \\
+		\hline
+	\end{tabular}
+	\caption{Quality of iterative solvers for the Jacobian system on a 5th-order BDF scheme with the 1st order ODE formulation on 101 fault elements for 250 years}
+	\label{tab:compactODE_iterativeSolversJacobian}
+\end{table}
+
+In the 1st order ODE formulation, the GMRES with a Guass-Seidel preconditioner only needs in average 3.08 iterations to solve the linear systems, as opposed to the Jacobi and Jacobi-GMRES methods with respectively 6.97 and 5.72 iterations. The quality of the Newton iteration and the total number of timesteps is very similar to the direct method for all three iterative methods, so the GS-GMRES method can be fully recommended for this formulation. 
+
+\begin{table}[H]
+	\begin{tabular}{ | c || c c c | c |}
+		\hline
+		& Jacobi & Jacobi-GMRES & GS-GMRES & LU \\ \hline\hline
+		Average number of iterations per Newton step &  7.48  &    5.11   &    2.77  & -  \\
+		Average number of Newton steps & 4.07  &     4.82    &   4.51  &     4.23 \\
+		Average final Newton residual &   $8.73\cdot10^{-12}$  & $1.17\cdot10^{-10}$  & $1.13\cdot10^{-10}$  & $4.53\cdot10^{-12}$ \\ 
+		Total number of timesteps & 4920  &      4919    &    4919    &    4919 \\
+		\hline
+	\end{tabular}
+	\caption{Quality of iterative solvers for the Jacobian system on a 5th-order BDF scheme with the extended DAE formulation on 101 fault elements for 250 years}
+	\label{tab:extendedDAE_iterativeSolversJacobian}
+\end{table}
+
+In the extended DAE formulation, the three methods converge after a similar number of steps and again, the GS-GMRES method performs the best. However, both GMRES methods require slightly more Newton steps and only allow the Newton iteration to converge up to $10^{-10}$ and not $10^{-12}$ as for the direct method or the Jacobi method. This reduced accuracy does not seem to impact the total number of timesteps, so the GS-GMRES can again be considered to be the best option, but there might be some simulation settings where the more accurate Jacobi method would be more appropriate.
+
+\begin{table}[H]
+	\begin{tabular}{ | c || c c c | c |}
+		\hline
+		& Jacobi & Jacobi-GMRES & GS-GMRES & LU \\ \hline\hline
+		Average number of iterations per Newton step &  10.85  &    6.58   &    3.45  & -  \\
+		Average number of Newton steps & 3.98  &     4.01    &   3.97  &     3.97 \\
+		Average final Newton residual &   $2.20\cdot10^{-11}$  & $2.22\cdot10^{-11}$  & $2.12\cdot10^{-11}$  & $2.04\cdot10^{-11}$ \\
+		Total number of timesteps & 686  &      686    &    686    &    686 \\
+		 \hline
+	\end{tabular}
+	\caption{Quality of iterative solvers for the Jacobian system on a 5th-order BDF scheme with the compact DAE formulation on 101 fault elements for 200 years}
+	\label{tab:compactDAE_iterativeSolversJacobian}
+\end{table}
+In the compact DAE formulation, a clear victory can be declared for GS-GMRES. Overall, more iterations are needed to converge than for its extended counterpart, albeit the comparison has only a limited significance, because the latter went through an earthquake event, which is impossible for the former. 
+
+\begin{table}[H]
+	\begin{tabular}{ | c || c c c | c |}
+		\hline
+		& Jacobi & Jacobi-GMRES & GS-GMRES & LU \\ \hline\hline
+		Average number of iterations per Newton step &  5.41  &    4.95   &    2.57  & -  \\
+		Average number of Newton steps & 3.25  &     2.72    &   2.72  &     2.72 \\
+		Average final Newton residual &   $1.91\cdot10^{-7}$  & $9.03\cdot10^{-16}$  & $7.85\cdot10^{-16}$  & $7.41\cdot10^{-16}$ \\
+		Total number of timesteps & 11504  &      8308    &    8321    &    8306 \\
+		 \hline
+	\end{tabular}
+	\caption{Quality of iterative solvers for the Jacobian system on a 5th-order BDF scheme with the 2nd order ODE formulation on 101 fault elements for 250 years}
+	\label{tab:extendedODE_iterativeSolversJacobian}
+\end{table}
+Finally, in the 2nd order ODE formulation, there is a massive difference between the Jacobi and the GMRES methods. The Jacobi methods induces a much higher final residual in the Newton iteration, with a direct consequence on the total number of timesteps. On the other hand, with the GMRES methods, the simulation works as good as with a direct solver, and, as usual, the Gauss-Seidel preconditioner leads to fewer iterations than the Jacobi preconditioner. \\
+
+In conclusion, iterative solvers are well-suited to update the Newton step. For all formulations, the GMRES method with a Gauss-Seidel preconditioner performs the best. The Jacobi preconditioner has exactly the same impact on the overall performance of the simulation, but requires more iterations to converge, so it does not bring any benefits. The Jacobi method has to be remembered as an alternative for the extended DAE formulation because the Newton iteration with GMRES is less accurate, which might impact the overall performance and accuracy under certain conditions. However, the Jacobi method should be avoided at any cost for the 2nd order ODE formulation, because it considerably affects the accuracy and performance of the simulation. 
 
 \subsection{Data structure}
 \subsubsection{Block structure}
@@ -664,6 +821,51 @@ The simulation is run over a period of 250 years, in which one earthquake occurs
     \label{fig:timeEvolutionTANDEM_RHS}
 \end{figure}
 
+\subsection{Time adaptivity on BDF methods}
+\subsubsection{Quality of the error estimates}
+Two error estimates have been introduced for the BDF methods. First, in a given time step, the BDF scheme is applied a second time with higher order and the difference between both available solutions at the timestep yields the error estimate. The second method bases on the derivatives of Lagrangian polynomials as described in \autoref{sssec:errorEstimateBDFLagrange}, and has the advantage to be much cheaper to evaluate, since it does not require to solve the system again. It has already been shown in \autoref{ssec:QualityErrorEstimate_0D} that for the 0D example, the first method gives a more accurate estimation of the local truncation error than the second method. Both methods tend to overestimate the error, which is for sure a safe behavior, but restrict the choice of the next timesteps. The aim of this section is to see, whether similar estimates can be observed for the current problem. \\
+Since here no exact solution is available for the slip or the state variable (or the slip rate, if the solution vector has an extended size), the accuracy of the error estimate cannot be directly determined as previously. Instead, we assume that the actual error is inferior to the estimate, and that the embedded method is more accurate than Lagrangian polynomials. We would then expect that the timestep adapter chooses larger timesteps with the first method and finishes the program earlier. Exactly this can be observed in \autoref{fig:BDFOrders_Lagrange_vs_Embedded_compact_ODE} for the compact ODE formulation. As expected, the embedded method is faster than Lagrangian polynomials, because features, such as an increase or decrease of the timestep size happen increasingly earlier with the embedded method. Overall, fewer timesteps are required to reach a solution at a given time. However, the allowed timesteps are only slightly larger and the difference cannot be noticed on the logarithmic scale. Nonetheless, it is positive to remark that the same small features such as intermediate peaks are observed with both methods, which indicates that both error estimates recognize the same inconsistencies in the solution. 
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.8\textwidth]{images/TANDEMTimeAnalysisDifferentBDFOrdersEmbedded_vs_Lagrange_CompactODE_Size5.png}
+	\caption{Comparison of the chosen timestep sizes with the Lagrangian polynomials (full line ---) and the embedded error estimate (dashed line - -) for different BDF orders on a domain with 5 fault elements and the compact ODE formulation with $\varepsilon^S_a = \varepsilon^{\psi}_a = 10^{-7}$ and $\varepsilon^S_r = \varepsilon^{\psi}_r = 0$ }
+	\label{fig:BDFOrders_Lagrange_vs_Embedded_compact_ODE}
+\end{figure}
+Overall, the embedded method gives a more accurate error estimate than the Lagrangian polynomials, and allows for larger timestep sizes. However, the gain is only very small, as in average 2\% fewer timesteps are required in sum at the end of the simulation, and does not justify the use of the embedded higher order BDF method as error estimate, as it is twice as expensive. Actually, the order of the BDF method has a much higher influence on the total number of iterations, as it can be seen in this graph and will be discussed more in detail in the next section. 
+
+
+\subsubsection{Effect of the order on the timestep size}
+The order of the BDF method has a strong influence on the total number of required timesteps, as it can be clearly seen in \autoref{fig:BDFOrders_Lagrange_vs_Embedded_compact_ODE} from the previous section. The simulation can be roughly split into four sections: the evolution of the aseismic slip, with an approximately constant stepsize of the order of $h=10^7$s, the evolution of the earthquake at $h=10^{-2}$s and the transition between both phases, where the stepsize progressively increases or decreases. In addition to that, there is the initialization phase, in which the stepsize starts at $h=0.1$s to quickly reach the stepsize of the aseismic slip. \\
+From \autoref{fig:BDFOrders_Lagrange_vs_Embedded_compact_ODE}, it seems that the stepsize of the constant evolution directly depends on the BDF order: a lower order leads to a smaller timestep and thus requires much more steps in total until the end of the aseismic slip or earthquake. The transition from the aseismic slip to the earthquake is a crucial section, because the sudden increase of the slip rate requires to rapidly scale down the timestep size. The end of the earthquake is less critical, as the slip rate drops relatively slowly which gives more scope to the stepsize to adapt to it, moreover the eventual too small stepsize there is not as problematic as a too high stepsize at the beginning of the earthquake. It is also interesting to look at the initialization phase, as there are no other constraints for a small stepsize but the limitations of the BDF scheme. \\
+\autoref{fig:BDFOrders_compact_ODE_compare_initialization} shows exactly the increase at the beginning of the simulation for the BDF methods of order two to six and \autoref{fig:BDFOrders_compact_ODE_compare_begin_first_EQ} shows the transition from the aseismic slip to the first earthquake. To better contextualize the results, the graph for the explicit 4th order Runge-Kutta scheme with the same tolerances is also shown. In the initialization phase, the slope is in general steeper if a higher order method is used. One notable exception is the 6th order BDF scheme, which performs almost as bad as the 2nd order scheme. Unlike the other schemes, it does not increase smoothly but has regular steps, which indicates that the 6th order scheme is not as stable as the others. Overall, the increase is perfectly exponential for the schemes 2-5, and the factor by which the timestep size increases at each step is driven by the order of the method. Interestingly enough, in the very first timesteps,  the timestep size of the 2nd order scheme jumps by two orders of magnitude whereas the 5th and 6th order do not benefit at all from such a strong initial increase. At the transition from the aseismic slip to the earthquake phase, the timestep size decreases exponentially with the same pattern: a higher order scheme allows a stronger reduction of the timestep size from one step to the next. Now, the 6th order scheme is perfectly stable and has the steepest slope among all BDF methods. When compared to the explicit 4th order Runge-Kutta method, all BDF methods in both scenarios perform extremely bad. This is however not a reason to discard BDF methods as a whole, since they are much more flexible with respect to the defined tolerances, as it will be discussed in a later stage.
+
+\begin{figure}[H]
+	\centering
+	\begin{subfigure}{0.45\textwidth}
+		\centering
+		\includegraphics[width=1\textwidth]{images/TANDEMTimeAnalysisDifferentBDFOrdersLagrange_CompactODE_Size5_Init.png}
+		\subcaption{Maximum absolute value of the friction law} 
+		\label{fig:BDFOrders_compact_ODE_compare_initialization}
+	\end{subfigure}
+	\begin{subfigure}{0.45\textwidth}
+		\centering
+		\includegraphics[width=1\textwidth]{images/TANDEMTimeAnalysisDifferentBDFOrdersLagrange_CompactODE_Size5_Begin1stEQ.png}
+		\subcaption{Absolute change of the friciton law per timestep, averaged over 50 timesteps} 
+		\label{fig:BDFOrders_compact_ODE_compare_begin_first_EQ}
+	\end{subfigure}
+	\caption{Evolution of the time step size for BDF schemes with different order at key points in the simulation on a domain with 5 fault elements and the compact ODE formulation with $\varepsilon^S_a = \varepsilon^{\psi}_a = 10^{-7}$ and $\varepsilon^S_r = \varepsilon^{\psi}_r = 0$ }
+\end{figure}
+Higher order BDF methods allow in general for higher stepsizes and are to be preferred over lower order methods. Since the costs of all BDF schemes are similar (they converge similarly fast and each Newton step always requires to solve one linear system), there is no strong reason to use a low order scheme here. Because of the stability issues with the 6th order scheme when the stepsize increases, the best performance can be expected from the 5th order scheme. There are some few cases where lower order methods perform better, such at the very beginning of the simulation. To take advantage of these peculiarities, and also to use the 6th order method if it is currently stable, the order of the BDF scheme can be adapted at each timestep as described in \autoref{sssec:adaptiveBDFOrder}. In this case, each step also calculates by how much the timestep size would change if one order higher or lower was used, and if a larger timestep can be reached, the order is changed for the next timestep. This has been implemented and the performance of the order-adaptive BDF scheme is shown in \autoref{fig:BDFOrders_compact_ODE_compare_adaptiveBDF}. It successfully uses the scheme with the largest allowable stepsize and finishes the simulation faster than any other methods. 
+
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.8\textwidth]{images/TANDEMTimeAnalysisDifferentBDFOrders_Lagrange_CompactODE_Size5_FULLTIME.png}
+	\caption{Evolution of the time step size for the adaptive-order BDF method and for a selection of different fixed orders on a domain with 5 fault elements and the compact ODE formulation with $\varepsilon^S_a = \varepsilon^{\psi}_a = 10^{-7}$ and $\varepsilon^S_r = \varepsilon^{\psi}_r = 0$ }
+	\label{fig:BDFOrders_compact_ODE_compare_adaptiveBDF}
+\end{figure}
+
+
 \subsection{Error estimation of the 2nd order ODE formulation}
 Despite the lack of an analytic solution to the problem, this formulation of the problem offers a very powerful tool to evaluate the accuracy of the results. Since the slip rate is not calculated from the friction law anymore, it is not ensured that it is always equal to 0 up to numerical precision, as it was the case in the first order formulations of the SEAS problem. We could then evaluate the friction law at every timestep to assess the accuracy of the numerical integration. A large deviation from 0 of the absolute value of the friction law at a given timestep means that the integrator provides poor results. For a standard execution of the simulation with the second order formulation, this metric is not available, since the evaluation of $\tau$ in the friction law requires to solve the Poisson problem, and the big advantage of the new formulation is exactly not to solve this system. For the following graphs, The value of the friction law has been exceptionally calculated. \\
 
@@ -709,74 +911,4 @@ Overall, the evaluation of the friction law is a suitable estimate for the globa
 
 \subsection{Scalability}
 
-\section{Relative and Absolute Tolerances}
---> put that in the numerics section
-
-
-\subsection{Tolerance of the State Variable Dependent on the Slip}
-Overall, the absolute error of the slip is inferior to the absolute error of the state variable. From a physical point of view, the slip is a relevant quantity to describe earthquakes whereas the state variable $\psi$ is only required to solve the DAE. Therefore, the absolute and relative tolerances are defined as external requirements for the slip only, and the tolerances for the state variable have to be chosen in a way to achieve the best numerical performance without loosing physical accuracy. In the following equations, we try to evaluate the highest acceptable tolerances for the state variable in function of the provided tolerances for the slip. The relation between $S$ and $\psi$ is described by the friction law in \autoref{eq:SEASDAE_frictionLaw}, which is evaluated at a constant velocity $V^*$. For a maximal absolute slip error $\epsilon_S^a$, the largest acceptable absolute error of the state variable $\epsilon_\psi^a$ can be calculated by equalizing the induced error in the friction law under constant velocity. 
-\begin{align}
-    f_{V^*}(S+\epsilon_S^a,\psi) - f_{V^*}(S,\psi) &= f_{V^*}(S,\psi+\epsilon_\psi^a) - f_{V^*}(S,\psi) \\
-    \tau(U(S+\epsilon_S^a)) - \tau(U(S)) &= a \sigma_n \text{arsinh}\left(\frac{V^*}{2V_0}\right)\frac{1}{a}\left(e^{\frac{\psi+\epsilon_\psi^a}{a}} - e^{\frac{\psi}{a}}\right) \\
-    \tau(B(S+\epsilon_S^a)) - \tau(BS) &= a \sigma_n \text{arsinh}\left(\frac{V^*}{2V_0}\right) e^{\frac{\psi}{a}}\left(e^{\frac{\epsilon_\psi^a}{a}} - 1\right)
-\end{align}
-
-As already discussed in the formulation of the Jacobian matrix, the displacement $U(S)$ is linear in $S$ and can therefore be expressed with the linear transformation matrix $B$ as $U(S) = BS$. Further transformations of the left side of the equation are performed in index notation, where $\mathbbm{1}$ denotes a vector in which all components are equal to one. 
-\begin{align}
-    (\nabla u(S))_{pq} =& \frac{1}{2}\left(D_{lpq}^0u_l^0 + D_{lpq}^1u_l^1\right) + c_0\left(E_{lq}^0u_l^0 - E_{lq}^1u_l^1 - f_q\right)n_{pq} \\ \nonumber
-    (\nabla u(S + \epsilon_S^a))_{pq} =& \frac{1}{2}\left(D_{lpq}^0\left(u_l^0+ B_{lj}\mathbbm{1}_j\epsilon_S^a\right) + D_{lpq}^1\left(u_l^1+ B_{lj}\mathbbm{1}_j\epsilon_S^a\right)\right) \\ &+ c_0\left(E_{lq}^0\left(u_l^0+ B_{lj}\mathbbm{1}_j\epsilon_S^a\right) - E_{lq}^1\left(u_l^1+ B_{lj}\mathbbm{1}_j\epsilon_S^a\right) - f_q\right)n_{pq} \\
-    (\nabla u(S + \epsilon_S^a))_{pq} - (\nabla u(S))_{pq} =& \left(\frac{1}{2}\left(D_{lpq}^0 + D_{lpq}^1\right) + c_0\left(E_{lq}^0 - E_{lq}^1\right)n_{pq}\right)B_{lj}\mathbbm{1}_j\epsilon_S^a \\
-    \tau_p(B(S+\epsilon_S^a)) - \tau_p(BS) =& M_{rp}^{-1}e_{qr}^Tw_q\left((\nabla u(S + \epsilon_S^a))_{kq} - (\nabla u(S))_{kq}\right)n_{kq}
-\end{align}
-We can see that the error in $\tau$ does not depend on the slip $S$ anymore and is proportional to the absolute slip error $\epsilon_S^a$. We can thus define a matrix $C$ such that $\tau_p(B(S+\epsilon_S^a)) - \tau_p(BS) = C_{pj}\mathbbm{1}_j\epsilon_S^a$. The absolute error of the state variable is then directly proportional to $\epsilon_S^a$. 
-\begin{align}
-    \epsilon_\psi^a &= a\text{ln}\left(1+\frac{C_{pj}\mathbbm{1}_j}{a\sigma_n \text{arsinh}\left(\frac{V^*}{2V_0}\right)e^{\frac{\psi}{a}}}\epsilon_S^a\right) 
-\end{align}
-To provide an upper bound for $\epsilon_\psi^a$, the smallest value of the proportionality factor of $\epsilon_S^a$ has to be determined because the logarithm function is increasing and the smallest allowed value of the error is searched. For the numerator of the ratio, to calculate $\min_p\left|C_{pj}\mathbbm{1}_j\right|$ minimizes the ratio. Note that the matrix $C$ depends on the geometry so this term cannot be provided in general in beforehand but has to be chosen with respect to the used space discretization. To minimize the ratio, the terms on the denominator have to be maximized. Because the arsinh function increases monotonously, the choice of $V_{max}$ for the velocity component provides an appropriate upper bound. Similarly, $\psi$ should be replaced by an upper limit $\psi_{max}$. The value of the parameter $a$ depends on the fault location and varies between $a_{min}$ and $a_{max}$. It appears once at the beginning of the denominator, where its maximal value shall be chosen, and once in the exponential, where its minimal value is required. If all those values are plugged into the expression, the error in $\psi$ can be evaluated as following: 
-\begin{equation}
-    \epsilon_\psi^a = a_{min}\text{ln}\left( 1+\frac{\min_p\left|C_{pj}\mathbbm{1}_j\right|}{a_{max}\sigma_n \text{arsinh}\left(\frac{V_{max}}{2V_0}\right) e^{\frac{\psi_{max}}{a_{min}}}}\epsilon_S^a\right)
-\end{equation}
-The upper bounds for the velocity and for the state variable can be deduced by already obtained simulation results and an appropriate choice could be the values $V_{max} = 5.0ms^{-1}$ and $\psi_{max} = 0.85$. In the simulation settings, $a$ increases from $a_{min}=0.010$ at the surface to $a_{max}=0.025$ at high depths. With these values, all terms take reasonable values, except for the exponential $e^{\frac{\psi_{max}}{a_{min}}} = e^{85} \approx 8\cdot10^{36}$. In the vicinity of 1,  the logarithm can be approximated by a linear function with gradient 1. Under consideration of the initial factor $a_{min}$, the absolute error tolerance in $\psi$ has to be 38 magnitudes below the tolerance in the slip to prevent any additional error. Such a low tolerance is not achievable in any realistic scenario, so the state variable participates in making the simulation less accurate. When the tolerances for the state variable have to be set, and only an absolute tolerance for the slip is provided, it is the best to chose them as low as possible, and still the state variable will contribute to the error of the simulation. On the other hand, very low tolerances prevent the choice of larger timesteps and an appropriate choice of the tolerance for the state variable which is not too low to ensure reasonable execution times still needs to be determined.  
-
-\subsection{Tolerance of the State Variable Dependent on the Slip Rate}
-So far, the error in the slip rate $V$ is not directly regulated by any tolerance value. Since it is calculated from the slip and from the state variable, the error in $V$ depends on the chosen tolerances for those two parameters. As a physical quantity, it might be interesting to provide a tolerance for the slip rate too. Unlike for the slip, the tolerance for the slip rate should also include a relative error tolerance $t_V^r$ in addition to the already discussed absolute error tolerance $t_V^a$. Indeed, the slip rate takes values around $10^{-6}ms^{-1}$ in the aseismic phase and peaks at values above $10^{9}ms^{-1}$ during the earthquake event. The exclusive use of an absolute error tolerance, with a value below the slip rate of the aseismic evolution, is too restrictive during the earthquake. An appropriate relative error tolerance, which is scaled by the current velocity value and added to the absolute one can reasonably restrict the error. In the aseismic phase, the relative error tolerance does not have much effect since it is scaled down by the very low slip rate and outmatched by the presumably higher absolute tolerance. For example, the choices $t_V^a=10^{-10}$ and $t_V^r=10^{-7}$ allow for a relative error of the order $10^{-4}$ during the aseismic phase and of the order $10^{-7}$ during the earthquake. Such a choice reflects the concept that a higher accuracy is needed to simulate an earthquake than to simulate aseismic slip. \\
-The typical approach would be to estimate it with the difference between the values obtained from the numerical solution and its embedded solution. The newly chosen timestep shall then only allow solutions which fulfill the tolerances in the entire state vector and the additional tolerance in error of the slip rate. Alternatively, the error tolerance of the state variable, which is not properly defined from physical constrains yet can be used to restrict the slip rate. To obtain the relation between error in slip rate $V$ and state variable $\psi$, the same analysis as in the previous subsection has to be performed. This time, the error in the friction law is evaluated under the assumption of a constant slip $S^*$.  
-\begin{align}
-	f_{S^*}(V+\epsilon_V^a,\psi) - f_{S^*}(V,\psi) &= f_{S^*}(V,\psi+\epsilon_\psi^a) - f_{S^*}(V,\psi) \\
-	 f_{S^*}(V,\psi) + \frac{d}{dV}f_{S^*}(V,\psi)\epsilon_V^a - f_{S^*}(V,\psi) + \mathcal{O}\left(\left(\epsilon_V^a\right)^2\right)&= a \sigma_n \text{arsinh}\left(\frac{V}{2V_0}\right)\frac{1}{a}\left(e^{\frac{\psi+\epsilon_\psi^a}{a}} - e^{\frac{\psi}{a}}\right) \\
-	 \left( \frac{a\sigma_ne^{\frac{\psi}{a}}} {2V_0\sqrt{\left(\frac{V}{2V_0}\right)^2+1}}- \eta \right)\epsilon_V^a + \mathcal{O}\left(\left(\epsilon_V^a\right)^2\right) &= a \sigma_n \text{arsinh}\left(\frac{V}{2V_0}\right) e^{\frac{\psi}{a}}\left(e^{\frac{\epsilon_\psi^a}{a}} - 1\right)
-\end{align}
-\begin{equation}
-	 \epsilon_\psi^a 
-	= a\text{ln}\left(1 + \left( \frac{1}{\text{arsinh}\left(\frac{V}{2V_0}\right)\sqrt{V^2 + (2V_0)^2}} - \frac{\eta}{a \sigma_n \text{arsinh}\left(\frac{V}{2V_0}\right) e^{\frac{\psi}{a}}} \right)\epsilon_V^a + \mathcal{O}\left(\left(\epsilon_V^a\right)^2\right)\right)
-\end{equation}
-The exponential $e^{\frac{\psi}{a}}$ with the extremely high value appears again in one of the two ratios. The term with $\eta$ can thus be neglected to estimate the error. In the remaining summand, an appropriate estimate value for the slip rate $V$ needs to be determined. As stated previously, the absolute error tolerance is only relevant for the aseismic phase, in which the slip rate never exceeds the tectonic slip $V_0$, which can be taken as an upper bound for the slip rate here. The absolute error is then calculated by: 
-\begin{equation}
-	\label{eq:absoluteErrorPSIFromV}
-	 \epsilon_\psi^a 
-	= a_{min}\text{ln}\left(1 +  \frac{1}{\text{arsinh}\left(\frac{1}{2}\right)\sqrt{5}V_0}\epsilon_V^a\right)
-\end{equation}
-During an earthquake, the relative error tolerance of the slip rate is relevant. To evaluate it, we now investigate the relation between the relative errors of the slip rate and the state variable. 
-\begin{align}
-	f_{S^*}((1+\epsilon_V^r)V,\psi) - f_{S^*}(V,\psi) &= f_{S^*}(V,(1+\epsilon_\psi^r)\psi) - f_{S^*}(V,\psi) \\
-	f_{S^*}(V,\psi) + \frac{d}{dV}f_{S^*}(V,\psi)\epsilon_V^rV - f_{S^*}(V,\psi) + \mathcal{O}\left(\left(\epsilon_V^rV\right)^2\right)&= a \sigma_n \text{arsinh}\left(\frac{V}{2V_0}\right)\frac{1}{a}\left(e^{\frac{(1+\epsilon_\psi^r)\psi}{a}} - e^{\frac{\psi}{a}}\right) \\
-	\left( \frac{a\sigma_ne^{\frac{\psi}{a}}} {2V_0\sqrt{\left(\frac{V}{2V_0}\right)^2+1}}- \eta \right)\epsilon_V^rV + \mathcal{O}\left(\left(\epsilon_V^rV\right)^2\right) &= a \sigma_n \text{arsinh}\left(\frac{V}{2V_0}\right) e^{\frac{\psi}{a}}\left(e^{\frac{\epsilon_\psi^r}\psi{a}} - 1\right)
-\end{align}
-\begin{equation}
-	\epsilon_\psi^r = \frac{a}{\psi}\text{ln}\left(1 + \left( \frac{1}{\text{arsinh}\left(\frac{V}{2V_0}\right)\sqrt{V^2 + (2V_0)^2}} - \frac{\eta}{a \sigma_n \text{arsinh}\left(\frac{V}{2V_0}\right) e^{\frac{\psi}{a}}} \right)\epsilon_V^rV + \mathcal{O}\left(\left(\epsilon_V^rV\right)^2\right)\right)
-\end{equation}
-Again, the term with $\eta$ can be neglected because of the exponential. For elements, where the relative tolerance is relevant, the slip rate is much larger than the tectonic slip, so $V_0^2$ can also be neglected below the square root when added to $V^2$. The relative error in $\psi$ can be estimated as: 
-\begin{equation}
-	\label{eq:relativeErrorPSIFromV}
-	\epsilon_\psi^r = \frac{a_{min}}{\psi_{max}}\text{ln}\left(1 + \frac{1}{\text{arsinh}\left(\frac{V_{max}}{2V_0}\right)}\epsilon_V^r\right)
-\end{equation}
-
-The absolute and relative errors in $\psi$ associated to the respective errors in the slip rate are represented in \autoref{fig:RelAbsErrorToleranceVPSI}. The curves show the evaluation of \autoref{eq:absoluteErrorPSIFromV} and \autoref{eq:relativeErrorPSIFromV} for small error values in $V$. The various parameters are set to $a_{min}=0.01$, $\psi_{max}=0.85$, $V_0=10^{-6}ms^{-1}$ and $V_{max}=5.0ms^{-1}$. To use the previous example again, if an absolute error tolerance in the slip rate of $t_V^a=10^{-10}$ and a relative tolerance of $t_V^r=10^{-7}$ are required, it would translate to the tolerances in the state variable to $t_\psi^a=9.29\cdot10^{-7}$ and $t_\psi^r=2.77\cdot10^{-11}$. However, these values cannot be used as such in the simulation, since the assumption that the absolute tolerance can be neglected during the earthquake and inversely that the relative tolerance is insignificant in the aseismic phase only holds for the slip rate but not for the state variable, whose value remains between $0.75$ and $0.85$. It makes more sense to define an absolute tolerance for the aseismic slip $t_\psi^{as}=9.29\cdot10^{-7}$ and for the earthquake $t_\psi^{eq}=\psi_{min}2.77\cdot10^{-11}=6.48\cdot10^{-11}$ in the state variable. 
-
-\begin{figure}[H]
-	\centering
-	\includegraphics[width=0.6\textwidth]{images/ErrorRelationPSI_VAbsoluteRelative.png}
-	\caption{Absolute and relative error in $\psi$ in function of the error in the slip rate}
-	\label{fig:RelAbsErrorToleranceVPSI}
-\end{figure}
 

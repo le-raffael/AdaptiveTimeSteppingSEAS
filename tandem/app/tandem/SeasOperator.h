@@ -33,6 +33,8 @@ public:
 
     constexpr static std::size_t NumQuantities = SeasAdapter::NumQuantities;
 
+    enum Formulations {FIRST_ORDER_ODE, EXTENDED_DAE, COMPACT_DAE, SECOND_ORDER_ODE};
+
     using time_functional_t = typename SeasAdapter::time_functional_t;
 
     struct solverParametersASandEQ {
@@ -41,19 +43,22 @@ public:
 
         bool checkAS;                     // true if it is a period of aseismic slip, false if it is an eartquake    
         bool needRegularizationCompactDAE=false;  // true if it is the first step of the compact DAE (need to set stol = 0)
-        bool useExtendedODE=false;        // true if the current formulation is the extended ODE
         bool useImplicitSolver=true;      // true if the solver is implicit (e.g. BDF)
 
         double time_eq = 0.;              // stores the time at the beginning of the earthquake 
 
         double FMax = 0.0;                // Maximum residual - only for output
         double ratio_addition = 0.0;      // ratio (sigma * df/dS) / (df/dV) - only for output
+        double KSP_iteration_count = 0.;  // counts the average number of iteration for the Jacobian matrix solver in the Newton iteration
 
         std::optional<tndm::SolverConfigSpecific> current_solver_cfg;
+
+        Vec * previous_solution;
 
         std::shared_ptr<PetscBlockVector> state_compact;
         std::shared_ptr<PetscBlockVector> state_extended;
 
+        Formulations current_formulation;
     };
 
 
@@ -417,6 +422,27 @@ public:
         return soln;
     }
 
+    /** *
+     * Calculate the maximum value of df/dpsi
+     * @param time current simulation time
+     * @param state current solution vector
+     */
+    template <typename BlockVector> double calculateMaxFactorErrorPSI(double time, BlockVector& state) {
+        time += solverParameters_.time_eq;
+        auto in_handle = state.begin_access_readonly();
+
+        double max_dfdpsi = 1e9;
+        double current_dfdpsi = 0.0;
+        for (std::size_t faultNo = 0, num = numLocalElements(); faultNo < num; ++faultNo) {
+            auto state_block = state.get_block(in_handle, faultNo);
+            current_dfdpsi = lop_->calculateMaxFactorErrorPSI(faultNo, time, state_block);
+
+            max_dfdpsi = std::min(max_dfdpsi, current_dfdpsi);
+        }
+        state.end_access_readonly(in_handle);
+        return max_dfdpsi; 
+    }
+
     /**
      * see SeasXXXXAdapter -> set_boundary
      * @param fun functional to be used at the boundary
@@ -527,6 +553,42 @@ public:
         initialize_df_dS();
         
     }
+
+    /**
+     * Calculate the LU decomposition without pivoting of df/dS
+     */
+    void calculateLU_dfDS(){
+        size_t numFaultElements = this->numLocalElements();
+        size_t nbf = lop_->space().numBasisFunctions();
+        size_t n = nbf * numFaultElements;
+
+        CHKERRTHROW(MatDuplicate(df_dS_, MAT_DO_NOT_COPY_VALUES, &df_dS_L_));
+        CHKERRTHROW(MatDuplicate(df_dS_, MAT_COPY_VALUES, &df_dS_U_));
+        CHKERRTHROW(MatZeroEntries(df_dS_L_));
+
+        const double * A;
+        double * L;
+        double * U;
+        CHKERRTHROW(MatDenseGetArrayRead(df_dS_, &A));
+        CHKERRTHROW(MatDenseGetArray(df_dS_L_, &L));
+        CHKERRTHROW(MatDenseGetArray(df_dS_U_, &U));
+
+        int i,j,k;  // LU decomposition without pivoting
+        for(j = 0; j < n; ++j){
+            L[j + j*n] = 1;
+            for (i = j + 1; i < n; ++i){
+                L[i + j*n] = U[i + j*n] / U[j + j*n];
+                for (k = j; k < n; k++){
+                    U[i + k*n] -= L[i + j*n] * U[j + k*n];
+                }
+            }
+        }
+
+        CHKERRTHROW(MatDenseRestoreArrayRead(df_dS_, &A));
+        CHKERRTHROW(MatDenseRestoreArray(df_dS_L_, &L));
+        CHKERRTHROW(MatDenseRestoreArray(df_dS_U_, &U));
+    }
+
     /**
      * calculate the analytic Jacobian matrix
      * @param Jac the Jacobian
@@ -739,7 +801,7 @@ public:
         size_t nbf = lop_->space().numBasisFunctions();
         size_t numFaultNodes = nbf * numFaultElements;
 
-        // fill vectors     
+        // fill vectors
         VectorXd df_dV_vec(numFaultNodes);                             
         VectorXd df_dpsi_vec(numFaultNodes);
         VectorXd dg_dV_vec(numFaultNodes);                             
@@ -755,7 +817,6 @@ public:
                 dg_dpsi_vec( noFault * nbf + i ) = derBlock(3 * nbf + i);
             }
         }
-
         JacobianQuantities_->end_access_readonly(accessRead);
 
         // fill the Jacobian
@@ -779,7 +840,6 @@ public:
             solverParameters_.ratio_addition = std::max(solverParameters_.ratio_addition, std::abs(ratio));
         }
 
-
         for (int noFault = 0; noFault < numFaultElements; noFault++){
             for (int i = 0; i < nbf; i++){                  // row iteration
                 S_i = noFault * blockSize + i;
@@ -795,17 +855,19 @@ public:
                 // components F_x
                 J[S_i   + PSI_i * totalSize] += df_dpsi_vec(n_i);
                 J[PSI_i + PSI_i * totalSize] += dg_dpsi_vec(n_i);
-                                
-                for (int noFault2 = 0; noFault2 < numFaultElements; noFault2++){
-                    for(int j = 0; j < nbf; j++) {          // column iteration
 
-                        S_j = noFault2 * blockSize + j;
-                        n_j = noFault2 * nbf + j;
+                //if (!solverGenCfg_->bdf_custom_LU_solver){
+                    for (int noFault2 = 0; noFault2 < numFaultElements; noFault2++){
+                        for(int j = 0; j < nbf; j++) {          // column iteration
 
-                        // components F_x
-                        J[S_i   + S_j * totalSize  ] += df_dS[n_i + n_j * numFaultNodes];
+                            S_j = noFault2 * blockSize + j;
+                            n_j = noFault2 * nbf + j;
+
+                            // components F_x
+                            J[S_i   + S_j * totalSize  ] += df_dS[n_i + n_j * numFaultNodes];
+                        }
                     }
-                }
+                //}
             }
         }
 
@@ -905,6 +967,21 @@ public:
     Mat& getJacobianCompactDAE() { return Jacobian_compact_dae_; }
 
     Mat& getJacobianExtendedDAE() { return Jacobian_extended_dae_; }
+
+    /**
+     * Solve the linear system of the Newton iteration for the compact DAE formulation with a partial LU decomposition
+     * @param x_vec searched unknown
+     * @param b_vec rhs Vector
+     * @param J_mat partial Jacobian with block diagonal entries
+     * @param ksp linear solver from snes
+     */
+    void applyCustomLUSolver(Vec x_vec, Vec b_vec, Mat J_mat, KSP ksp){
+        switch(solverParameters_.current_formulation) {
+            case COMPACT_DAE : ReducedKSPCompactDAE(x_vec, b_vec, J_mat, ksp); break;
+            case EXTENDED_DAE : ReducedKSPExtendedDAE(x_vec, b_vec, J_mat, ksp); break;
+            default : std::cout << "Reduced Newton solver is only available for DAE formulations! " << std::endl;
+        }
+    }
 
     solverParametersASandEQ& getSolverParameters(){ return solverParameters_; }
 
@@ -1061,6 +1138,7 @@ public:
      * Set up the constant part df/dS of the Jacobian matrix
      */
     void initialize_df_dS() {
+
         // ----------------- general parameters ----------------- //
         size_t blockSize = this->block_size();
         size_t numFaultElements = this->numLocalElements();
@@ -1164,6 +1242,40 @@ public:
         CHKERRTHROW(MatDestroy(&du_dS));
         CHKERRTHROW(MatDestroy(&dtau_du_big));
         CHKERRTHROW(MatDestroy(&dtau_dS_big));
+
+        // calculateCdotONE(); // just for debug purposes
+    }
+
+    /**
+     * Estimate the error in the DG scheme for an error in psi.
+     * This function calculates the product Cx1 as described in the thesis to estimate the error in the slip rate
+     */
+    void calculateCdotONE(){
+        size_t numFaultElements = this->numLocalElements();
+        size_t nbf = lop_->space().numBasisFunctions();
+        size_t totalnbf = nbf * numFaultElements;
+
+        Vec oneVector, result;
+        VecCreate(comm(), &oneVector);
+        VecSetType(oneVector, VECSEQ);
+        VecSetSizes(oneVector, PETSC_DECIDE, totalnbf);
+        VecDuplicate(oneVector, &result);
+
+        for(int i=0; i < totalnbf; i++) VecSetValue(oneVector, i, 1.0, INSERT_VALUES);
+
+
+        double traction_min = std::numeric_limits<double>::infinity();
+        double traction_max = 0.0;
+
+        MatMult(df_dS_, oneVector, result);
+        const double * r;
+        VecGetArrayRead(result, &r);
+        for (int i = 0; i < totalnbf; ++i){
+            traction_min = std::min(traction_min, std::abs(r[i]));
+            traction_max = std::max(traction_max, std::abs(r[i]));
+        }
+        VecRestoreArrayRead(result, &r);
+        std::cout << "range of traction: " << traction_min << ", "<< traction_max<< std::endl;
     }
 
     /**
@@ -1244,6 +1356,510 @@ public:
         dV_dt_->end_access_readonly(dVdt_handle);
         CHKERRTHROW(MatDenseRestoreArrayRead(df_dS_, &df_dS));
 
+    }
+
+    /**
+     * For the system (df/dS + K)x = f: 
+     * Calculate df/dS * x = f - K * x_old
+     * @param x_vec searched unknown
+     * @param x_old_vec unknown at the previous iteration
+     * @param b_vec rhs Vector
+     * @param J_mat partial Jacobian with block diagonal entries
+     */
+    void constantDenseLUCompactDAE(Vec x_vec, Vec x_old_vec, Vec b_vec, Mat J_mat){
+        size_t blockSize = this->block_size();
+        size_t numFaultElements = this->numLocalElements();
+        size_t totalSize = blockSize * numFaultElements;
+        size_t nbf = lop_->space().numBasisFunctions();
+        size_t numFaultNodes = nbf * numFaultElements;
+
+        int b_i,b_j,S_i,S_j,psi_i,psi_j,n_i,n_j,i,j;
+        Vec y_vec;
+        CHKERRTHROW(VecDuplicate(x_vec,&y_vec));
+        CHKERRTHROW(VecZeroEntries(y_vec));
+
+        const double * J;
+        const double * L;
+        const double * U;
+        const double * b;
+        const double * x_old;
+        const double * dfdS;
+        double * x;
+        double * y;
+
+        CHKERRTHROW(MatDenseGetArrayRead(J_mat, &J));
+        CHKERRTHROW(MatDenseGetArrayRead(df_dS_, &dfdS));
+        CHKERRTHROW(MatDenseGetArrayRead(df_dS_L_, &L));
+        CHKERRTHROW(VecGetArrayRead(b_vec, &b));
+        CHKERRTHROW(VecGetArrayRead(x_old_vec, &x_old));
+        CHKERRTHROW(VecGetArray(y_vec, &y));
+
+        // forward substitution
+        for (b_i = 0; b_i < numFaultElements; b_i++){
+            for (i = 0; i < nbf; i++){
+                S_i   = b_i * blockSize +       i;
+                psi_i = b_i * blockSize + nbf + i;
+                n_i   = b_i * nbf + i;
+
+                y[S_i] = b[S_i] 
+                       - (J[S_i + S_i*totalSize] - dfdS[n_i + n_i*numFaultNodes]) * x_old[S_i]
+                       - J[S_i + psi_i*totalSize] * x_old[psi_i];
+                for (b_j = 0; b_j < b_i; b_j++){
+                    for(j=0; j < nbf; j++){
+                        S_j   = b_j * blockSize +       j;
+                        psi_j = b_j * blockSize + nbf + j;
+                        n_j   = b_j * nbf + j;
+                        y[S_i] -= L[n_i + n_j*numFaultNodes] * y[S_j];
+                    }
+                }
+                for(j=0; j < i; j++){
+                    S_j   = b_i * blockSize +       j;
+                    psi_j = b_i * blockSize + nbf + j;
+                    n_j   = b_i * nbf + j;
+
+                    y[S_i] -= L[n_i + n_j*numFaultNodes] * y[S_j];
+                }
+            }
+        }
+        CHKERRTHROW(MatDenseRestoreArrayRead(df_dS_L_, &L));
+
+        CHKERRTHROW(MatDenseGetArrayRead(df_dS_U_, &U));
+        CHKERRTHROW(VecGetArray(x_vec, &x));
+
+        // backward substitution
+        for (b_i = numFaultElements-1; b_i >= 0; b_i--){
+            for (i = nbf-1; i >= 0; i--){
+                S_i   = b_i * blockSize +       i;
+                psi_i = b_i * blockSize + nbf + i;
+                n_i   = b_i * nbf + i;
+
+                x[S_i] = y[S_i];
+                for(j=i+1; j < nbf; j++){
+                    S_j   = b_i * blockSize +       j;
+                    psi_j = b_i * blockSize + nbf + j;
+                    n_j   = b_i * nbf + j;
+
+                    x[S_i] -= U[n_i + n_j*numFaultNodes] * x[S_j];
+                }
+                for (b_j = b_i+1; b_j < numFaultElements; b_j++){
+                    for(j=0; j < nbf; j++){
+                        S_j   = b_j * blockSize +       j;
+                        psi_j = b_j * blockSize + nbf + j;
+                        n_j   = b_j * nbf + j;
+
+                        x[S_i] -= U[n_i + n_j*numFaultNodes] * x[S_j];
+                    }
+                }
+                x[S_i] /= U[n_i + n_i*numFaultNodes]; 
+            }
+        }
+        CHKERRTHROW(VecRestoreArray(y_vec, &y));    
+        CHKERRTHROW(MatDenseRestoreArrayRead(df_dS_U_, &U));
+
+        // forward substitution for the remaining entries in psi
+        for (b_i = 0; b_i < numFaultElements; b_i++){
+            for (i = 0; i < nbf; i++){
+                S_i   = b_i * blockSize +       i;
+                psi_i = b_i * blockSize + nbf + i;
+
+//                  x[psi_i] = x_old[psi_i];
+                x[psi_i] = (b[psi_i] - J[psi_i + S_i*totalSize] * x[S_i]) / J[psi_i + psi_i*totalSize];
+            }
+        }
+
+        CHKERRTHROW(MatDenseRestoreArrayRead(df_dS_, &dfdS));
+        CHKERRTHROW(VecRestoreArrayRead(x_old_vec, &x_old));
+        CHKERRTHROW(VecRestoreArrayRead(b_vec, &b));
+        CHKERRTHROW(VecRestoreArray(x_vec, &x));    
+        CHKERRTHROW(MatDenseRestoreArrayRead(J_mat, &J));
+
+    }
+
+
+    /**
+     * For the system (df/dS + K)x = f: 
+     * Calculate K * x = f - df/dS * x_old
+     * @param x_vec searched unknown
+     * @param x_old_vec unknown at the previous iteration
+     * @param b_vec rhs Vector
+     * @param J_mat partial Jacobian with block diagonal entries
+     */
+
+    void blockDiagonalLUCompactDAE(Vec x_vec, Vec x_old_vec, Vec b_vec, Mat J_mat){
+        size_t blockSize = this->block_size();
+        size_t numFaultElements = this->numLocalElements();
+        size_t totalSize = blockSize * numFaultElements;
+        size_t nbf = lop_->space().numBasisFunctions();
+        size_t numFaultNodes = nbf * numFaultElements;
+
+        int b_i,b_j,S_i,S_j,psi_i,psi_j,n_i,n_j,i,j;
+        Vec y_vec;
+        CHKERRTHROW(VecDuplicate(x_vec, &y_vec));
+        CHKERRTHROW(VecZeroEntries(y_vec));
+
+        const double * J;
+        const double * dfdS;
+        const double * b;
+        const double * x_old;
+        double * x;
+        double * y;
+
+
+        CHKERRTHROW(MatDenseGetArrayRead(J_mat, &J));
+        CHKERRTHROW(MatDenseGetArrayRead(df_dS_, &dfdS));
+        CHKERRTHROW(VecGetArrayRead(b_vec, &b));
+        CHKERRTHROW(VecGetArrayRead(x_old_vec, &x_old));
+        CHKERRTHROW(VecGetArray(y_vec, &y));
+
+        for (b_i = 0; b_i < numFaultElements; b_i++){
+            for (i = 0; i < nbf; i++){
+                S_i   = b_i * blockSize + i;
+                n_i   = b_i * nbf + i;
+
+                for (b_j = 0; b_j < numFaultElements; b_j++){
+                    for(j=0; j < nbf; j++){
+                        S_j   = b_j * blockSize + j;
+                        n_j   = b_j * nbf + j;
+                        y[S_i] += dfdS[n_i + n_j * numFaultNodes] * x_old[S_j];
+                    }
+                }
+            }
+        }
+
+        CHKERRTHROW(VecRestoreArrayRead(x_old_vec, &x_old));
+        CHKERRTHROW(VecGetArray(x_vec, &x));
+ 
+        // forward substitution
+        for (b_i = 0; b_i < numFaultElements; b_i++){
+            for (i = 0; i < nbf; i++){
+                S_i   = b_i * blockSize +       i;
+                psi_i = b_i * blockSize + nbf + i;
+                n_i   = b_i * nbf + i;
+
+                x[S_i] = (b[S_i] - J[S_i + psi_i * totalSize] / J[psi_i + psi_i * totalSize] * b[psi_i] - y[S_i])
+                        / (J[S_i + S_i*totalSize] - dfdS[n_i + n_i*numFaultNodes] - J[S_i + psi_i*totalSize] * J[psi_i + S_i*totalSize] / J[psi_i + psi_i*totalSize]);
+            }
+        }
+
+        CHKERRTHROW(VecRestoreArray(y_vec, &y));    
+        CHKERRTHROW(MatDenseRestoreArrayRead(df_dS_, &dfdS));
+
+        // forward substitution for the remaining entries in psi
+        for (b_i = 0; b_i < numFaultElements; b_i++){
+            for (i = 0; i < nbf; i++){
+                S_i   = b_i * blockSize +       i;
+                psi_i = b_i * blockSize + nbf + i;
+
+                x[psi_i] = (b[psi_i] - J[psi_i + S_i*totalSize] * x[S_i]) / J[psi_i + psi_i*totalSize];
+            }
+        }
+
+        CHKERRTHROW(VecRestoreArrayRead(b_vec, &b));
+        CHKERRTHROW(VecRestoreArray(x_vec, &x));
+        CHKERRTHROW(MatDenseRestoreArrayRead(J_mat, &J));
+
+    }
+
+
+    /**
+     * For the system (df/dS + K)x = b:
+     * Approximate (I + K^{-1}B)^{-1} = sum(K^{-1}B)^n
+     * @param x_vec searched unknown
+     * @param b_vec rhs Vector
+     * @param J_mat partial Jacobian with block diagonal entries
+     */
+    void NeumannSeriesLUCompactDAE(Vec x_vec, Vec b_vec, Mat J_mat, int num_it){
+        size_t blockSize = this->block_size();
+        size_t numFaultElements = this->numLocalElements();
+        size_t totalSize = blockSize * numFaultElements;
+        size_t nbf = lop_->space().numBasisFunctions();
+        size_t numFaultNodes = nbf * numFaultElements;
+
+        int b_i,b_j,S_i,S_j,psi_i,psi_j,n_i,n_j,i,j;
+
+        Vec y_vec;
+        Vec Kinvb_vec;
+        Vec helper_vec;
+        Mat KinvB_mat;
+
+        CHKERRTHROW(VecCreateSeq(comm(), numFaultNodes, &y_vec));
+        CHKERRTHROW(VecDuplicate(y_vec, &Kinvb_vec));
+        CHKERRTHROW(VecDuplicate(y_vec, &helper_vec));
+        CHKERRTHROW(MatDuplicate(df_dS_, MAT_COPY_VALUES, &KinvB_mat));
+
+        const double * J;
+        const double * dfdS;
+        const double * b;
+        const double * y;
+        double * KinvB;
+        double * Kinvb;
+        double * x;
+
+        CHKERRTHROW(MatDenseGetArrayRead(J_mat, &J));
+        CHKERRTHROW(MatDenseGetArrayRead(df_dS_, &dfdS));
+        CHKERRTHROW(MatDenseGetArray(KinvB_mat, &KinvB));
+        CHKERRTHROW(VecGetArrayRead(b_vec, &b));
+        CHKERRTHROW(VecGetArray(Kinvb_vec, &Kinvb));
+
+        // initialize K^{-1}b and K^{-1}B
+        std::cout << "entries of K:    ";
+        for (b_i = 0; b_i < numFaultElements; b_i++){
+            for (i = 0; i < nbf; i++){
+                S_i   = b_i * blockSize + i;
+                psi_i = b_i * blockSize + i + nbf;
+                n_i   = b_i * nbf + i;
+
+                Kinvb[n_i] = (b[S_i] - J[S_i + psi_i * totalSize] / J[psi_i + psi_i * totalSize] * b[psi_i])
+                            / (J[S_i + S_i*totalSize] - dfdS[n_i + n_i*numFaultNodes] - J[S_i + psi_i*totalSize] * J[psi_i + S_i*totalSize] / J[psi_i + psi_i*totalSize]);                        
+
+                for (b_j = 0; b_j < numFaultElements; b_j++){
+                    for(j=0; j < nbf; j++){
+                        S_j   = b_j * blockSize + j;
+                        n_j   = b_j * nbf + j;
+
+                        KinvB[n_i + n_j*numFaultNodes] = dfdS[n_i + n_j * numFaultNodes] 
+                            / (J[S_i + S_i*totalSize] - dfdS[n_i + n_i*numFaultNodes] - J[S_i + psi_i*totalSize] * J[psi_i + S_i*totalSize] / J[psi_i + psi_i*totalSize]);
+                    }
+                }
+
+                std::cout << " " << J[S_i + S_i*totalSize] - dfdS[n_i + n_i*numFaultNodes] - J[S_i + psi_i*totalSize] * J[psi_i + S_i*totalSize] / J[psi_i + psi_i*totalSize]; 
+            }
+        }
+        std::cout << std::endl;
+
+        CHKERRTHROW(MatDenseRestoreArray(KinvB_mat, &KinvB));
+        CHKERRTHROW(VecRestoreArray(Kinvb_vec, &Kinvb));
+        CHKERRTHROW(MatDenseRestoreArrayRead(df_dS_, &dfdS));
+
+        CHKERRTHROW(VecCopy(Kinvb_vec, y_vec));
+
+        for(int n = 0; n < num_it; n++){
+            CHKERRTHROW(MatMult(KinvB_mat, Kinvb_vec, helper_vec));
+            CHKERRTHROW(VecAXPY(y_vec, -1.0, helper_vec));
+
+            CHKERRTHROW(MatMult(KinvB_mat, helper_vec, Kinvb_vec));
+            CHKERRTHROW(VecAXPY(y_vec, 1.0, Kinvb_vec));
+        }
+
+        CHKERRTHROW(VecGetArray(x_vec, &x));
+        CHKERRTHROW(VecGetArrayRead(y_vec, &y));
+
+        // write values to the solution vector forward substitution for the remaining entries in psi 
+        for (b_i = 0; b_i < numFaultElements; b_i++){
+            for (i = 0; i < nbf; i++){
+                S_i   = b_i * blockSize +       i;
+                psi_i = b_i * blockSize + nbf + i;
+                n_i   = b_i * nbf + i;
+
+                x[S_i] = y[n_i];
+                x[psi_i] = (b[psi_i] - J[psi_i + S_i*totalSize] * x[S_i]) / J[psi_i + psi_i*totalSize];
+            }
+        }
+
+
+        CHKERRTHROW(VecRestoreArrayRead(y_vec, &y));    
+        CHKERRTHROW(VecRestoreArrayRead(b_vec, &b));
+        CHKERRTHROW(VecRestoreArray(x_vec, &x));
+        CHKERRTHROW(MatDenseRestoreArrayRead(J_mat, &J));
+
+    }
+
+
+    /**
+     * For the system Jx = b:
+     * Reduce to a n x n system which is solved with the KSP from the settings
+     * @param x_vec searched unknown
+     * @param b_vec rhs Vector
+     * @param J_mat partial Jacobian with block diagonal entries
+     * @param ksp the linear solver
+     */
+    void ReducedKSPCompactDAE(Vec x_vec, Vec b_vec, Mat J_mat, KSP ksp){
+        size_t blockSize = this->block_size();
+        size_t numFaultElements = this->numLocalElements();
+        size_t totalSize = blockSize * numFaultElements;
+        size_t nbf = lop_->space().numBasisFunctions();
+        size_t numFaultNodes = nbf * numFaultElements;
+
+        int b_i,b_j,S_i,S_j,psi_i,psi_j,n_i,n_j,i,j;
+
+        Vec y_vec;
+        Vec f_vec;
+        Vec helper_vec;
+        Mat K_mat;
+
+        CHKERRTHROW(VecCreateSeq(comm(), numFaultNodes, &y_vec));
+        CHKERRTHROW(VecDuplicate(y_vec, &f_vec));
+
+        CHKERRTHROW(MatDuplicate(df_dS_, MAT_COPY_VALUES, &K_mat));
+
+        const double * J;
+        const double * b;
+        const double * y;
+        double * K;
+        double * f;
+        double * x;
+
+
+        CHKERRTHROW(MatDenseGetArrayRead(J_mat, &J));
+        CHKERRTHROW(VecGetArrayRead(b_vec, &b));
+
+        // transform the system from from Jx = b to Ky = f
+
+        CHKERRTHROW(MatDenseGetArray(K_mat, &K));
+        CHKERRTHROW(VecGetArray(f_vec, &f));
+        for (b_i = 0; b_i < numFaultElements; b_i++){
+            for (i = 0; i < nbf; i++){
+                S_i   = b_i * blockSize + i;
+                psi_i = b_i * blockSize + i + nbf;
+                n_i   = b_i * nbf + i;
+
+                f[n_i] = b[S_i] - J[S_i + psi_i * totalSize] / J[psi_i + psi_i * totalSize] * b[psi_i];
+                for (b_j = 0; b_j < numFaultElements; b_j++){
+                    for(j=0; j < nbf; j++){
+                        S_j   = b_j * blockSize + j;
+                        n_j   = b_j * nbf + j;
+
+                        K[n_i + n_j*numFaultNodes] = J[S_i + S_j*totalSize];
+                    }
+                }
+                K[n_i + n_i*numFaultNodes] -= J[S_i + psi_i*totalSize] * J[psi_i + S_i*totalSize] / J[psi_i + psi_i*totalSize];
+           }
+        }
+        CHKERRTHROW(MatDenseRestoreArray(K_mat, &K));
+        CHKERRTHROW(VecRestoreArray(f_vec, &f));
+
+        // solve the reduced Ky = f        
+        CHKERRTHROW(KSPSetOperators(ksp, K_mat, K_mat));
+        CHKERRTHROW(KSPSolve(ksp, f_vec, y_vec));
+
+        // write values to the solution vector by forward substitution
+        // from Ky = f to Jx = b
+        CHKERRTHROW(VecGetArrayRead(y_vec, &y));
+        CHKERRTHROW(VecGetArray(x_vec, &x));
+        for (b_i = 0; b_i < numFaultElements; b_i++){
+            for (i = 0; i < nbf; i++){
+                S_i   = b_i * blockSize +       i;
+                psi_i = b_i * blockSize + nbf + i;
+                n_i   = b_i * nbf + i;
+
+                x[S_i] = y[n_i];
+                x[psi_i] = (b[psi_i] - J[psi_i + S_i*totalSize] * y[n_i]) / J[psi_i + psi_i*totalSize];
+            }
+        }
+        CHKERRTHROW(MatDenseRestoreArrayRead(J_mat, &J));
+        CHKERRTHROW(VecRestoreArrayRead(y_vec, &y));    
+
+        CHKERRTHROW(VecRestoreArrayRead(b_vec, &b));
+        CHKERRTHROW(VecRestoreArray(x_vec, &x));
+
+        CHKERRTHROW(VecDestroy(&y_vec));
+        CHKERRTHROW(VecDestroy(&f_vec));
+        CHKERRTHROW(MatDestroy(&K_mat));
+    }
+
+    /**
+     * For the system Jx = b:
+     * Reduce to a n x n system which is solved with the KSP from the settings
+     * @param x_vec searched unknown
+     * @param b_vec rhs Vector
+     * @param J_mat partial Jacobian with block diagonal entries
+     * @param ksp the linear solver
+     */
+    void ReducedKSPExtendedDAE(Vec x_vec, Vec b_vec, Mat J_mat, KSP ksp){
+        size_t blockSize = this->block_size();
+        size_t numFaultElements = this->numLocalElements();
+        size_t totalSize = blockSize * numFaultElements;
+        size_t nbf = lop_->space().numBasisFunctions();
+        size_t numFaultNodes = nbf * numFaultElements;
+
+        int b_i,b_j,S_i,S_j,psi_i,psi_j,V_i,n_i,n_j,i,j;
+
+        Vec y_vec;
+        Vec f_vec;
+        Vec helper_vec;
+        Mat K_mat;
+
+        CHKERRTHROW(VecCreateSeq(comm(), numFaultNodes, &y_vec));
+        CHKERRTHROW(VecDuplicate(y_vec, &f_vec));
+
+        CHKERRTHROW(MatDuplicate(df_dS_, MAT_COPY_VALUES, &K_mat));
+
+        const double * J;
+        const double * b;
+        const double * y;
+        double * K;
+        double * f;
+        double * x;
+
+
+        CHKERRTHROW(MatDenseGetArrayRead(J_mat, &J));
+        CHKERRTHROW(VecGetArrayRead(b_vec, &b));
+
+        // transform the system from from Jx = b to Ky = f
+
+        CHKERRTHROW(MatDenseGetArray(K_mat, &K));
+        CHKERRTHROW(VecGetArray(f_vec, &f));
+        for (b_i = 0; b_i < numFaultElements; b_i++){
+            for (i = 0; i < nbf; i++){
+                S_i   = b_i * blockSize + i;
+                psi_i = b_i * blockSize + i +     nbf;
+                V_i   = b_i * blockSize + i + 2 * nbf;
+                n_i   = b_i * nbf + i;
+
+                // f = b3 - J33 / J13 * b1 - J32 / J22 * (b2 - J23 / J13 * b1)
+                f[n_i] = b[V_i] 
+                       - J[V_i + V_i * totalSize] / J[S_i + V_i * totalSize] * b[S_i]
+                       - J[V_i + psi_i * totalSize] / J[psi_i + psi_i * totalSize] 
+                          * (b[psi_i] - J[psi_i + V_i * totalSize] / J[S_i + V_i * totalSize] * b[S_i]);
+                for (b_j = 0; b_j < numFaultElements; b_j++){
+                    for(j=0; j < nbf; j++){
+                        S_j   = b_j * blockSize + j;
+                        n_j   = b_j * nbf + j;
+
+                        K[n_i + n_j*numFaultNodes] = J[V_i + S_j*totalSize];
+                    }
+                }
+                // K = B - J33 * J11 / J13 + J32 * J23 * J11 / (J22 * J13)
+                K[n_i + n_i*numFaultNodes] 
+                    += -J[V_i + V_i * totalSize] * J[S_i + S_i * totalSize] / J[S_i + V_i * totalSize]
+                     +  J[V_i + psi_i * totalSize] * J[psi_i + V_i * totalSize] * J[S_i + S_i * totalSize] 
+                     / (J[psi_i + psi_i * totalSize] * J[S_i + V_i * totalSize]);
+           }
+        }
+        CHKERRTHROW(MatDenseRestoreArray(K_mat, &K));
+        CHKERRTHROW(VecRestoreArray(f_vec, &f));
+
+        // solve the reduced Ky = f        
+        CHKERRTHROW(KSPSetOperators(ksp, K_mat, K_mat));
+        CHKERRTHROW(KSPSolve(ksp, f_vec, y_vec));
+
+        // write values to the solution vector by forward substitution
+        // from Ky = f to Jx = b
+        CHKERRTHROW(VecGetArrayRead(y_vec, &y));
+        CHKERRTHROW(VecGetArray(x_vec, &x));
+        for (b_i = 0; b_i < numFaultElements; b_i++){
+            for (i = 0; i < nbf; i++){
+                S_i   = b_i * blockSize + i;
+                psi_i = b_i * blockSize + i +     nbf;
+                V_i   = b_i * blockSize + i + 2 * nbf;
+                n_i   = b_i * nbf + i;
+
+                x[S_i] = y[n_i];
+                // x2 = (b2 - J23 * x3) / J22
+                x[psi_i] = (b[psi_i] - J[psi_i + V_i * totalSize] * (b[S_i] - J[S_i + S_i * totalSize] * y[n_i]) / J[S_i + V_i * totalSize]) / J[psi_i + psi_i * totalSize];
+                // x3 = (b1 - J11 * x1) / J13
+                x[V_i] = (b[S_i] - J[S_i + S_i * totalSize] * y[n_i]) / J[S_i + V_i * totalSize];
+            }
+        }
+        CHKERRTHROW(MatDenseRestoreArrayRead(J_mat, &J));
+        CHKERRTHROW(VecRestoreArrayRead(y_vec, &y));    
+
+        CHKERRTHROW(VecRestoreArrayRead(b_vec, &b));
+        CHKERRTHROW(VecRestoreArray(x_vec, &x));
+
+        CHKERRTHROW(VecDestroy(&y_vec));
+        CHKERRTHROW(VecDestroy(&f_vec));
+        CHKERRTHROW(MatDestroy(&K_mat));
     }
 
 
@@ -1741,6 +2357,8 @@ public:
     PetscBlockVector* JacobianQuantities_;  // contains the partial derivatives [df/dV, df/dpsi, dg/dV, dg/dpsi]
     PetscBlockVector* dV_dt_;               // partial derivative dV/dt (constant, needed to construct  the real Jacobian)     
     Mat df_dS_;                             // Jacobian df/dS (constant, needed to construct  the real Jacobian)     
+    Mat df_dS_L_;                           // L in the LU of df/dS (constant, needed to construct  the real Jacobian)     
+    Mat df_dS_U_;                           // U in the LU of df/dS (constant, needed to construct  the real Jacobian)     
     Mat Jacobian_compact_ode_;              // Jacobian matrix of the compact ODE system
     Mat Jacobian_extended_ode_;             // Jacobian matrix of the extended ODE system
     Mat Jacobian_compact_dae_;              // Jacobian matrix sigma*F_xdot + F_x     
