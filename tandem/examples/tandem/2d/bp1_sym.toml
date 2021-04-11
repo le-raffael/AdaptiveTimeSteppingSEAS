@@ -1,6 +1,6 @@
 #final_time = 6000000000  #before earthquake
-#final_time = 7889238000  #250 years
-final_time = 9467085600   #300 years
+final_time = 7889238000  #250 years
+#final_time = 9467085600   #300 years
 #final_time = 12622780800 #400 years
 #final_time = 31556952000 #1000 years
 mesh_file = "bp1_sym.msh"
@@ -50,7 +50,7 @@ pc_factor_mat_solver_type = "mumps" # to solve the Poisson problem
     V_atol = 0                              # only for extended ode! default = 1e-15                   
     V_rtol = 0                              # only for extended ode! default = 1e-6
     bdf_custom_error_evaluation = false     # if true: use higher order embedded BDF method (no adaptive BDF order possible)
-    bdf_custom_Newton_iteration = false      # needed for extended ode and if bdf_custom_LU_solver is true
+    bdf_custom_Newton_iteration = true      # needed for extended ode and if bdf_custom_LU_solver is true
     custom_time_step_adapter = false        # currently no functionality
     bdf_custom_LU_solver = false             # solve a reduced Jacobian system (only DAE formulations)
     bdf_ksp_type = "gmres"                  # to solve the Jacobian system in the Newton iteration
@@ -62,14 +62,14 @@ pc_factor_mat_solver_type = "mumps" # to solve the Poisson problem
     type = "rk"                            # rk        or bdf
     rk_type = "5dp"                         # as in PETSc
     bdf_order = 0                           # 0: adaptive  order, 1-6: fixed order
-    S_atol = 1e-2                          # default - 1e-6
+    S_atol = 1e-9                          # default - 1e-6
     S_rtol = 0                              # default - 0
-    psi_atol = 1e-4                         # default - 1e-6
+    psi_atol = 1e-11                         # default - 1e-6
     psi_rtol = 0                            # default - 0
     V_atol = 0                              # only for extended ode! default = 1e-15                   
     V_rtol = 0                              # only for extended ode! default = 1e-6
     bdf_custom_error_evaluation = false     # if true: use higher order embedded BDF method (no adaptive BDF order possible)
-    bdf_custom_Newton_iteration = false      # needed for extended ode and if bdf_custom_LU_solver is true
+    bdf_custom_Newton_iteration = true      # needed for extended ode and if bdf_custom_LU_solver is true
     custom_time_step_adapter = false        # currently no functionality
     bdf_custom_LU_solver = false             # solve a reduced Jacobian system (only DAE formulations)
     bdf_ksp_type = "gmres"                  # to solve the Jacobian system in the Newton iteration

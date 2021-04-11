@@ -55,6 +55,8 @@ public:
 
         Vec * previous_solution;
 
+        Vec NewtonTolerances;             // used as stopping criterion of the Newton iteration
+
         std::shared_ptr<PetscBlockVector> state_compact;
         std::shared_ptr<PetscBlockVector> state_extended;
 

@@ -387,8 +387,6 @@ private:
         auto& solverStruct = seasop->getSolverParameters();
         auto const& cfg    = seasop->getGeneralSolverConfiguration();
 
-        std::cout << "bonjour" << std::endl;
-
         PetscFunctionBegin;
         // initialize the SNES solver with an explicit Rk4
         if (solverStruct.needRegularizationCompactDAE) {
@@ -707,60 +705,97 @@ private:
     template <typename TimeOp> 
     static void setTolerancesVector(TS ts, TimeOp& timeop, std::string solution_size, double S_rtol, double S_atol, double psi_rtol, double psi_atol, double V_rtol, double V_atol){
         // get domain characteristics
+        Vec atol, rtol;
+        bool includeV;
+
+        includeV = (solution_size == "compact")?false:true;
+
+        fillBlockVector(timeop, includeV, rtol, S_rtol, psi_rtol, V_rtol);
+        fillBlockVector(timeop, includeV, atol, S_atol, psi_atol, V_atol);
+
+        // write tolerances to PETSc solver
+        CHKERRTHROW(TSSetTolerances(ts, 0, atol, 0, rtol));
+    }
+
+    /** fill the components of a block vector with constant values for S, psi and eventually V
+     * @param timeop instance of the seas operator
+     * @param includeV true for extended
+     * @param vec vector to write to
+     * @param S value for S
+     * @param psi value for psi
+     * @param V value for V
+     */
+    template <typename TimeOp> 
+    static void fillBlockVector(TimeOp& timeop, bool includeV, Vec& vec, double S, double psi, double V){
+        // get domain characteristics
         size_t nbf = timeop.lop().space().numBasisFunctions();
-        size_t bs = timeop.block_size();
+        size_t blockSize = timeop.block_size();
         size_t numElem = timeop.numLocalElements();
         size_t PsiIndex = RateAndStateBase::TangentialComponents      * nbf;
         size_t VIndex =  (RateAndStateBase::TangentialComponents + 1) * nbf;
-        size_t totalSize = bs * numElem;
+        size_t totalSize = blockSize * numElem;
 
-        // initialize tolerance vectors
-        PetscBlockVector atol(bs, numElem, timeop.comm());   
-        PetscBlockVector rtol(bs, numElem, timeop.comm()); 
-        atol.set_zero();
-        rtol.set_zero();
+        // initialize vector
+        CHKERRTHROW(VecCreate(timeop.comm(), &vec));
+        CHKERRTHROW(VecSetType(vec, VECSEQ));
+        CHKERRTHROW(VecSetSizes(vec, PETSC_DECIDE, totalSize));
 
         // iterate through all fault elements
-        auto a_access = atol.begin_access();
-        auto r_access = rtol.begin_access();
+        double * v;
+        int S_i, PSI_i, V_i;
+        CHKERRTHROW(VecGetArray(vec, &v));
 
         for (size_t faultNo = 0; faultNo < numElem; faultNo++){
-            auto a = atol.get_block(a_access, faultNo);
-            auto r = rtol.get_block(r_access, faultNo);
             // set velocity tolerances
-            for ( int i = 0; i < PsiIndex; i++){
-                a(i) = S_atol;
-                r(i) = S_rtol;
-            }
-            // set state variable tolerances
-            for ( int i = PsiIndex; i < PsiIndex + nbf; i++){
-                a(i) = psi_atol;
-                r(i) = psi_rtol;
-            }
-            // set slip rate tolerances
-            if (solution_size == "extended") {
-                for ( int i = VIndex; i < VIndex + PsiIndex; i++){
-                    a(i) = V_atol;
-                    r(i) = V_rtol;
-                }
+            for ( int i = 0; i < nbf; i++){
+                S_i = faultNo * blockSize + i;
+                PSI_i = faultNo * blockSize + 
+                        RateAndStateBase::TangentialComponents     * nbf + i;
+                V_i = faultNo * blockSize + 
+                       (RateAndStateBase::TangentialComponents +1) * nbf + i;
+
+                v[S_i] = S;
+                if (RateAndStateBase::TangentialComponents == 2)
+                    v[S_i + nbf] = S;
+                    
+                v[PSI_i] = psi;                
+                if (includeV) v[V_i] = V;
+                if (includeV && (RateAndStateBase::TangentialComponents == 2))
+                    v[V_i + nbf] = V;
             }
         }
-        atol.end_access(a_access);
-        rtol.end_access(r_access);
-
-        // write tolerances to PETSc solver
-        CHKERRTHROW(TSSetTolerances(ts, 0, atol.vec(), 0, rtol.vec()));
-    }
+        CHKERRTHROW(VecRestoreArray(vec, &v));
+    }    
 
 
     /**
      * Sets the tolerances for the nonlinear solver
      * @param ts the TS context
+     * @param seasop SeasOperator instance
      */
-    static void setSNESTolerances(TS ts) {
+    template <typename TimeOp>
+    static void setSNESTolerances(TS ts, TimeOp& seasop) {
         SNES snes;
+        auto& solverStruct = seasop.getSolverParameters();
+
+        Vec& tol = solverStruct.NewtonTolerances;
+
+        double t_S   = 4e-19;
+        double t_psi = 1e-12;      // 2e-21 from thesis
+        double t_f   = 1e-12;
+        double t_V   = 1e-12;
+
+        switch(solverStruct.current_formulation){
+            case TimeOp::FIRST_ORDER_ODE:   fillBlockVector(seasop, false, tol, t_S, t_psi, 0.0); break;
+            case TimeOp::EXTENDED_DAE:      fillBlockVector(seasop, true,  tol, t_S, t_psi, t_f); break;
+            case TimeOp::COMPACT_DAE:       fillBlockVector(seasop, false, tol, t_f, t_psi, 0.0); break;
+            case TimeOp::SECOND_ORDER_ODE:  fillBlockVector(seasop, true,  tol, t_S, t_psi, t_V); break;
+            default: std::cout << "Could not set up tolerances" << std::endl;
+        }
+
+        // settings if the custom Newton iteration is not used
         CHKERRTHROW(TSGetSNES(ts, &snes));
-        double atol = 1e-10;                         // absolute tolerance (default = 1e-50) 
+        double atol = t_f;                           // absolute tolerance (default = 1e-50) 
         double rtol = 0.;                            // relative tolerance (default = 1e-8)
         double stol = 0.;                            // relative tolerance (default = 1e-8)
         int maxit = 10;                              // maximum number of iteration (default = 50)    
@@ -771,7 +806,7 @@ private:
     /**
      * Set up the BDF scheme
      * @param ts TS instance
-     * @param solution_size compact or extended 
+     * @param seasop SeasOperator instance
      * @param cfg specific configuration to see whether use manual implementations or not
      * @param solverStruct contains the pointer to the manual implementations
      */
@@ -805,8 +840,9 @@ private:
         CHKERRTHROW(PCSetType(snes_pc, cfg->bdf_pc_type.c_str()));
         CHKERRTHROW(TSSetMaxSNESFailures(ts, -1));
         
-        setSNESTolerances(ts);
+        setSNESTolerances(ts, seasop);
     }
+
     /**
      * Custom implementation of the Newton algorithm 
      * @param snes solving context
@@ -818,7 +854,7 @@ private:
         Vec f = snes->vec_func;                     // rhs function for the KSP solver
         Vec Newton_step = snes->vec_sol_update;     // J(f(u))^{-1}f(u)
         Mat J,J_pre;                                // Jacobi matrices
-        double norm_f, norm_init, norm_dx, norm_x, norm_f_prev;  // norm of the residual
+        double norm_f, error_f, error_init, norm_dx, norm_x, error_f_prev;  // norm of the residual
         double atol, rtol, stol;
         int maxit, maxf;
         bool custom_solver;
@@ -835,6 +871,7 @@ private:
         seasop = reinterpret_cast<TimeOp*>(ctx);        
         auto& solverStruct = seasop->getSolverParameters();
         custom_solver = solverStruct.current_solver_cfg->bdf_custom_LU_solver;
+        Vec tolerances = solverStruct.NewtonTolerances;
 
         if (!f)             CHKERRTHROW(VecDuplicate(x, &f));
         if (!Newton_step)   CHKERRTHROW(VecDuplicate(x, &Newton_step));
@@ -849,9 +886,8 @@ private:
         if (solverStruct.current_formulation == TimeOp::SECOND_ORDER_ODE) 
             seasop->updateRHSNewtonIteration(f);
 
-        CHKERRTHROW(VecNorm(f, NORM_INFINITY, &norm_f));
-        norm_init = norm_f;
-
+        CHKERRTHROW(VecMaxPointwiseDivide(f, tolerances, &error_f));
+        error_init = error_f;
 
         int total_it_num=0;
         for(int n = 0; n < maxit; n++) {
@@ -868,63 +904,46 @@ private:
             if (solverStruct.current_formulation == TimeOp::SECOND_ORDER_ODE) 
                 seasop->updateRHSNewtonIteration(f);
 
-            norm_f_prev = norm_f;
-            CHKERRTHROW(VecNorm(f, NORM_INFINITY, &norm_f));      // calculate some nomrs
-            CHKERRTHROW(VecNorm(Newton_step, NORM_INFINITY, &norm_dx));
-            CHKERRTHROW(VecNorm(x, NORM_INFINITY, &norm_x));
+            error_f_prev = error_f;
+            CHKERRTHROW(VecMaxPointwiseDivide(f, tolerances, &error_f));
 
             int it_num;
             KSPGetIterationNumber(ksp, &it_num);
             total_it_num += it_num;
 
             // diverged
-            if (norm_f > norm_init) {
+            if (error_f > error_init) {
+                CHKERRTHROW(VecNorm(f, NORM_INFINITY, &norm_f));      
+                std::cout << "Newton iteration diverged with the final residual: " << norm_f << " -- restart timestep" << std::endl;
                 SNESSetConvergedReason(snes, SNES_DIVERGED_FUNCTION_DOMAIN );
-                std::cout << "diverged with norm " << norm_f << " after " << n+1 << " iterations -- Restart Newton step" << std::endl;
                 PetscFunctionReturn(0);
             }
 
             // converged
-            if (norm_f < atol) {
+            if (error_f < 1.0) {
                 SNESSetConvergedReason(snes, SNES_CONVERGED_FNORM_ABS);
+                CHKERRTHROW(VecNorm(f, NORM_INFINITY, &norm_f));      
                 solverStruct.FMax = norm_f;
                 solverStruct.KSP_iteration_count = (double)total_it_num / (n+1);
-                // std::cout << "converged with norm " << norm_f << " after " << n+1 << " iterations with " 
-                //           << (double)total_it_num / (n+1) << " KSP iterations per step" << std::endl;
-                PetscFunctionReturn(0);
-            }
-            if (norm_f / norm_init < rtol) {
-                SNESSetConvergedReason(snes, SNES_CONVERGED_FNORM_RELATIVE);
-                solverStruct.FMax = norm_f;
-                solverStruct.KSP_iteration_count = (double)total_it_num / (n+1);
-                // std::cout << "converged with norm " << norm_f << " after " << n+1 << " iterations with " 
-                //           << (double)total_it_num / (n+1) << " KSP iterations per step" << std::endl;
-                PetscFunctionReturn(0);
-            }
-            if (norm_dx / norm_x < stol) {
-                SNESSetConvergedReason(snes, SNES_CONVERGED_SNORM_RELATIVE);
-                solverStruct.FMax = norm_f;
-                solverStruct.KSP_iteration_count = (double)total_it_num / (n+1);
-                // std::cout << "converged with norm " << norm_f << " after " << n+1 << " iterations with " 
-                //           << (double)total_it_num / (n+1) << " KSP iterations per step" << std::endl;
                 PetscFunctionReturn(0);
             }
 
-            // std::cout << "norm: "<<norm_f << std::endl;
-
-            if ((norm_f < 1e-7) && (std::abs(norm_f - norm_f_prev) / norm_f < 1e0)) {     // only used for absolute best convergence
+            if ((error_f < error_init) && (error_f > error_f_prev)) {     // only used for absolute best convergence
+                CHKERRTHROW(VecNorm(f, NORM_INFINITY, &norm_f));     
                 solverStruct.FMax = norm_f; // = f_norm for the absolute error
                 solverStruct.KSP_iteration_count = (double)total_it_num / (n+1);
+                std::cout << "Newton iteration could not further decrease the residual: " << norm_f << " -- continue with next step" << std::endl;
                 SNESSetConvergedReason(snes, SNES_CONVERGED_SNORM_RELATIVE);
+                
                 PetscFunctionReturn(0);
             }
 
         }
 
+        CHKERRTHROW(VecNorm(f, NORM_INFINITY, &norm_f));     
         solverStruct.FMax = norm_f;
         solverStruct.KSP_iteration_count = (double)total_it_num / maxit;
-        // std::cout << "converged with norm " << norm_f << " after " << maxit-1 << " iterations with " 
-        //             << (double)total_it_num / maxit << " KSP iterations per step" << std::endl;
+        std::cout << "Newton iteration reached the maximum number of iterations with the final residual: " << norm_f << " -- continue with next step" << std::endl;
         SNESSetConvergedReason(snes, SNES_CONVERGED_ITS );
         PetscFunctionReturn(0);
     }

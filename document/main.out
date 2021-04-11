@@ -17,29 +17,3 @@
 \BOOKMARK [0][-]{chapter.3}{Two-Dimensional SEAS model}{}% 17
 \BOOKMARK [1][-]{section.3.1}{Physical Description}{chapter.3}% 18
 \BOOKMARK [1][-]{section.3.2}{BP1 problem}{chapter.3}% 19
-\BOOKMARK [1][-]{section.3.3}{Formulation of the Discontinous Galerkin}{chapter.3}% 20
-\BOOKMARK [1][-]{section.3.4}{First Order Differential Equation}{chapter.3}% 21
-\BOOKMARK [2][-]{subsection.3.4.1}{Formulation as a first order ODE}{section.3.4}% 22
-\BOOKMARK [2][-]{subsection.3.4.2}{Formulation as a DAE}{section.3.4}% 23
-\BOOKMARK [2][-]{subsection.3.4.3}{Compact formulation as a DAE}{section.3.4}% 24
-\BOOKMARK [2][-]{subsection.3.4.4}{Verification of the Jacobian matrices}{section.3.4}% 25
-\BOOKMARK [2][-]{subsection.3.4.5}{Practical limitations of the Jacobian matrices}{section.3.4}% 26
-\BOOKMARK [2][-]{subsection.3.4.6}{Iterative solvers for the Jacobian matrices}{section.3.4}% 27
-\BOOKMARK [1][-]{section.3.5}{Second Order Differential Equation}{chapter.3}% 28
-\BOOKMARK [2][-]{subsection.3.5.1}{Derivation of the second order ODE}{section.3.5}% 29
-\BOOKMARK [2][-]{subsection.3.5.2}{Derivation of the analytic Jacobian}{section.3.5}% 30
-\BOOKMARK [1][-]{section.3.6}{Numerical Aspects and Implementation Details}{chapter.3}% 31
-\BOOKMARK [2][-]{subsection.3.6.1}{Time integration}{section.3.6}% 32
-\BOOKMARK [2][-]{subsection.3.6.2}{Tolerances for the time integration}{section.3.6}% 33
-\BOOKMARK [2][-]{subsection.3.6.3}{Newton Iteration}{section.3.6}% 34
-\BOOKMARK [2][-]{subsection.3.6.4}{Data structure}{section.3.6}% 35
-\BOOKMARK [1][-]{section.3.7}{Results}{chapter.3}% 36
-\BOOKMARK [2][-]{subsection.3.7.1}{Comparison between the different formulations of problem}{section.3.7}% 37
-\BOOKMARK [2][-]{subsection.3.7.2}{Time adaptivity on BDF methods}{section.3.7}% 38
-\BOOKMARK [2][-]{subsection.3.7.3}{Error estimation of the 2nd order ODE formulation}{section.3.7}% 39
-\BOOKMARK [2][-]{subsection.3.7.4}{Scalability}{section.3.7}% 40
-\BOOKMARK [0][-]{chapter.4}{Extension to More Complex Problems}{}% 41
-\BOOKMARK [1][-]{section.4.1}{Elasticity Equation}{chapter.4}% 42
-\BOOKMARK [1][-]{section.4.2}{Three-Dimensional Simulations}{chapter.4}% 43
-\BOOKMARK [1][-]{section.4.3}{Seismic Waves in the Domain}{chapter.4}% 44
-\BOOKMARK [0][-]{chapter*.32}{Bibliography}{}% 45
