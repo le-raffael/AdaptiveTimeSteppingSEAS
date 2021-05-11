@@ -83,7 +83,11 @@ public:
             this->slip(faultNo, state_block, f_q);
         });
     }
+
     void traction(std::size_t faultNo, Matrix<double>& traction, LinearAllocator<double>&) const;
+
+    void traction_onlySlip(std::size_t faultNo, Matrix<double>& traction, LinearAllocator<double>&) const;
+
     void end_traction() { linear_solver_.x().end_access_readonly(handle_); }
 
     /**
@@ -91,8 +95,9 @@ public:
      * @return Tensor base of Dtau/DU in one element [nbf, Nbf]
      */
         TensorBase<Matrix<double>> getBaseDtauDu(){
-            TensorBase<Matrix<double>> tensorBase(elasticity_adapter::tensor::dtau_du::Shape[0],
-                                          elasticity_adapter::tensor::dtau_du::Shape[1]);
+            TensorBase<Matrix<double>> tensorBase(
+                elasticity_adapter::tensor::dtau_du::Shape[0] * elasticity_adapter::tensor::dtau_du::Shape[1],
+                elasticity_adapter::tensor::dtau_du::Shape[2] * elasticity_adapter::tensor::dtau_du::Shape[3]);
             return tensorBase;
         }
 
@@ -101,8 +106,9 @@ public:
      * @return Tensor base of Dtau/DS in one element [nbf, nbf]
      */
         TensorBase<Matrix<double>> getBaseDtauDS(){
-            TensorBase<Matrix<double>> tensorBase(elasticity_adapter::tensor::dtau_dS::Shape[0],
-                                          elasticity_adapter::tensor::dtau_dS::Shape[1]);
+            TensorBase<Matrix<double>> tensorBase(
+                elasticity_adapter::tensor::dtau_dS::Shape[0] * elasticity_adapter::tensor::dtau_dS::Shape[1],
+                elasticity_adapter::tensor::dtau_dS::Shape[2] * elasticity_adapter::tensor::dtau_dS::Shape[3]);
             return tensorBase;
         }
 
@@ -129,8 +135,6 @@ public:
      * @param result contains A^{-1}e
      */
     template <typename BlockVector> void solveUnitVector(BlockVector& state, BlockVector& result) {
-        std::size_t nbf = space_->numBasisFunctions();
-        std::size_t Nbf = dgop_->block_size();
         auto in_handle = state.begin_access_readonly();
 
         // set the unit vector as slip and transform to quadrature points
@@ -146,30 +150,31 @@ public:
         linear_solver_.solve();
         state.end_access_readonly(in_handle);
 
-        // extract values on fault and write to solution vector
-        auto handleWrite = result.begin_access();
-        auto handleRead = linear_solver_.x().begin_access_readonly();
-        for (int faultNo = 0; faultNo < faultMap_.size(); faultNo++){
-            auto fctNo = faultMap_.fctNo(faultNo);
-            auto const& info = dgop_->topo().info(fctNo);
-            auto slip = result.get_block(handleWrite, faultNo);
-
-            if (info.up[0] == info.up[1]) {
-                for (int i = 0; i < Nbf; i++){
-                    auto u0 = linear_solver_.x().get_block(handleRead, info.up[0]);
-                    slip(i) = -u0(i);
-                }
-            } else {
-                for (int i = 0; i < Nbf; i++){
-                    auto u0 = linear_solver_.x().get_block(handleRead, info.up[0]);
-                    auto u1 = linear_solver_.x().get_block(handleRead, info.up[1]);
-                    slip(i) = -u0(i);
-                    slip(i) += u1(i);
-                }
-            }
-        }
-        result.end_access(handleWrite); 
-        linear_solver_.x().end_access_readonly(handleRead); 
+        // // extract values on fault and write to solution vector
+        // std::size_t sizeDisplacementLocal = dgop_->block_size();
+        // auto handleWrite = result.begin_access();
+        // auto handleRead = linear_solver_.x().begin_access_readonly();
+        // for (int faultNo = 0; faultNo < faultMap_.size(); faultNo++){
+        //     auto fctNo = faultMap_.fctNo(faultNo);
+        //     auto const& info = dgop_->topo().info(fctNo);
+        //     auto slip = result.get_block(handleWrite, faultNo);
+        //
+        //     if (info.up[0] == info.up[1]) {
+        //         for (int i = 0; i < sizeDisplacementLocal; i++){
+        //             auto u0 = linear_solver_.x().get_block(handleRead, info.up[0]);
+        //             slip(i) = -u0(i);
+        //         }
+        //     } else {
+        //         for (int i = 0; i < sizeDisplacementLocal; i++){
+        //             auto u0 = linear_solver_.x().get_block(handleRead, info.up[0]);
+        //             auto u1 = linear_solver_.x().get_block(handleRead, info.up[1]);
+        //             slip(i) = -u0(i);
+        //             slip(i) += u1(i);
+        //         }
+        //     }
+        // }
+        // result.end_access(handleWrite); 
+        // linear_solver_.x().end_access_readonly(handleRead); 
     }
 
 
@@ -189,7 +194,13 @@ public:
      * returns the block Size of the vectors in the DG solver 
      * @return block size = Nbf (number of element basis functions )
      */
-    std::size_t block_size_rhsDG() const { return dgop_->block_size(); } 
+    std::size_t block_size_rhsDG() const { return dgop_->block_size(); }
+
+    /**
+     * returns the number of quantities in the traction term (1 in 2D, 3 in 3D)
+     * @return 
+     */
+    std::size_t getNumberQuantities() {return NumQuantities; }
 
 private:
     void slip(std::size_t faultNo, Vector<double const>& state, Matrix<double>& s_q) const;

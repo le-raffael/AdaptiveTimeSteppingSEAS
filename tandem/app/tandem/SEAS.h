@@ -7,7 +7,7 @@
 #include "mesh/LocalSimplexMesh.h"
 
 namespace tndm {
-void solveSEASProblem(LocalSimplexMesh<DomainDimension> const& mesh, Config const& cfg);
+void solveSEASProblem(LocalSimplexMesh<DomainDimension> const& mesh, Config& cfg);
 }
 
 #endif // SEAS_20200825_H

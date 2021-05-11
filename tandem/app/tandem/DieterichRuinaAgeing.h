@@ -126,7 +126,7 @@ public:
      * */
     double df_dpsi(std::size_t index, double sn, double V, double psi) const {
         auto a = p_[index].get<A>();
-        double snAbs = sn + p_[index].get<SnPre>();
+        double snAbs = -sn + p_[index].get<SnPre>();
         double twoV0 = 2.0 * cp_.V0;
         double e = exp(psi / a);
         return -snAbs * V * e / (twoV0 * sqrt((V * e / twoV0) * (V * e / twoV0) + 1));
@@ -143,7 +143,7 @@ public:
     double df_dV(std::size_t index, double sn, double V, double psi) const {
         auto a = p_[index].get<A>();
         auto eta = p_[index].get<Eta>();
-        double snAbs = sn + p_[index].get<SnPre>();
+        double snAbs = -sn + p_[index].get<SnPre>();
         double twoV0 = 2.0 * cp_.V0;
         double e = exp(psi / a);
         return -snAbs * a * e / (twoV0 * sqrt((V * e / twoV0) * (V * e / twoV0) + 1)) - eta;
@@ -161,7 +161,7 @@ public:
     double dxi_dpsi(std::size_t index, double sn, double V, double psi) const {
         auto a = p_[index].get<A>();
         auto eta = p_[index].get<Eta>();
-        double snAbs = sn + p_[index].get<SnPre>();
+        double snAbs = -sn + p_[index].get<SnPre>();
         double twoV0 = 2.0 * cp_.V0;
         double p = sqrt(exp(2. * psi / a) * V * V / (twoV0 * twoV0) + 1.);
         return       twoV0 * snAbs * exp(psi/a) / 
@@ -179,7 +179,7 @@ public:
     double dxi_dV(std::size_t index, double sn, double V, double psi) const {
         auto a = p_[index].get<A>();
         auto eta = p_[index].get<Eta>();
-        double snAbs = sn + p_[index].get<SnPre>();
+        double snAbs = -sn + p_[index].get<SnPre>();
         double twoV0 = 2.0 * cp_.V0;
         double p = sqrt(exp(2. * psi / a) * V * V / (twoV0 * twoV0) + 1.);
         return       -a * snAbs * V * exp(3.*psi/a) / 
@@ -197,7 +197,7 @@ public:
     double dzeta_dpsi(std::size_t index, double sn, double V, double psi) const {
         auto a = p_[index].get<A>();
         auto eta = p_[index].get<Eta>();
-        double snAbs = sn + p_[index].get<SnPre>();
+        double snAbs = -sn + p_[index].get<SnPre>();
         double twoV0 = 2.0 * cp_.V0;
         double p = sqrt(exp(2. * psi / a) * V * V / (twoV0 * twoV0) + 1.);
         return -snAbs * V * exp(psi/a) / 
@@ -215,7 +215,7 @@ public:
     double dzeta_dV(std::size_t index, double sn, double V, double psi) const {
         auto a = p_[index].get<A>();
         auto eta = p_[index].get<Eta>();
-        double snAbs = sn + p_[index].get<SnPre>();
+        double snAbs = -sn + p_[index].get<SnPre>();
         double twoV0 = 2.0 * cp_.V0;
         double p = sqrt(exp(2. * psi / a) * V * V / (twoV0 * twoV0) + 1.);
         return -snAbs * exp(psi/a) / 
@@ -242,14 +242,40 @@ public:
    }
 
     /**
-     * Evaluate the friction law for given S, psi and V
+     * get the shear stress components
      * @param index of the current node
      * @param tau at the current node - Vector
-     * @return get the vector expression of tau - Scalar
+     * @return get the vector expression of tau - Vector
      * */
     std::array<double, TangentialComponents> getTauVec(std::size_t index, std::array<double, TangentialComponents> const& tau) const {
         return tau + p_[index].get<TauPre>();
    }
+    /** calculate the ration tau/V for the second order ODE
+     * @param index index of the fault node
+     * @param sigma normal stress
+     * @param f friction coefficient
+     * @param V slip rate
+     * @return ratio norm(V)/norm(tau) at the index 
+     */
+    double calculateVTauRatio(int index, double sn, double f, double V) const {
+        double snAbs = -sn + p_[index].get<SnPre>();
+        auto eta = p_[index].get<Eta>();
+        return V / (snAbs * f + eta * V);
+
+    }
+    
+    /**
+     * Evaluate the friction_coefficient F(psi,V)
+     * @param index of the current node
+     * @param V slip rate at the current node
+     * @param psi state variable at the current node
+     * @return value of f(psi,V) for the given parameters
+     * */
+    double friction_coefficient(std::size_t index, double V, double psi) const {
+        auto a = p_[index].get<A>();
+        double e = exp(psi / a);
+        return a * asinh((V / (2.0 * cp_.V0)) * e);
+    }
 
 
     /**
@@ -319,7 +345,7 @@ public:
 
 private:
     /**
-     * Evaluate the algebraic function f(psi,V)
+     * Evaluate the fault strength sn*F(psi,V)
      * @param index of the current node
      * @param sn at the current node
      * @param V slip rate at the current node

@@ -1,0 +1,10 @@
+#ifndef GLOBALVARIABLES_20210429_H
+#define GLOBALVARIABLES_20210429_H
+
+namespace tndm {
+
+    enum Formulations {FIRST_ORDER_ODE, EXTENDED_DAE, COMPACT_DAE, SECOND_ORDER_ODE};
+
+}
+
+#endif

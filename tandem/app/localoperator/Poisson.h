@@ -30,16 +30,19 @@ class Poisson : public DGCurvilinearCommon<DomainDimension> {
 public:
     using base = DGCurvilinearCommon<DomainDimension>;
     constexpr static std::size_t Dim = DomainDimension;
-    constexpr static std::size_t NumQuantities = 1;
+    constexpr static std::size_t NumQuantities = DomainDimension-1;
 
     Poisson(std::shared_ptr<Curvilinear<DomainDimension>> cl, functional_t<1> K);
 
     std::size_t block_size() const { return space_.numBasisFunctions(); }
 
+    constexpr std::size_t alignment() const { return ALIGNMENT; }
+
     void begin_preparation(std::size_t numElements, std::size_t numLocalElements,
                            std::size_t numLocalFacets);
 
     void prepare_volume_post_skeleton(std::size_t elNo, LinearAllocator<double>& scratch);
+
 
     bool assemble_volume(std::size_t elNo, Matrix<double>& A00,
                          LinearAllocator<double>& scratch) const;
@@ -128,6 +131,27 @@ public:
      * @param result store the calculated traction tau
      * */
     void traction_boundary(std::size_t fctNo, FacetInfo const& info, Vector<double const>& u0,
+                           Matrix<double>& result) const;
+
+   /**
+     * Calculate the traction if the fault is not symmetric ignoring Dirichlet BC outside of the fault
+     * @param fctNo index of the quadrature point
+     * @param info needed to implement the boundary conditions
+     * @param u0 displacement on one side of the fault
+     * @param u1 displacement on the other side of the fault
+     * @param result store the calculated traction tau
+     * */
+    void traction_skeleton_onlySlip(std::size_t fctNo, FacetInfo const& info, Vector<double const>& u0,
+                           Vector<double const>& u1, Matrix<double>& result) const;
+
+    /**
+     * Calculate the traction if the fault is symmetric ignoring Dirichlet BC outside of the fault
+     * @param fctNo index of the quadrature point
+     * @param info needed to implement the boundary conditions
+     * @param u0 displacement on the fault
+     * @param result store the calculated traction tau
+     * */
+    void traction_boundary_onlySlip(std::size_t fctNo, FacetInfo const& info, Vector<double const>& u0,
                            Matrix<double>& result) const;
 
     /**

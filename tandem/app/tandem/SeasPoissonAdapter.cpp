@@ -33,7 +33,7 @@ void SeasPoissonAdapter::slip(std::size_t faultNo, Vector<double const>& state,
     krnl.e_q_T = e_q_T.data();
     krnl.slip = state.data();
     krnl.slip_q = slip_q.data();
-    krnl.execute();    
+    krnl.execute();
 
     /* Slip in the Poisson solver is defined as [[u]] := u^- - u^+.
      * In the friction solver the sign of slip S is flipped, that is, S = -[[u]].
@@ -77,6 +77,34 @@ void SeasPoissonAdapter::traction(std::size_t faultNo, Matrix<double>& traction,
     krnl.w = dgop_->lop().facetQuadratureRule().weights().data();
     krnl.execute();
 }
+
+void SeasPoissonAdapter::traction_onlySlip(std::size_t faultNo, Matrix<double>& traction,
+                                  LinearAllocator<double>&) const {
+    std::fill(traction.data(), traction.data() + traction.size(), 0.0);
+
+    double grad_u_raw[poisson::tensor::grad_u::Size];
+    auto grad_u = Matrix<double>(grad_u_raw, dgop_->lop().tractionResultInfo());
+    assert(grad_u.size() == poisson::tensor::grad_u::Size);
+
+    auto fctNo = faultMap_.fctNo(faultNo);
+    auto const& info = dgop_->topo().info(fctNo);
+    auto u0 = linear_solver_.x().get_block(handle_, info.up[0]);
+    auto u1 = linear_solver_.x().get_block(handle_, info.up[1]);
+    if (info.up[0] == info.up[1]) {
+        dgop_->lop().traction_boundary_onlySlip(fctNo, info, u0, grad_u);
+    } else {
+        dgop_->lop().traction_skeleton_onlySlip(fctNo, info, u0, u1, grad_u);
+    }
+    poisson_adapter::kernel::evaluate_traction krnl;
+    krnl.e_q_T = e_q_T.data();
+    krnl.grad_u = grad_u_raw;
+    krnl.minv = minv.data();
+    krnl.traction = &traction(0, 1);
+    krnl.n_unit_q = fault_[faultNo].template get<UnitNormal>().data()->data();
+    krnl.w = dgop_->lop().facetQuadratureRule().weights().data();
+    krnl.execute();
+}
+
 
 
 

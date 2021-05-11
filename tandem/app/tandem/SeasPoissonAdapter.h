@@ -118,29 +118,29 @@ public:
         state.end_access_readonly(in_handle);
 
         // extract values on fault and write to solution vector
-        auto handleWrite = result.begin_access();
-        auto handleRead = linear_solver_.x().begin_access_readonly();
-        for (int faultNo = 0; faultNo < faultMap_.size(); faultNo++){
-            auto fctNo = faultMap_.fctNo(faultNo);
-            auto const& info = dgop_->topo().info(fctNo);
-            auto slip = result.get_block(handleWrite, faultNo);
+        // auto handleWrite = result.begin_access();
+        // auto handleRead = linear_solver_.x().begin_access_readonly();
+        // for (int faultNo = 0; faultNo < faultMap_.size(); faultNo++){
+        //     auto fctNo = faultMap_.fctNo(faultNo);
+        //     auto const& info = dgop_->topo().info(fctNo);
+        //     auto slip = result.get_block(handleWrite, faultNo);
 
-            if (info.up[0] == info.up[1]) {
-                for (int i = 0; i < Nbf; i++){
-                    auto u0 = linear_solver_.x().get_block(handleRead, info.up[0]);
-                    slip(i) = u0(i);
-                }
-            } else {
-                for (int i = 0; i < Nbf; i++){
-                    auto u0 = linear_solver_.x().get_block(handleRead, info.up[0]);
-                    auto u1 = linear_solver_.x().get_block(handleRead, info.up[1]);
-                    slip(i) = u0(i);
-                    slip(i) += u1(i);
-                }
-            }
-        }
-        result.end_access(handleWrite); 
-        linear_solver_.x().end_access_readonly(handleRead); 
+        //     if (info.up[0] == info.up[1]) {
+        //         for (int i = 0; i < Nbf; i++){
+        //             auto u0 = linear_solver_.x().get_block(handleRead, info.up[0]);
+        //             slip(i) = u0(i);
+        //         }
+        //     } else {
+        //         for (int i = 0; i < Nbf; i++){
+        //             auto u0 = linear_solver_.x().get_block(handleRead, info.up[0]);
+        //             auto u1 = linear_solver_.x().get_block(handleRead, info.up[1]);
+        //             slip(i) = u0(i);
+        //             slip(i) += u1(i);
+        //         }
+        //     }
+        // }
+        // result.end_access(handleWrite); 
+        // linear_solver_.x().end_access_readonly(handleRead); 
     }
 
 
@@ -170,6 +170,14 @@ public:
      * @param . this scratch thingy
      */
     void traction(std::size_t faultNo, Matrix<double>& traction, LinearAllocator<double>&) const;
+
+    /**
+     * Calculates the traction for one fault element with BC only on the fault
+     * @param faultNo index of the considered fault element
+     * @param traction  result matrix with the calculated traction (cols: nbf, rows: (sigma=0,tau))
+     * @param . this scratch thingy
+     */
+    void traction_onlySlip(std::size_t faultNo, Matrix<double>& traction, LinearAllocator<double>&) const;
 
     /**
      * terminate access handler for the solution of the linear system
@@ -241,6 +249,13 @@ public:
      * @return block size = Nbf (number of element basis functions )
      */
     std::size_t block_size_rhsDG() const { return dgop_->block_size(); } 
+
+    /**
+     * returns the number of quantities in the traction term (1 in 2D, 3 in 3D)
+     * @return 
+     */
+    std::size_t getNumberQuantities() {return NumQuantities; }
+
 private:
     /**
     * transform the slip from the nodes to the quadrature points 

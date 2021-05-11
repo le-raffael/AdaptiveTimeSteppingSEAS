@@ -103,13 +103,17 @@ public:
                            Vector<double const>& u1, Matrix<double>& result) const;
     void traction_boundary(std::size_t fctNo, FacetInfo const& info, Vector<double const>& u0,
                            Matrix<double>& result) const;
+    void traction_skeleton_onlySlip(std::size_t fctNo, FacetInfo const& info, Vector<double const>& u0,
+                           Vector<double const>& u1, Matrix<double>& result) const;
+    void traction_boundary_onlySlip(std::size_t fctNo, FacetInfo const& info, Vector<double const>& u0,
+                           Matrix<double>& result) const;
     /**
      * Calculate the derivative of the traction w.r.t. to the displacement if the fault is not symmetric
      * @param fctNo index of the quadrature point
      * @param info needed to implement the boundary conditions
      * @param result store the calculated traction tau
      * */
-    void derivative_traction_skeleton(std::size_t fctNo, FacetInfo const& info, Tensor3<double>& result) const;
+    void derivative_traction_skeleton(std::size_t fctNo, FacetInfo const& info, Tensor<double,4>& result) const;
  
     /**
      * Calculate the derivative of the traction w.r.t. to the displacement if the fault is symmetric
@@ -117,7 +121,7 @@ public:
      * @param info needed to implement the boundary conditions
      * @param result store the calculated traction tau
      * */
-    void derivative_traction_boundary(std::size_t fctNo, FacetInfo const& info, Tensor3<double>& result) const;
+    void derivative_traction_boundary(std::size_t fctNo, FacetInfo const& info, Tensor<double,4>& result) const;
 
     FiniteElementFunction<DomainDimension> solution_prototype(std::size_t numLocalElements) const {
         return FiniteElementFunction<DomainDimension>(space_.clone(), NumQuantities,

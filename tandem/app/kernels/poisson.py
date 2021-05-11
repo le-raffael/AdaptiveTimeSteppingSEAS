@@ -2,7 +2,7 @@
 
 from yateto import *
 
-def add(generator, dim, nbf, Nbf, nq, Nq):
+def add(generator, dim, nbf, Nbf, nq, Nq, petsc_alignment):
     J = Tensor('J', (Nq,))
     G = Tensor('G', (dim, dim, Nq))
     K = Tensor('K', (Nbf,))
@@ -53,7 +53,7 @@ def add(generator, dim, nbf, Nbf, nq, Nq):
     generator.add('assembleFacetLocal', surfaceKernelsLocal)
     generator.add('assembleFacetNeighbour', surfaceKernelsNeighbour)
 
-    b = Tensor('b', (Nbf,))
+    b = Tensor('b', (Nbf,), alignStride=petsc_alignment)
     F_Q = Tensor('F_Q', (Nq,))
     generator.add('rhsVolume', b['k'] <= b['k'] + J['q'] * W['q'] * E['kq'] * F_Q['q'])
 
@@ -64,7 +64,7 @@ def add(generator, dim, nbf, Nbf, nq, Nq):
             c2[0] * w['q'] * e[0]['kq'] * nl['q'] * f_q['q'])
 
     # traction
-    u = [Tensor('u({})'.format(x), (Nbf,)) for x in range(2)]
+    u = [Tensor('u({})'.format(x), (Nbf,), alignStride=petsc_alignment) for x in range(2)]
     k = [Tensor('k({})'.format(x), (Nbf,)) for x in range(2)]
     grad_u = Tensor('grad_u', (dim, nq))
     generator.add('grad_u', [

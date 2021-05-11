@@ -1,3 +1,4 @@
+#include "GlobalVariables.h"
 #include "SEAS.h"
 #include "common/PetscTimeSolver.h"
 #include "config.h"
@@ -23,6 +24,7 @@
 #include <petscksp.h>
 
 #include <algorithm>
+#include <ctime>
 #include <array>
 #include <iostream>
 #include <memory>
@@ -59,7 +61,7 @@ template <> struct adapter<SeasType::Elasticity> {
 };
 
 template <SeasType type>
-void solve_seas_problem(LocalSimplexMesh<DomainDimension> const& mesh, Config const& cfg) {
+void solve_seas_problem(LocalSimplexMesh<DomainDimension> const& mesh, Config& cfg) {
     using adapter_t = typename adapter<type>::type;
     using adapter_lop_t = typename adapter<type>::type::local_operator_t;
     using fault_op_t = RateAndState<DieterichRuinaAgeing>;
@@ -76,6 +78,35 @@ void solve_seas_problem(LocalSimplexMesh<DomainDimension> const& mesh, Config co
     auto topo = std::make_shared<DGOperatorTopo>(mesh, PETSC_COMM_WORLD);
     auto adapt = adapter<type>::make(cfg, scenario, cl, topo, fop->space().clone());
     KSP& ksp = adapt->getKSP();
+
+    // detect the aseismic phase/earthquake formulations
+    if((cfg.solver->solver_aseismicslip->solution_size == "compact")  
+    && (cfg.solver->solver_aseismicslip->problem_formulation == "ode")) 
+        cfg.solver->solver_aseismicslip->formulation = tndm::FIRST_ORDER_ODE;
+    if((cfg.solver->solver_aseismicslip->solution_size == "compact")  
+    && (cfg.solver->solver_aseismicslip->problem_formulation == "dae")) 
+        cfg.solver->solver_aseismicslip->formulation = tndm::COMPACT_DAE;
+    if((cfg.solver->solver_aseismicslip->solution_size == "extended") 
+    && (cfg.solver->solver_aseismicslip->problem_formulation == "dae")) 
+        cfg.solver->solver_aseismicslip->formulation = tndm::EXTENDED_DAE;
+    if((cfg.solver->solver_aseismicslip->solution_size == "extended") 
+    && (cfg.solver->solver_aseismicslip->problem_formulation == "ode")) 
+        cfg.solver->solver_aseismicslip->formulation = tndm::SECOND_ORDER_ODE;
+
+    if((cfg.solver->solver_earthquake->solution_size == "compact")  
+    && (cfg.solver->solver_earthquake->problem_formulation == "ode")) 
+        cfg.solver->solver_earthquake->formulation = tndm::FIRST_ORDER_ODE;
+    if((cfg.solver->solver_earthquake->solution_size == "compact")  
+    && (cfg.solver->solver_earthquake->problem_formulation == "dae")) 
+        cfg.solver->solver_earthquake->formulation = tndm::COMPACT_DAE;
+    if((cfg.solver->solver_earthquake->solution_size == "extended") 
+    && (cfg.solver->solver_earthquake->problem_formulation == "dae")) 
+    cfg.solver->solver_earthquake->formulation = tndm::EXTENDED_DAE;
+    if((cfg.solver->solver_earthquake->solution_size == "extended")
+    && (cfg.solver->solver_earthquake->problem_formulation == "ode"))
+        cfg.solver->solver_earthquake->formulation = tndm::SECOND_ORDER_ODE;
+
+
     auto seasop = std::make_shared<seas_op_t>(std::move(fop), std::move(adapt), cfg.solver);
     seasop->lop().set_constant_params(friction_scenario.constant_params());
     seasop->lop().set_params(friction_scenario.param_fun());
@@ -88,7 +119,11 @@ void solve_seas_problem(LocalSimplexMesh<DomainDimension> const& mesh, Config co
 
     std::cout<<"Perform simulation with "<<seasop->numLocalElements()<<" fault elements " << std::endl;
 
-    auto ts = PetscTimeSolver(*seasop, ksp);
+    auto t_begin = std::chrono::high_resolution_clock::now();
+
+    int ierr = 0;
+    auto ts = PetscTimeSolver(*seasop, ksp, ierr);
+    if (ierr != 0) return;
 
     std::unique_ptr<seas_writer_t> writer;
     if (cfg.output) {
@@ -98,7 +133,20 @@ void solve_seas_problem(LocalSimplexMesh<DomainDimension> const& mesh, Config co
         ts.set_monitor(*writer);
     }
 
+    auto t_intermediate = std::chrono::high_resolution_clock::now();
+
     ts.solve(cfg.final_time);
+
+    auto t_end = std::chrono::high_resolution_clock::now();
+
+    std::chrono::duration<double> time_initialization = std::chrono::duration_cast<std::chrono::duration<double>>(t_intermediate - t_begin);
+    std::chrono::duration<double> time_solve          = std::chrono::duration_cast<std::chrono::duration<double>>(t_end - t_intermediate);
+    std::chrono::duration<double> time_total          = std::chrono::duration_cast<std::chrono::duration<double>>(t_end - t_begin);
+
+    auto filename = writer->writeTimes(time_initialization.count(), time_solve.count(), time_total.count());
+
+    std::cout << "Finished simulation successfully after " << time_total.count() << " seconds "<< std::endl; 
+    std::cout << "Results written to: " << filename << std::endl;
 
     auto solution = scenario.solution(cfg.final_time);
     if (solution) {
@@ -117,7 +165,7 @@ void solve_seas_problem(LocalSimplexMesh<DomainDimension> const& mesh, Config co
 
 namespace tndm {
 
-void solveSEASProblem(LocalSimplexMesh<DomainDimension> const& mesh, Config const& cfg) {
+void solveSEASProblem(LocalSimplexMesh<DomainDimension> const& mesh, Config& cfg) {
     if (cfg.seas.type == SeasType::Poisson) {
         detail::solve_seas_problem<SeasType::Poisson>(mesh, cfg);
     } else if (cfg.seas.type == SeasType::Elasticity) {

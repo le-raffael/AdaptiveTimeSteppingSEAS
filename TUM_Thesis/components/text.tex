@@ -1,0 +1,46 @@
+% !TEX root = ../main.tex
+% Included by MAIN.TEX
+% Put your content in here or include it by using \input (\include won't work)
+
+\addtolength{\evensidemargin}{-12mm}
+
+% ---------------------------------------------------------------------------
+%
+%Introduction and Background Theory
+%
+% ---------------------------------------------------------------------------
+\part[Introduction and Background Theory]{First Approach to the Topic}
+\label{part:introAndBackgroundTheory}
+\input{chapters/Introduction}
+\input{chapters/FirstExperiments}
+%% ---------------------------------------------------------------------------
+%%
+%% Thesis content: What did you do?
+%%
+%%% ---------------------------------------------------------------------------
+\part[Body: What was done for the thesis]{The Two-Dimensional Antiplane Shear Problem}
+\label{part:body}
+\input{chapters/TwoDimensionalSEASProblem}
+\input{chapters/FourFormulationsForSEAS}
+\input{chapters/Results}
+
+%% ---------------------------------------------------------------------------
+%%
+%% Results and Conclusion
+%%
+%% ---------------------------------------------------------------------------
+\part[Results and Conclusion]{Generalization and Conclusion}
+\label{part:resultsAndConclusion}
+\input{chapters/Extensions}
+
+% ---------------------------------------------------------------------------
+%
+% Appendix
+%
+% ---------------------------------------------------------------------------
+\part*{Appendix}
+\addcontentsline{toc}{part}{Appendix}
+
+\appendix %---------------------------------------
+
+\input{chapters/Appendix}

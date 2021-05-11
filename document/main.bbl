@@ -1,34 +1,126 @@
-\begin{thebibliography}{Rap97}
+\newcommand{\etalchar}[1]{$^{#1}$}
+\begin{thebibliography}{ABCM02}
+
+\bibitem[ABCM02]{DG-elliptic-problems}
+Douglas Arnold, Franco Brezzi, Bernardo Cockburn, and Donatella Marini.
+\newblock Unified analysis of discontinuous galerkin methods for elliptic
+  problems.
+\newblock {\em SIAM J. Numer. Anal.}, 39, 01 2002.
 
 \bibitem[Axe93]{IterativeSolutionMethods}
 O.~Axelsson.
 \newblock {\em Iterative solution methods}.
 \newblock Cambridge ; New York : Cambridge University Press, 1993.
 
+\bibitem[BM14]{DG-quick-tutorial}
+Franco Brezzi and L.D. Marini.
+\newblock A quick tutorial on dg methods for elliptic problems.
+\newblock 01 2014.
+
 \bibitem[Bro65]{BroydenIteration}
 C.~Broyden.
 \newblock A class of methods for solving nonlinear simultaneous equations.
 \newblock {\em Mathematics of Computation}, 19:577--593, 1965.
+
+\bibitem[Die79]{Dieterich79}
+James~H. Dieterich.
+\newblock Modeling of rock friction: 1. experimental results and constitutive
+  equations.
+\newblock {\em Journal of Geophysical Research: Solid Earth},
+  84(B5):2161--2168, 1979.
+
+\bibitem[Die81]{Dieterich81}
+James~H. Dieterich.
+\newblock {\em Constitutive Properties of Faults With Simulated Gouge}, pages
+  103--120.
+\newblock American Geophysical Union (AGU), 1981.
+
+\bibitem[EJB{\etalchar{+}}20]{BP1-Benchmark}
+Brittany~A. Erickson, Junle Jiang, Michael Barall, Nadia Lapusta, Eric~M.
+  Dunham, Ruth Harris, Lauren~S. Abrahams, Kali~L. Allison, Jean‐Paul
+  Ampuero, Sylvain Barbot, Camilla Cattania, Ahmed Elbanna, Yuri Fialko,
+  Benjamin Idini, Jeremy~E. Kozdon, Valère Lambert, Yajing Liu, Yingdi Luo,
+  Xiao Ma, Maricela Best~McKay, Paul Segall, Pengcheng Shi, Martijn van~den
+  Ende, and Meng Wei.
+\newblock {The Community Code Verification Exercise for Simulating Sequences of
+  Earthquakes and Aseismic Slip (SEAS)}.
+\newblock {\em Seismological Research Letters}, 91(2A):874--890, 01 2020.
+
+\bibitem[Feh69]{RK-Fehlberg}
+E.~Fehlberg.
+\newblock Low-order classical runge-kutta formulas with stepsize control and
+  their applications to some heat transfer problems.
+\newblock 1969.
+
+\bibitem[JD80]{RK-DormandPrince}
+P.J.~Prince J.R.~Dormand.
+\newblock A family of embedded runge-kutta formulae.
+\newblock {\em Journal of Computational and Applied Mathematics}, 6(1):19--26,
+  1980.
+
+\bibitem[Kan56]{KANT}
+Immanuel Kant.
+\newblock Geschichte und naturbeschreibung der merkw\"urdigsten vorf\"alle des
+  erdbebens, welches an dem ende des 1755sten jahres einen großen theil der
+  erde ersch\"uttert hat.
+\newblock {\em Vorkritische Schriften I}, pages 429--462, 1756.
+
+\bibitem[KM06]{DAETheory}
+Peter Kunkel and Volker Mehrmann.
+\newblock Differential-algebraic equations. analysis and numerical solution.
+\newblock 01 2006.
+
+\bibitem[Lap]{Lapusta}
+Elastodynamic analysis for slow tectonic loading with spontaneous rupture
+  episodes on faults with rate- and state-dependent friction.
+\newblock {\em Journal of Geophysical Research}, 105(B10):23765--23789.
 
 \bibitem[Olv14]{introductionPartialDiffEquations}
 Peter~J. Olver.
 \newblock {\em Introduction to Partial Differential Equations}.
 \newblock Springer International Publishing, 2014.
 
+\bibitem[PB89]{RK-BogackiShampine}
+L.F.~Shampine P.~Bogacki.
+\newblock A 3(2) pair of runge - kutta formulas.
+\newblock {\em Applied Mathematics Letters}, 2(4):321--325, 1989.
+
 \bibitem[Rap97]{NewtonRaphsonMethod}
 Joseph Raphson.
 \newblock {\em Analysis Æequationum Universalis}.
 \newblock Th. Braddyll, 1697.
+
+\bibitem[Ric80]{MechanicsOfEarthquakeRupture}
+J.~R. Rice.
+\newblock The mechanics of earthquake rupture.
+\newblock In {\em in Physics of the Earth's Interior, edited by A.M. Dziewonski
+  and E. Boschi}, pages 555--649, 1980.
+
+\bibitem[{Ric}93]{GeneralSEASSimulations}
+James~R. {Rice}.
+\newblock {Spatio-temporal complexity of slip on a fault}.
+\newblock {\em Journal of Geophysical Research}, 98(B6):9885--9907, jun 1993.
 
 \bibitem[Roa01]{10.1115/1.1436090}
 Patrick~J. Roache.
 \newblock {Code Verification by the Method of Manufactured Solutions }.
 \newblock {\em Journal of Fluids Engineering}, 124(1):4--10, 11 2001.
 
+\bibitem[Rui83]{Ruina}
+Andy Ruina.
+\newblock Slip instability and state variable friction laws.
+\newblock {\em Journal of Geophysical Research: Solid Earth},
+  88(B12):10359--10370, 1983.
+
 \bibitem[S\"02]{AutomControlAdaptTS}
 Gustaf S\"oderlind.
 \newblock Automatic control and adaptive time-stepping.
 \newblock 31(1-4):281--310, 2002.
+
+\bibitem[Sla02]{LinearElasticityTheory}
+William~S. Slaughter.
+\newblock {\em The Linearized Theory of Elasticity}.
+\newblock Birkh\"auser Basel, 2002.
 
 \bibitem[SS86]{GMRES}
 Youcef Saad and Martin~H. Schultz.

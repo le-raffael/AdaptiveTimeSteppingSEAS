@@ -3,7 +3,7 @@
 from yateto import *
 import numpy as np
 
-def add(generator, dim, nbf, Nbf, nq, Nq):
+def add(generator, dim, nbf, Nbf, nq, Nq, petsc_alignment):
     # volume
 
     J = Tensor('J', (Nq,))
@@ -19,8 +19,8 @@ def add(generator, dim, nbf, Nbf, nq, Nq):
     matE_Q_T = Tensor('matE_Q_T', (Nq, Nbf))
     Dxi_Q = Tensor('Dxi_Q', (Nbf, dim, Nq))
     Dx_Q = Tensor('Dx_Q', Dxi_Q.shape())
-    U = Tensor('U', (Nbf, dim))
-    Unew = Tensor('Unew', (Nbf, dim))
+    U = Tensor('U', (Nbf, dim), alignStride=petsc_alignment)
+    Unew = Tensor('Unew', (Nbf, dim), alignStride=petsc_alignment)
     A = Tensor('A', (Nbf, dim, Nbf, dim))
     delta = Tensor('delta', (dim, dim), spp=np.identity(dim))
     matMinv = Tensor('matMinv', (Nbf, Nbf))
@@ -61,7 +61,7 @@ def add(generator, dim, nbf, Nbf, nq, Nq):
     c2 = [Scalar('c2{}'.format(x)) for x in range(2)]
     u = [Tensor('u({})'.format(x), (Nbf, dim)) for x in range(2)]
     unew = [Tensor('unew({})'.format(x), (Nbf, dim)) for x in range(2)]
-    u_jump = Tensor('u_jump', (dim, nq)) 
+    u_jump = Tensor('u_jump', (dim, nq))
     traction_q = Tensor('traction_q', (dim, nq))
     traction_op_q = [Tensor('traction_op_q({})'.format(x), (Nbf, dim, dim, nq)) for x in range(2)]
     a = [[Tensor('a({},{})'.format(x, y), (Nbf, dim, Nbf, dim)) for y in range(2)] for x in range(2)]
@@ -74,6 +74,11 @@ def add(generator, dim, nbf, Nbf, nq, Nq):
     def traction(x, normal):
         return lam_q[x]['q'] * Dx_q[x]['lsq'] * u[x]['ls'] * normal['pq'] + mu_q[x]['q'] * \
                 (Dx_q[x]['ljq'] * u[x]['lp'] * normal['jq'] + Dx_q[x]['lpq'] * u[x]['lj'] * normal['jq'])
+
+    def d_traction_du(x, normal):
+        return lam_q[x]['q'] * Dx_q[x]['rsq'] * normal['pq'] + mu_q[x]['q'] * \
+                (Dx_q[x]['rjq'] * delta['ps'] * normal['jq'] + Dx_q[x]['rpq'] * normal['sq'])
+
 
     def tractionTest(x, utilde):
         return lam_q[x]['q'] * Dx_q[x]['kpq'] * utilde['iq'] * n_q['iq'] + mu_q[x]['q'] * \
@@ -115,7 +120,7 @@ def add(generator, dim, nbf, Nbf, nq, Nq):
 
     # Right-hand side
 
-    b = Tensor('b', (Nbf, dim))
+    b = Tensor('b', (Nbf, dim), alignStride=petsc_alignment)
     F_Q = Tensor('F_Q', (dim, Nq))
     generator.add('rhsVolume', b['kp'] <= b['kp'] + J['q'] * W['q'] * E_Q['kq'] * F_Q['pq'])
 
@@ -137,25 +142,13 @@ def add(generator, dim, nbf, Nbf, nq, Nq):
                             c0[0] * (E_q[0]['lq'] * u[0]['lp'] - f_q['pq']))
 
 
-    # derivative of the gradient (definitely not working right)
-    d_x = [Tensor('d_x({})'.format(x), (Nbf, dim, nq)) for x in range(2)]
-    d_xi = [Tensor('d_xi({})'.format(x), (Nbf, dim, nq)) for x in range(2)]
-    k = [Tensor('k({})'.format(x), (Nbf,)) for x in range(2)]
-    e = [Tensor('e({})'.format(x), (Nbf, nq)) for x in range(2)]
-    em = [Tensor('em({})'.format(x), (nq, Nbf)) for x in range(2)]
-    n_unit_q = Tensor('n_unit_q', (dim, nq))
-    # derivative of the gradient
-    Dgrad_u_Du = Tensor('Dgrad_u_Du', (Nbf, dim, nq))
-    generator.add('Dgrad_u_Du', [
-        d_x[0]['kiq'] <= k[0]['m'] * em[0]['qm'] * g[0]['eiq'] * d_xi[0]['keq'],
-        d_x[1]['kiq'] <= k[1]['m'] * em[1]['qm'] * g[1]['eiq'] * d_xi[1]['keq'],
-        Dgrad_u_Du['kpq'] <= 0.5 * (d_x[0]['kpq'] + d_x[1]['kpq']) +
-                       c0[0] * (e[0]['kq'] - e[1]['kq']) * n_unit_q['pq']
-    ])
+    # derivative of traction_q
+    D_traction_q_Du = Tensor('D_traction_q_Du', (Nbf, dim, dim, nq))
+    generator.add('D_traction_q_Du', 
+        D_traction_q_Du['rspq'] <= 0.5 * (d_traction_du(0, n_unit_q) + d_traction_du(1, n_unit_q)) +
+                       c0[0] * (E_q[0]['rq'] * delta['sp'] - E_q[1]['rq'] * delta['sp']))
 
-    generator.add('Dgrad_u_Du_bnd', [
-        d_x[0]['kiq'] <= k[0]['m'] * em[0]['qm'] * g[0]['eiq'] * d_xi[0]['keq'],
-        Dgrad_u_Du['kpq'] <= d_x[0]['kpq'] +
-                       c0[0] * e[0]['kq'] * n_unit_q['pq']
-    ])
+    generator.add('D_traction_q_Du_bnd',
+        D_traction_q_Du['rspq'] <=  d_traction_du(0, n_unit_q) +
+                       c0[0] * E_q[0]['rq'] * delta['sp'])
 

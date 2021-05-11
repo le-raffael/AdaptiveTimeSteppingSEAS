@@ -58,28 +58,36 @@ public:
         std::ostringstream eq_tol;
         as_tol.precision(0);
         eq_tol.precision(0);
-        as_tol << std::scientific << cfg_as->S_atol;
-        eq_tol << std::scientific << cfg_eq->S_atol;
+
+        if ((cfg_as->solution_size == "extended") && (cfg_as->problem_formulation == "ode")) {
+            as_tol << std::scientific << "_Vrtol" << cfg_as->V_rtol;
+        } else {
+            as_tol << std::scientific << "_Satol" << cfg_as->S_atol;
+        }
+        if ((cfg_eq->solution_size == "extended") && (cfg_eq->problem_formulation == "ode")) {
+            eq_tol << std::scientific << "_Vrtol" << cfg_eq->V_rtol;
+        } else {
+            eq_tol << std::scientific << "_Satol" << cfg_eq->S_atol;
+        }
 
         std::string string_as;
         if (cfg_as->type == "rk") {
-            string_as = "AS_" + cfg_as->solution_size + cfg_as->problem_formulation + "_" +  cfg_as->rk_type + "_Stol" + as_tol.str();
+            string_as = "AS_" + cfg_as->solution_size + cfg_as->problem_formulation + "_" +  cfg_as->rk_type + as_tol.str();
         } else if (cfg_as->type == "bdf") {
-            string_as = "AS_" + cfg_as->solution_size + cfg_as->problem_formulation + "_BDF" +  std::to_string(cfg_as->bdf_order) + "_" + cfg_as->bdf_pc_type + "-" + cfg_as->bdf_ksp_type + "_Stol" + as_tol.str();
+            string_as = "AS_" + cfg_as->solution_size + cfg_as->problem_formulation + "_BDF" +  std::to_string(cfg_as->bdf_order) + "_" + cfg_as->bdf_pc_type + "-" + cfg_as->bdf_ksp_type + as_tol.str();
         }
 
         std::string string_eq;
         if (cfg_eq->type == "rk") {
-            string_eq = "EQ_" + cfg_eq->solution_size + cfg_eq->problem_formulation + "_" +  cfg_eq->rk_type + "_Stol" + eq_tol.str();
+            string_eq = "EQ_" + cfg_eq->solution_size + cfg_eq->problem_formulation + "_" +  cfg_eq->rk_type + eq_tol.str();
         } else if (cfg_eq->type == "bdf") {
-            string_eq = "EQ_" + cfg_eq->solution_size + cfg_eq->problem_formulation + "_BDF" + std::to_string(cfg_eq->bdf_order) + "_" + cfg_eq->bdf_pc_type + "-" + cfg_eq->bdf_ksp_type + "_Stol" + eq_tol.str();
+            string_eq = "EQ_" + cfg_eq->solution_size + cfg_eq->problem_formulation + "_BDF" + std::to_string(cfg_eq->bdf_order) + "_" + cfg_eq->bdf_pc_type + "-" + cfg_eq->bdf_ksp_type + eq_tol.str();
         }
 
-        std::string filename;
         filename = "TANDEM_size" + std::to_string(domain_size) + "__" + string_as + "__" + string_eq + ".csv";
 
         timeAnalysis.open(filename);
-        timeAnalysis << "time,Vmax,count_rhs,maxErrorFactorPSI,maxPSI,minPSI,maxS,minS,fmax,ratio_addition,KSP_iteration" << std::endl;
+        timeAnalysis << "time,Vmax,count_rhs,maxErrorFactorPSI,maxPSI,minPSI,maxS,minS,fmax,ratio_addition,KSP_iteration,t_init,t_solve,t_total";
 
         fault_base_ += "-fault";
         MPI_Comm_rank(seasop_->comm(), &rank_);
@@ -90,6 +98,14 @@ public:
      */
     ~SeasWriter(){
         timeAnalysis.close();
+    }
+
+    /**
+     * write 
+     */
+    std::string writeTimes(double t_init, double t_solve, double t_total){
+        timeAnalysis << std::setprecision(18) << "," << t_init << "," << t_solve << "," << t_total << std::endl;
+        return filename;
     }
 
     /**
@@ -123,8 +139,6 @@ public:
 
         calculateMaxErrors(state);
 
-        seasop_->reset_rhs_count();
-
         double Vmax = seasop_->VMax();
         double fmax = seasop_->fMax();
         double max_dfdpsi = 50.0; // seasop_->calculateMaxFactorErrorPSI(time, state);
@@ -132,15 +146,16 @@ public:
         double ratio = solverStruct.ratio_addition;
         double KSP_it = solverStruct.KSP_iteration_count;
         
-        timeAnalysis <<std::setprecision(18)<< 
+        timeAnalysis <<std::setprecision(18)<< std::endl << 
             time << "," << Vmax << "," << seasop_->rhs_count() << ","  << 
             max_dfdpsi << "," << maxPSI_ << "," << minPSI_ << "," << maxS_ << "," << minS_ <<"," << 
-            fmax << "," << ratio << "," << KSP_it << 
-            std::endl;
-        
+            fmax << "," << ratio << "," << KSP_it;
+
+        seasop_->reset_rhs_count();
+
         // auto interval = output_interval(seasop_->VMax());
         // if (time - last_output_time_ >= interval) {
-        //     auto fault_writer = VTUWriter<D - 1u>(degree_, true, seasop_->comm());
+        //     auto fault_ riter = VTUWriter<D - 1u>(degree_, true, seasop_->comm());
         //     fault_writer.addFieldData("time", &time, 1);
         //     auto fault_piece = fault_writer.addPiece(fault_adapter_);
         //     fault_piece.addPointData("state", seasop_->state(state));
@@ -199,15 +214,19 @@ private:
         auto s = state.begin_access_readonly();
 
         // // calculate relative and absolute errors in S and PSI
+        double S; 
         for (int noFault = 0; noFault < seasop_->numLocalElements(); noFault++){
             auto sB = state.get_block(s, noFault);
 
-            for (int component = 0; component < RateAndStateBase::TangentialComponents; component++){
-                for (int node = 0; node < nbf; node++){
+            for (int node = 0; node < nbf; node++){
+                S = 0;
+                for (int component = 0; component < RateAndStateBase::TangentialComponents; component++){                    
                     int i = component * nbf + node;
-                    maxS_ = std::max(maxS_,sB(i));
-                    minS_ = std::min(minS_,sB(i));
+                    S += sB(i) * sB(i);
                 }
+                S = sqrt(S);            
+                maxS_ = std::max(maxS_,S);
+                minS_ = std::min(minS_,S);
             }
             for (int node = 0; node < nbf; node++){
                 int i = PsiIndex + node;
@@ -231,8 +250,9 @@ private:
     PVDWriter pvd_fault_;
     int rank_;
 
-    // file name of the csv output file
+    // csv output file
     std::ofstream timeAnalysis;
+    std::string filename;
 
     // output parametes
     std::string fault_base_;

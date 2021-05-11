@@ -309,6 +309,7 @@ bool Elasticity::bc_skeleton(std::size_t fctNo, BC bc, double f_q_raw[]) const {
     }
     return true;
 }
+
 bool Elasticity::bc_boundary(std::size_t fctNo, BC bc, double f_q_raw[]) const {
     assert(tensor::f_q::Shape[1] == fctRule.size());
     auto f_q = Matrix<double>(f_q_raw, NumQuantities, fctRule.size());
@@ -365,11 +366,10 @@ bool Elasticity::rhs_skeleton(std::size_t fctNo, FacetInfo const& info, Vector<d
 
 bool Elasticity::rhs_skeleton_only_slip(std::size_t fctNo, FacetInfo const& info, Vector<double>& B0,
                            Vector<double>& B1, LinearAllocator<double>& scratch) const {
- /*   double f_q_raw[tensor::f_q::size()];
-
-    // only apply slip (no forces, no Dirichlet BC)
-    assert(tensor::f_q::size() == fctRule.size());
-    auto f_q = Matrix<double>(f_q_raw, 1, tensor::f_q::Shape[0]);
+    double Dx_q[tensor::Dx_q::size(0)];
+    double f_q_raw[tensor::f_q::size()];
+    assert(tensor::f_q::Shape[1] == fctRule.size());
+    auto f_q = Matrix<double>(f_q_raw, NumQuantities, fctRule.size());
     if (info.bc == BC::Fault) {
         fun_slip(fctNo, f_q, false);
     } else {
@@ -380,26 +380,28 @@ bool Elasticity::rhs_skeleton_only_slip(std::size_t fctNo, FacetInfo const& info
     rhs.b = B0.data();
     rhs.c10 = 0.5 * epsilon;
     rhs.c20 = penalty(info);
+    rhs.Dx_q(0) = Dx_q;
+    rhs.Dxi_q(0) = Dxi_q[info.localNo[0]].data();
+    rhs.E_q(0) = E_q[info.localNo[0]].data();
     rhs.f_q = f_q_raw;
-    rhs.n = fct[fctNo].get<Normal>().data()->data();
-    rhs.nl = fct[fctNo].get<NormalLength>().data();
-    rhs.w = fctRule.weights().data();
-    rhs.d_xi(0) = Dxi_q[info.localNo[0]].data();
-    rhs.e(0) = E_q[info.localNo[0]].data();
-    rhs.em(0) = matE_q_T[info.localNo[0]].data();
     rhs.g(0) = fct[fctNo].get<JInv0>().data()->data();
-    rhs.K = material[info.up[0]].get<K>().data();
+    rhs.lam_q(0) = fctPre[fctNo].get<lam_q_0>().data();
+    rhs.mu_q(0) = fctPre[fctNo].get<mu_q_0>().data();
+    rhs.n_q = fct[fctNo].get<Normal>().data()->data();
+    rhs.nl_q = fct[fctNo].get<NormalLength>().data();
+    rhs.w = fctRule.weights().data();
     rhs.execute();
 
     rhs.b = B1.data();
     rhs.c20 *= -1.0;
-    rhs.d_xi(0) = Dxi_q[info.localNo[1]].data();
-    rhs.e(0) = E_q[info.localNo[1]].data();
-    rhs.em(0) = matE_q_T[info.localNo[1]].data();
+    rhs.Dxi_q(0) = Dxi_q[info.localNo[1]].data();
+    rhs.E_q(0) = E_q[info.localNo[1]].data();
     rhs.g(0) = fct[fctNo].get<JInv1>().data()->data();
-    rhs.K = material[info.up[1]].get<K>().data();
+    rhs.lam_q(0) = fctPre[fctNo].get<lam_q_1>().data();
+    rhs.mu_q(0) = fctPre[fctNo].get<mu_q_1>().data();
     rhs.execute();
-*/    return true;
+
+    return true;
 }
 
 
@@ -410,7 +412,6 @@ bool Elasticity::rhs_boundary(std::size_t fctNo, FacetInfo const& info, Vector<d
     if (!bc_boundary(fctNo, info.bc, f_q_raw)) {
         return false;
     }
-
     kernel::rhsFacet rhs;
     rhs.b = B0.data();
     rhs.c10 = epsilon;
@@ -432,35 +433,41 @@ bool Elasticity::rhs_boundary(std::size_t fctNo, FacetInfo const& info, Vector<d
 
 bool Elasticity::rhs_boundary_only_slip(std::size_t fctNo, FacetInfo const& info, Vector<double>& B0,
                            LinearAllocator<double>& scratch) const {
-/*    double f_q_raw[tensor::f_q::size()];
 
-    //  calculate b only for the slip at the fault
-    assert(tensor::f_q::size() == fctRule.size());
-    auto f_q = Matrix<double>(f_q_raw, 1, tensor::f_q::Shape[0]);
+    double Dx_q[tensor::Dx_q::size(0)];
+    double f_q_raw[tensor::f_q::size()];
+
+    assert(tensor::f_q::Shape[1] == fctRule.size());
+    auto f_q = Matrix<double>(f_q_raw, NumQuantities, fctRule.size());
     if (info.bc == BC::Fault) {
         fun_slip(fctNo, f_q, true);
-        for (std::size_t q = 0; q < tensor::f_q::Shape[0]; ++q) {
-            f_q(0, q) *= 0.5;
+        for (std::size_t q = 0; q < tensor::f_q::Shape[1]; ++q) {
+            for (std::size_t p = 0; p < NumQuantities; ++p) {
+                f_q(p, q) *= 0.5;
+            }
         }
     } else {
         return false;
     }
 
+    //  calculate b only for the slip at the fault
     kernel::rhsFacet rhs;
     rhs.b = B0.data();
     rhs.c10 = epsilon;
     rhs.c20 = penalty(info);
+    rhs.Dx_q(0) = Dx_q;
+    rhs.Dxi_q(0) = Dxi_q[info.localNo[0]].data();
+    rhs.E_q(0) = E_q[info.localNo[0]].data();
     rhs.f_q = f_q_raw;
-    rhs.n = fct[fctNo].get<Normal>().data()->data();
-    rhs.nl = fct[fctNo].get<NormalLength>().data();
-    rhs.w = fctRule.weights().data();
-    rhs.d_xi(0) = Dxi_q[info.localNo[0]].data();
-    rhs.e(0) = E_q[info.localNo[0]].data();
-    rhs.em(0) = matE_q_T[info.localNo[0]].data();
     rhs.g(0) = fct[fctNo].get<JInv0>().data()->data();
-    rhs.K = material[info.up[0]].get<K>().data();
+    rhs.lam_q(0) = fctPre[fctNo].get<lam_q_0>().data();
+    rhs.mu_q(0) = fctPre[fctNo].get<mu_q_0>().data();
+    rhs.n_q = fct[fctNo].get<Normal>().data()->data();
+    rhs.nl_q = fct[fctNo].get<NormalLength>().data();
+    rhs.w = fctRule.weights().data();
     rhs.execute();
-*/    return true;    
+
+    return true;
 }
 
 void Elasticity::coefficients_volume(std::size_t elNo, Matrix<double>& C,
@@ -552,47 +559,148 @@ void Elasticity::traction_boundary(std::size_t fctNo, FacetInfo const& info,
 }
 
 
-void Elasticity::derivative_traction_skeleton(std::size_t fctNo, FacetInfo const& info, Tensor3<double>& result) const {
-    assert(result.size() == tensor::Dgrad_u_Du::size());
+void Elasticity::traction_skeleton_onlySlip(std::size_t fctNo, FacetInfo const& info,
+                                   Vector<double const>& u0, Vector<double const>& u1,
+                                   Matrix<double>& result) const {
+    assert(result.size() == tensor::traction_q::size());
+    assert(u0.size() == tensor::u::size(0));
+    assert(u1.size() == tensor::u::size(1));
 
-    double Dx_q0[tensor::d_x::size(0)];
-    double Dx_q1[tensor::d_x::size(1)];
+    double Dx_q0[tensor::Dx_q::size(0)];
+    double Dx_q1[tensor::Dx_q::size(1)];
 
-    kernel::Dgrad_u_Du krnl;
-    krnl.c00 = -penalty(info);
-    krnl.d_x(0) = Dx_q0;
-    krnl.d_x(1) = Dx_q1;
-    for (std::size_t side = 0; side < 2; ++side) {
-        krnl.d_xi(side) = Dxi_q[info.localNo[side]].data();
-        krnl.em(side) = matE_q_T[info.localNo[side]].data();
+    kernel::Dx_q dxKrnl;
+    dxKrnl.Dx_q(0) = Dx_q0;
+    dxKrnl.Dx_q(1) = Dx_q1;
+    dxKrnl.g(0) = fct[fctNo].get<JInv0>().data()->data();
+    dxKrnl.g(1) = fct[fctNo].get<JInv1>().data()->data();
+    for (unsigned side = 0; side < 2; ++side) {
+        dxKrnl.Dxi_q(side) = Dxi_q[info.localNo[side]].data();
+        dxKrnl.execute(side);
     }
-    krnl.e(0) = E_q[info.localNo[0]].data();
-    krnl.e(1) = E_q[info.localNo[1]].data();
-    krnl.g(0) = fct[fctNo].get<JInv0>().data()->data();
-    krnl.g(1) = fct[fctNo].get<JInv1>().data()->data();
-    krnl.Dgrad_u_Du = result.data();
-    krnl.k(0) = 0;                          // review that
-    krnl.k(1) = 0;                          // review that
+
+    double f_q_raw[tensor::f_q::size()];
+    assert(tensor::f_q::Shape[1] == fctRule.size());
+    auto f_q = Matrix<double>(f_q_raw, NumQuantities, fctRule.size());
+    if (info.bc == BC::Fault) {
+        fun_slip(fctNo, f_q, false);
+    } else {
+        for(std::size_t i = 0; i < tensor::f_q::size(); i++) f_q_raw[i] = 0.0;
+    }
+
+    kernel::compute_traction krnl;
+    krnl.c00 = -penalty(info);
+    krnl.Dx_q(0) = Dx_q0;
+    krnl.Dx_q(1) = Dx_q1;
+    krnl.E_q(0) = E_q[info.localNo[0]].data();
+    krnl.E_q(1) = E_q[info.localNo[1]].data();
+    krnl.f_q = f_q_raw;
+    krnl.lam_q(0) = fctPre[fctNo].get<lam_q_0>().data();
+    krnl.lam_q(1) = fctPre[fctNo].get<lam_q_1>().data();
+    krnl.mu_q(0) = fctPre[fctNo].get<mu_q_0>().data();
+    krnl.mu_q(1) = fctPre[fctNo].get<mu_q_1>().data();
     krnl.n_unit_q = fct[fctNo].get<UnitNormal>().data()->data();
+    krnl.traction_q = result.data();
+    krnl.u(0) = u0.data();
+    krnl.u(1) = u1.data();
+    krnl.execute();
+}
+
+void Elasticity::traction_boundary_onlySlip(std::size_t fctNo, FacetInfo const& info,
+                                   Vector<double const>& u0, Matrix<double>& result) const {
+
+    assert(result.size() == tensor::traction_q::size());
+    assert(u0.size() == tensor::u::size(0));
+
+    double Dx_q0[tensor::Dx_q::size(0)];
+
+    kernel::Dx_q dxKrnl;
+    dxKrnl.Dx_q(0) = Dx_q0;
+    dxKrnl.g(0) = fct[fctNo].get<JInv0>().data()->data();
+    dxKrnl.Dxi_q(0) = Dxi_q[info.localNo[0]].data();
+    dxKrnl.execute(0);
+
+    double f_q_raw[tensor::f_q::size()];
+    assert(tensor::f_q::Shape[1] == fctRule.size());
+    auto f_q = Matrix<double>(f_q_raw, NumQuantities, fctRule.size());
+    if (info.bc == BC::Fault) {
+        fun_slip(fctNo, f_q, true);
+        for (std::size_t q = 0; q < tensor::f_q::Shape[1]; ++q) {
+            for (std::size_t p = 0; p < NumQuantities; ++p) {
+                f_q(p, q) *= 0.5;
+            }
+        }
+    } else {
+        for(std::size_t i = 0; i < tensor::f_q::size(); i++) f_q_raw[i] = 0.0;
+    }
+
+    kernel::compute_traction_bnd krnl;
+    krnl.c00 = -penalty(info);
+    krnl.Dx_q(0) = Dx_q0;
+    krnl.E_q(0) = E_q[info.localNo[0]].data();
+    krnl.f_q = f_q_raw;
+    krnl.lam_q(0) = fctPre[fctNo].get<lam_q_0>().data();
+    krnl.mu_q(0) = fctPre[fctNo].get<mu_q_0>().data();
+    krnl.n_unit_q = fct[fctNo].get<UnitNormal>().data()->data();
+    krnl.traction_q = result.data();
+    krnl.u(0) = u0.data();
     krnl.execute();
 }
 
 
-void Elasticity::derivative_traction_boundary(std::size_t fctNo, FacetInfo const& info, Tensor3<double>& result) const {
-    assert(result.size() == tensor::Dgrad_u_Du::size());
+void Elasticity::derivative_traction_skeleton(std::size_t fctNo, FacetInfo const& info, Tensor<double,4>& result) const {
+    assert(result.size() == tensor::D_traction_q_Du::size());
 
-    double Dx_q0[tensor::d_x::size(0)];
+    double Dx_q0[tensor::Dx_q::size(0)];
+    double Dx_q1[tensor::Dx_q::size(1)];
 
-    kernel::Dgrad_u_Du_bnd krnl;
+    kernel::Dx_q dxKrnl;
+    dxKrnl.Dx_q(0) = Dx_q0;
+    dxKrnl.Dx_q(1) = Dx_q1;
+    dxKrnl.g(0) = fct[fctNo].get<JInv0>().data()->data();
+    dxKrnl.g(1) = fct[fctNo].get<JInv1>().data()->data();
+    for (unsigned side = 0; side < 2; ++side) {
+        dxKrnl.Dxi_q(side) = Dxi_q[info.localNo[side]].data();
+        dxKrnl.execute(side);
+    }
+
+    kernel::D_traction_q_Du krnl;
     krnl.c00 = -penalty(info);
-    krnl.d_x(0) = Dx_q0;
-    krnl.d_xi(0) = Dxi_q[info.localNo[0]].data();
-    krnl.em(0) = matE_q_T[info.localNo[0]].data();
-    krnl.e(0) = E_q[info.localNo[0]].data();
-    krnl.g(0) = fct[fctNo].get<JInv0>().data()->data();
-    krnl.Dgrad_u_Du = result.data();
-    krnl.k(0) = 0;                          // review that
+    krnl.delta = init::delta::Values;
+    krnl.Dx_q(0) = Dx_q0;
+    krnl.Dx_q(1) = Dx_q1;
+    krnl.E_q(0) = E_q[info.localNo[0]].data();
+    krnl.E_q(1) = E_q[info.localNo[1]].data();
+    krnl.lam_q(0) = fctPre[fctNo].get<lam_q_0>().data();
+    krnl.lam_q(1) = fctPre[fctNo].get<lam_q_1>().data();
+    krnl.mu_q(0) = fctPre[fctNo].get<mu_q_0>().data();
+    krnl.mu_q(1) = fctPre[fctNo].get<mu_q_1>().data();
     krnl.n_unit_q = fct[fctNo].get<UnitNormal>().data()->data();
+    krnl.D_traction_q_Du = result.data();
+    krnl.execute();
+}
+
+
+void Elasticity::derivative_traction_boundary(std::size_t fctNo, FacetInfo const& info, Tensor<double,4>& result) const {
+    assert(result.size() == tensor::traction_q::size());
+
+    double Dx_q0[tensor::Dx_q::size(0)];
+
+    kernel::Dx_q dxKrnl;
+    dxKrnl.Dx_q(0) = Dx_q0;
+    dxKrnl.g(0) = fct[fctNo].get<JInv0>().data()->data();
+    dxKrnl.Dxi_q(0) = Dxi_q[info.localNo[0]].data();
+    dxKrnl.execute(0);
+
+    kernel::D_traction_q_Du_bnd krnl;
+    krnl.c00 = -penalty(info);
+    krnl.delta = init::delta::Values;
+    krnl.Dx_q(0) = Dx_q0;
+    krnl.E_q(0) = E_q[info.localNo[0]].data();
+    krnl.lam_q(0) = fctPre[fctNo].get<lam_q_0>().data();
+    krnl.mu_q(0) = fctPre[fctNo].get<mu_q_0>().data();
+    krnl.n_unit_q = fct[fctNo].get<UnitNormal>().data()->data();
+    krnl.D_traction_q_Du = result.data();
     krnl.execute();
 }
 

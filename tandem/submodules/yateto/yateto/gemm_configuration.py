@@ -15,11 +15,12 @@ class GemmTool(ABC):
     self.includes = includes
 
   @abstractmethod
-  def preference(self, m, n, k, sparseA, sparseB, transA, transB, alpha, beta):
+  def preference(self, m, n, k, sparseA, sparseB, transA, transB, alpha, beta, alignedA, alignedC):
     pass
 
   @abstractmethod
-  def supported(self, m, n, k, sparseA, sparseB, transA, transB, alpha, beta):
+  def supported(self, m, n, k, sparseA, sparseB, transA, transB, alpha,
+                beta, alignedA, alignedC, target):
     pass
 
 class BLASlike(GemmTool):
@@ -27,16 +28,17 @@ class BLASlike(GemmTool):
     super().__init__(operation_name, includes)
     self.c_code_init = c_code_init
 
-  def preference(self, m, n, k, sparseA, sparseB, transA, transB, alpha, beta):
+  def preference(self, m, n, k, sparseA, sparseB, transA, transB, alpha, beta, alignedA, alignedC):
     return Preference.MODERATE
 
-  def supported(self, m, n, k, sparseA, sparseB, transA, transB, alpha, beta):
-    return (not sparseA and not sparseB)
+  def supported(self, m, n, k, sparseA, sparseB, transA, transB, alpha,
+                beta, alignedA, alignedC, target):
+    return (not sparseA and not sparseB and target == 'cpu')
 
   def bool2Trans(self, trans):
     return 'Cblas{}Trans'.format('' if trans else 'No')
 
-  def call(self, transA, transB, M, N, K, alpha, A, ldA, B, ldB, beta, C, ldC):
+  def call(self, transA, transB, M, N, K, alpha, A, ldA, alignedA, B, ldB, beta, C, ldC, alignedC):
     parameters = [
       'CblasColMajor',
       self.bool2Trans(transA),
@@ -63,7 +65,7 @@ class BLIS(BLASlike):
   def bool2Trans(self, trans):
     return 'BLIS{}TRANSPOSE'.format('_' if trans else '_NO_')
 
-  def call(self, transA, transB, M, N, K, alpha, A, ldA, B, ldB, beta, C, ldC):
+  def call(self, transA, transB, M, N, K, alpha, A, ldA, alignedA, B, ldB, beta, C, ldC, alignedC):
     init = '_blis_alpha = {}; _blis_beta = {};'.format(alpha, beta)
     parameters = [
       self.bool2Trans(transA),
@@ -79,8 +81,9 @@ class Eigen(BLASlike):
     super().__init__(None, ['Eigen/Eigen'])
     self._arch = arch
 
-  def supported(self, m, n, k, sparseA, sparseB, transA, transB, alpha, beta):
-    return (not sparseA and not sparseB)
+  def supported(self, m, n, k, sparseA, sparseB, transA, transB, alpha,
+                beta, alignedA, alignedC, target):
+    return (not sparseA and not sparseB and target == 'cpu')
 
   def bool2Trans(self, trans):
     return '.transpose()' if trans else ''
@@ -88,25 +91,24 @@ class Eigen(BLASlike):
   def sizeTrans(self, rows, cols, trans):
     return '{},{}'.format(cols,rows) if trans else '{},{}'.format(rows,cols)
 
-  def align(self, ld):
+  def align(self, ld, is_aligned):
     aligned = 'Unaligned'
-    if self._arch.checkAlignment(ld) and self._arch.alignment in [16,32,64,128]:
+    if is_aligned and self._arch.checkAlignment(ld) and self._arch.alignment in [16,32,64,128]:
       aligned = 'Aligned{}'.format(self._arch.alignment)
     return aligned
 
-  def call(self, transA, transB, M, N, K, alpha, A, ldA, B, ldB, beta, C, ldC):
+  def call(self, transA, transB, M, N, K, alpha, A, ldA, alignedA, B, ldB, beta, C, ldC, alignedC):
     AxB = '{alpha}_mapA{transA}*_mapB{transB}'.format(
             alpha=str(alpha) + '*' if alpha != 1.0 else '',
             transA=self.bool2Trans(transA), transB=self.bool2Trans(transB),
           )
     code = ''
     if beta == 1.0:
-      code = '_mapC += {AxB};'.format(AxB=AxB)
+      code = '_mapC.noalias() += {AxB};'.format(AxB=AxB)
     elif beta == 0.0:
       code = '_mapC = {AxB};'.format(AxB=AxB)
     else:
-      code = '_mapC = {AxB} + {beta}*_mapC;'.format(AxB=AxB, beta=beta)
-
+      code = '_mapC *= {beta}; _mapC.noalias() += {AxB};'.format(AxB=AxB, beta=beta)
     code = """{{
   using Eigen::Matrix;
   using Eigen::Map;
@@ -120,7 +122,7 @@ class Eigen(BLASlike):
                sizeA=self.sizeTrans(M,K,transA),
                sizeB=self.sizeTrans(K,N,transB),
                ldA=ldA, ldB=ldB, ldC=ldC, A=A, B=B, C=C,
-               alignA=self.align(ldA), alignC=self.align(ldC),
+               alignA=self.align(ldA, alignedA), alignC=self.align(ldC, alignedC),
                code=code)
     return code
 
@@ -130,22 +132,24 @@ class CodeGenerator(GemmTool):
     self.cmd = cmd
     self._arch = arch
 
-  @abstractmethod
-  def supported(self, m, n, k, sparseA, sparseB, transA, transB, alpha, beta):
-    pass
-
 class LIBXSMM(CodeGenerator):
   def __init__(self, arch, threshold: int = 128):
     super().__init__('libxsmm', [], 'libxsmm_gemm_generator', arch)
     self._threshold = threshold
 
   def _archSupported(self):
-    return self._arch.name.lower() in {'noarch', 'wsm', 'snb', 'hsw', 'skx', 'knc', 'knl'}
+    supported_set = {'noarch', 'wsm', 'snb', 'hsw', 'skx', 'knc', 'knl', 'rome'}
 
-  def supported(self, m, n, k, sparseA, sparseB, transA, transB, alpha, beta):
-    return self._archSupported() and not (sparseA and sparseB) and (not transA and not transB) and alpha == 1.0 and beta in [0.0, 1.0]
+    if self._arch.name.lower() in supported_set:
+      return True
+    else:
+      return self._arch.host_name and self._arch.host_name.lower() in supported_set
 
-  def preference(self, m, n, k, sparseA, sparseB, transA, transB, alpha, beta):
+  def supported(self, m, n, k, sparseA, sparseB, transA, transB, alpha,
+                beta, alignedA, alignedC, target):
+    return self._archSupported() and not (sparseA and sparseB) and (not transA and not transB) and alpha == 1.0 and beta in [0.0, 1.0] and target == 'cpu'
+
+  def preference(self, m, n, k, sparseA, sparseB, transA, transB, alpha, beta, alignedA, alignedC):
     if sparseA:
       return Preference.LOW
     if sparseB:
@@ -160,12 +164,19 @@ class PSpaMM(CodeGenerator):
     self._threshold = threshold
 
   def _archSupported(self):
-    return self._arch.name.lower() in {'thunderx2t99', 'knl', 'skx'}
+    supported_set = {'thunderx2t99', 'knl', 'skx'}
+    if self._arch.name.lower() in supported_set:
+      return True
+    else:
+      return self._arch.host_name and self._arch.host_name.lower() in supported_set
 
-  def supported(self, m, n, k, sparseA, sparseB, transA, transB, alpha, beta):
-    return self._archSupported() and self._arch.checkAlignment(m) and not sparseA and (not transA and not transB)
 
-  def preference(self, m, n, k, sparseA, sparseB, transA, transB, alpha, beta):
+  def supported(self, m, n, k, sparseA, sparseB, transA, transB, alpha,
+                beta, alignedA, alignedC, target):
+    return self._archSupported() and alignedA and alignedC and \
+           not sparseA and (not transA and not transB) and target == 'cpu'
+
+  def preference(self, m, n, k, sparseA, sparseB, transA, transB, alpha, beta, alignedA, alignedC):
     if sparseB:
       return Preference.HIGH
     if (m*n*k)**(1./3.) <= self._threshold:
@@ -179,16 +190,42 @@ class PSpaMM(CodeGenerator):
   def blockSize(self, m, n, k):
     return dict()
 
+
+class GemmForge(CodeGenerator):
+  def __init__(self, arch, threshold: int = 256):
+    super().__init__('', ['gemmgen_aux.h'], '', arch)
+    self._threshold = threshold
+
+  def _is_arch_supported(self):
+    return self._arch.name.lower() in {'nvidia'}
+
+  def supported(self, m, n, k, sparseA, sparseB, transA, transB, alpha,
+                beta, alignedA, alignedC, target):
+    return self._is_arch_supported() and not (sparseA or sparseB) and target == 'gpu'
+
+  def preference(self, m, n, k, sparseA, sparseB, transA, transB, alpha, beta, alignedA, alignedC):
+    if sparseA and sparseB:
+      return Preference.LOWEST
+    if not transA:
+      return Preference.HIGHEST
+    if m < 16:
+      return Preference.LOWEST
+    return Preference.HIGH
+
+
 class GeneratorCollection(object):
   def __init__(self, gemmTools: List[GemmTool]):
     self.gemmTools = gemmTools
     self.selected = set()
 
-  def getGemmTool(self, m, n, k, sparseA, sparseB, transA, transB, alpha, beta):
+  def getGemmTool(self, m, n, k, sparseA, sparseB, transA, transB, alpha,
+                  beta, alignedA, alignedC, target):
     tools = dict()
     for gemmTool in reversed(self.gemmTools):
-      if gemmTool.supported(m, n, k, sparseA, sparseB, transA, transB, alpha, beta):
-        tools[gemmTool.preference(m, n, k, sparseA, sparseB, transA, transB, alpha, beta)] = gemmTool
+      if gemmTool.supported(m, n, k, sparseA, sparseB, transA, transB, alpha,
+                            beta, alignedA, alignedC, target):
+        tools[gemmTool.preference(m, n, k, sparseA, sparseB, transA, transB, alpha, beta,
+                                  alignedA, alignedC)] = gemmTool
 
     select = None
     if tools:
@@ -208,15 +245,20 @@ class DefaultGeneratorCollection(GeneratorCollection):
     blis = BLIS(arch)
     openblas = OpenBLAS(arch)
     eigen = Eigen(arch)
+    forge = GemmForge(arch)
     defaults = {
       'snb' : [libxsmm, mkl, blis, eigen],
       'hsw' : [libxsmm, mkl, blis, eigen],
+      'rome' : [libxsmm, blis, eigen],
       'knl' : [libxsmm, pspamm, mkl, blis, eigen],
       'skx' : [libxsmm, pspamm, mkl, blis, eigen],
-      'thunderx2t99' : [pspamm, openblas, blis, eigen]
+      'thunderx2t99' : [pspamm, openblas, blis, eigen],
+      'nvidia': [forge]
     }
 
     if arch.name in defaults:
       self.gemmTools = defaults[arch.name]
+      if arch.host_name:
+        self.gemmTools.extend(defaults[arch.host_name])
     else:
       raise Exception("Default generator collection for architecture {} is missing.".format(arch))

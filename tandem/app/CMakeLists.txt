@@ -59,6 +59,7 @@ function(generate_code APP)
             "--arch" "dnoarch"
             "--options" ${OPTIONS_FILE_NAME}
             "--outputDir" ${OUTPUT_DIR}
+            "--petsc_memalign" ${PETSC_MEMALIGN}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/kernels
         DEPENDS
             ${OPTIONS_FILE_NAME}
@@ -116,6 +117,7 @@ add_library(app-common
     localoperator/Elasticity.cpp
     localoperator/Poisson.cpp
 )
+target_compile_definitions(app-common PUBLIC "ALIGNMENT=${ALIGNMENT}")
 target_link_libraries(app-common PUBLIC
     poisson-kernels-lib
     poisson_adapter-kernels-lib

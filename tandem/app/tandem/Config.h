@@ -1,6 +1,8 @@
 #ifndef CONFIG_20200825_H
 #define CONFIG_20200825_H
 
+#include "GlobalVariables.h"
+
 #include "common/MeshConfig.h"
 #include "tandem/AdaptiveOutputStrategy.h"
 #include "tandem/FrictionConfig.h"
@@ -37,6 +39,7 @@ struct SolverConfigSpecific {
     bool custom_time_step_adapter;
     std::string bdf_ksp_type;
     std::string bdf_pc_type;
+    tndm::Formulations formulation;
 };
 
 struct SolverConfigGeneral {

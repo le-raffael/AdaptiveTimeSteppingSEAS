@@ -1,19 +1,73 @@
-\BOOKMARK [0][-]{chapter.1}{Introduction and Motivation}{}% 1
-\BOOKMARK [1][-]{section.1.1}{Earthquake Simulations}{chapter.1}% 2
-\BOOKMARK [2][-]{subsection.1.1.1}{Friction Laws}{section.1.1}% 3
-\BOOKMARK [2][-]{subsection.1.1.2}{Sequences of Eartquakes and Aseismic Slip}{section.1.1}% 4
-\BOOKMARK [1][-]{section.1.2}{Differential Algebraic Equations \(DAE\)}{chapter.1}% 5
-\BOOKMARK [1][-]{section.1.3}{Time-adaptive Time Integration Methods}{chapter.1}% 6
-\BOOKMARK [2][-]{subsection.1.3.1}{Explicit RK methods}{section.1.3}% 7
-\BOOKMARK [2][-]{subsection.1.3.2}{Implicit BDF methods}{section.1.3}% 8
-\BOOKMARK [0][-]{chapter.2}{First Experiments}{}% 9
-\BOOKMARK [1][-]{section.2.1}{Method of Manufactured Solutions}{chapter.2}% 10
-\BOOKMARK [1][-]{section.2.2}{Time integration}{chapter.2}% 11
-\BOOKMARK [1][-]{section.2.3}{Timestep Update}{chapter.2}% 12
-\BOOKMARK [2][-]{subsection.2.3.1}{Elementary Local Error Control}{section.2.3}% 13
-\BOOKMARK [1][-]{section.2.4}{Comparison of the Numerical Schemes}{chapter.2}% 14
-\BOOKMARK [2][-]{subsection.2.4.1}{Numerical solutions}{section.2.4}% 15
-\BOOKMARK [2][-]{subsection.2.4.2}{Quality of the error estimates}{section.2.4}% 16
-\BOOKMARK [0][-]{chapter.3}{Two-Dimensional SEAS model}{}% 17
-\BOOKMARK [1][-]{section.3.1}{Physical Description}{chapter.3}% 18
-\BOOKMARK [1][-]{section.3.2}{BP1 problem}{chapter.3}% 19
+\BOOKMARK [0][-]{chapter.1}{Introduction}{}% 1
+\BOOKMARK [0][-]{chapter.2}{Background and Theory}{}% 2
+\BOOKMARK [1][-]{section.2.1}{Simulating Sequences of Earthquake and Aseismic Slip \(SEAS\)}{chapter.2}% 3
+\BOOKMARK [2][-]{subsection.2.1.1}{General SEAS model}{section.2.1}% 4
+\BOOKMARK [2][-]{subsection.2.1.2}{Friction at the fault}{section.2.1}% 5
+\BOOKMARK [1][-]{section.2.2}{Differential Algebraic Equations \(DAE\)}{chapter.2}% 6
+\BOOKMARK [1][-]{section.2.3}{Time-adaptive Time Integration Methods}{chapter.2}% 7
+\BOOKMARK [2][-]{subsection.2.3.1}{Explicit RK methods}{section.2.3}% 8
+\BOOKMARK [2][-]{subsection.2.3.2}{Implicit BDF methods}{section.2.3}% 9
+\BOOKMARK [1][-]{section.2.4}{A Different Approach: Physically Motivated Time-Stepping}{chapter.2}% 10
+\BOOKMARK [0][-]{chapter.3}{First Experiments}{}% 11
+\BOOKMARK [1][-]{section.3.1}{Method of Manufactured Solutions}{chapter.3}% 12
+\BOOKMARK [1][-]{section.3.2}{Time integration}{chapter.3}% 13
+\BOOKMARK [1][-]{section.3.3}{Timestep Update}{chapter.3}% 14
+\BOOKMARK [2][-]{subsection.3.3.1}{Elementary Local Error Control}{section.3.3}% 15
+\BOOKMARK [1][-]{section.3.4}{Comparison of the Numerical Schemes}{chapter.3}% 16
+\BOOKMARK [2][-]{subsection.3.4.1}{Numerical solutions}{section.3.4}% 17
+\BOOKMARK [2][-]{subsection.3.4.2}{Quality of the error estimates}{section.3.4}% 18
+\BOOKMARK [0][-]{chapter.4}{Two-Dimensional SEAS model}{}% 19
+\BOOKMARK [1][-]{section.4.1}{BP1 Benchmark Problem}{chapter.4}% 20
+\BOOKMARK [1][-]{section.4.2}{Formulation of the Discontinous Galerkin}{chapter.4}% 21
+\BOOKMARK [1][-]{section.4.3}{Evolution of Quantities}{chapter.4}% 22
+\BOOKMARK [0][-]{chapter.5}{Four Formulations of the SEAS Problem}{}% 23
+\BOOKMARK [1][-]{section.5.1}{First Order Differential Equation}{chapter.5}% 24
+\BOOKMARK [2][-]{subsection.5.1.1}{Formulation as a first order ODE}{section.5.1}% 25
+\BOOKMARK [2][-]{subsection.5.1.2}{Formulation as a DAE}{section.5.1}% 26
+\BOOKMARK [2][-]{subsection.5.1.3}{Compact formulation as a DAE}{section.5.1}% 27
+\BOOKMARK [2][-]{subsection.5.1.4}{Verification of the Jacobian matrices}{section.5.1}% 28
+\BOOKMARK [2][-]{subsection.5.1.5}{Practical limitations of the Jacobian matrices}{section.5.1}% 29
+\BOOKMARK [2][-]{subsection.5.1.6}{Iterative solvers for the Jacobian matrices}{section.5.1}% 30
+\BOOKMARK [1][-]{section.5.2}{Second Order Differential Equation}{chapter.5}% 31
+\BOOKMARK [2][-]{subsection.5.2.1}{Derivation of the second order ODE}{section.5.2}% 32
+\BOOKMARK [2][-]{subsection.5.2.2}{Derivation of the analytic Jacobian}{section.5.2}% 33
+\BOOKMARK [1][-]{section.5.3}{Numerical Aspects and Implementation Details}{chapter.5}% 34
+\BOOKMARK [1][-]{section.5.4}{Time integration}{chapter.5}% 35
+\BOOKMARK [2][-]{subsection.5.4.1}{Implementation of the BDF schemes}{section.5.4}% 36
+\BOOKMARK [2][-]{subsection.5.4.2}{Switching between different methods}{section.5.4}% 37
+\BOOKMARK [2][-]{subsection.5.4.3}{Tolerances for the time integration}{section.5.4}% 38
+\BOOKMARK [1][-]{section.5.5}{Newton Iteration}{chapter.5}% 39
+\BOOKMARK [2][-]{subsection.5.5.1}{Convergence Properties}{section.5.5}% 40
+\BOOKMARK [2][-]{subsection.5.5.2}{Convergence issues with the compact DAE formulation}{section.5.5}% 41
+\BOOKMARK [2][-]{subsection.5.5.3}{Stopping criterion}{section.5.5}% 42
+\BOOKMARK [2][-]{subsection.5.5.4}{Iterative solvers for the Newton step update}{section.5.5}% 43
+\BOOKMARK [1][-]{section.5.6}{Data structure}{chapter.5}% 44
+\BOOKMARK [2][-]{subsection.5.6.1}{Block structure}{section.5.6}% 45
+\BOOKMARK [2][-]{subsection.5.6.2}{Memory requirements}{section.5.6}% 46
+\BOOKMARK [0][-]{chapter.6}{Results}{}% 47
+\BOOKMARK [1][-]{section.6.1}{Evolution of Physical Quantities}{chapter.6}% 48
+\BOOKMARK [1][-]{section.6.2}{Accuracy of the time integration}{chapter.6}% 49
+\BOOKMARK [1][-]{section.6.3}{Error estimation of the 2nd order ODE formulation}{chapter.6}% 50
+\BOOKMARK [1][-]{section.6.4}{Time adaptivity of BDF methods}{chapter.6}% 51
+\BOOKMARK [2][-]{subsection.6.4.1}{Quality of the error estimates}{section.6.4}% 52
+\BOOKMARK [2][-]{subsection.6.4.2}{Effect of the order on the timestep size}{section.6.4}% 53
+\BOOKMARK [1][-]{section.6.5}{Scalability}{chapter.6}% 54
+\BOOKMARK [0][-]{chapter.7}{Extension to 3D}{}% 55
+\BOOKMARK [1][-]{section.7.1}{Elasticity Equation}{chapter.7}% 56
+\BOOKMARK [2][-]{subsection.7.1.1}{Stress components at the fault}{section.7.1}% 57
+\BOOKMARK [2][-]{subsection.7.1.2}{Derivatives of the friction law}{section.7.1}% 58
+\BOOKMARK [1][-]{section.7.2}{Involved changes in the four formulations}{chapter.7}% 59
+\BOOKMARK [2][-]{subsection.7.2.1}{First order ODE}{section.7.2}% 60
+\BOOKMARK [2][-]{subsection.7.2.2}{Extended DAE}{section.7.2}% 61
+\BOOKMARK [2][-]{subsection.7.2.3}{Second order ODE}{section.7.2}% 62
+\BOOKMARK [1][-]{section.7.3}{Preliminary Results}{chapter.7}% 63
+\BOOKMARK [2][-]{subsection.7.3.1}{Evolution of quantities}{section.7.3}% 64
+\BOOKMARK [2][-]{subsection.7.3.2}{Performance metrics}{section.7.3}% 65
+\BOOKMARK [0][-]{section*.42}{Appendices}{}% 66
+\BOOKMARK [0][-]{Appendix.1.A}{Butcher tableaus of the used Runge-Kutta schemes}{}% 67
+\BOOKMARK [1][-]{section.1.A.1}{2nd order Bogacki-Shampine method}{Appendix.1.A}% 68
+\BOOKMARK [1][-]{section.1.A.2}{4th order Fehlberg method}{Appendix.1.A}% 69
+\BOOKMARK [1][-]{section.1.A.3}{5th order Dormand-Prince method}{Appendix.1.A}% 70
+\BOOKMARK [0][-]{Appendix.1.B}{Alternative derivation of the BDF method}{}% 71
+\BOOKMARK [0][-]{Appendix.1.C}{Reduced Jacobian system for the extended DAE formulation}{}% 72
+\BOOKMARK [0][-]{chapter*.43}{Bibliography}{}% 73

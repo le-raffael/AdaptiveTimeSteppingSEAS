@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.18 (TeX Live 2017/Debian) (preloaded format=pdflatex 2021.1.6)  11 APR 2021 12:34
+This is pdfTeX, Version 3.14159265-2.6-1.40.18 (TeX Live 2017/Debian) (preloaded format=pdflatex 2021.1.6)  10 MAY 2021 09:27
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -2290,32 +2290,79 @@ Package: titlesec 2016/03/21 v2.10.2 Sectioning titles
 \titlewidthlast=\dimen304
 \titlewidthfirst=\dimen305
 )
+(/usr/share/texmf/tex/latex/lm/lmodern.sty
+Package: lmodern 2009/10/30 v1.6 Latin Modern Fonts
+LaTeX Font Info:    Overwriting symbol font `operators' in version `normal'
+(Font)                  OT1/cmr/m/n --> OT1/lmr/m/n on input line 22.
+LaTeX Font Info:    Overwriting symbol font `letters' in version `normal'
+(Font)                  OML/cmm/m/it --> OML/lmm/m/it on input line 23.
+LaTeX Font Info:    Overwriting symbol font `symbols' in version `normal'
+(Font)                  OMS/cmsy/m/n --> OMS/lmsy/m/n on input line 24.
+LaTeX Font Info:    Overwriting symbol font `largesymbols' in version `normal'
+(Font)                  OMX/cmex/m/n --> OMX/lmex/m/n on input line 25.
+LaTeX Font Info:    Overwriting symbol font `operators' in version `bold'
+(Font)                  OT1/cmr/bx/n --> OT1/lmr/bx/n on input line 26.
+LaTeX Font Info:    Overwriting symbol font `letters' in version `bold'
+(Font)                  OML/cmm/b/it --> OML/lmm/b/it on input line 27.
+LaTeX Font Info:    Overwriting symbol font `symbols' in version `bold'
+(Font)                  OMS/cmsy/b/n --> OMS/lmsy/b/n on input line 28.
+LaTeX Font Info:    Overwriting symbol font `largesymbols' in version `bold'
+(Font)                  OMX/cmex/m/n --> OMX/lmex/m/n on input line 29.
+LaTeX Font Info:    Overwriting math alphabet `\mathbf' in version `normal'
+(Font)                  OT1/cmr/bx/n --> OT1/lmr/bx/n on input line 31.
+LaTeX Font Info:    Overwriting math alphabet `\mathsf' in version `normal'
+(Font)                  OT1/cmss/m/n --> OT1/lmss/m/n on input line 32.
+LaTeX Font Info:    Overwriting math alphabet `\mathit' in version `normal'
+(Font)                  OT1/cmr/m/it --> OT1/lmr/m/it on input line 33.
+LaTeX Font Info:    Overwriting math alphabet `\mathtt' in version `normal'
+(Font)                  OT1/cmtt/m/n --> OT1/lmtt/m/n on input line 34.
+LaTeX Font Info:    Overwriting math alphabet `\mathbf' in version `bold'
+(Font)                  OT1/cmr/bx/n --> OT1/lmr/bx/n on input line 35.
+LaTeX Font Info:    Overwriting math alphabet `\mathsf' in version `bold'
+(Font)                  OT1/cmss/bx/n --> OT1/lmss/bx/n on input line 36.
+LaTeX Font Info:    Overwriting math alphabet `\mathit' in version `bold'
+(Font)                  OT1/cmr/bx/it --> OT1/lmr/bx/it on input line 37.
+LaTeX Font Info:    Overwriting math alphabet `\mathtt' in version `bold'
+(Font)                  OT1/cmtt/m/n --> OT1/lmtt/m/n on input line 38.
+)
+(/usr/share/texlive/texmf-dist/tex/latex/appendix/appendix.sty
+Package: appendix 2009/09/02 v1.2b extra appendix facilities
+\c@@pps=\count316
+\c@@ppsavesec=\count317
+\c@@ppsaveapp=\count318
+)
 (/usr/share/texlive/texmf-dist/tex/latex/base/fontenc.sty
 Package: fontenc 2017/04/05 v2.0i Standard LaTeX package
 
 (/usr/share/texlive/texmf-dist/tex/latex/base/t1enc.def
 File: t1enc.def 2017/04/05 v2.0i Standard LaTeX file
 LaTeX Font Info:    Redeclaring font encoding T1 on input line 48.
-)) (./main.aux
+))
+   defining Unicode char U+2212 (decimal 8722)
+ (./main.aux
 (./Introduction.aux) (./FirstExperiments.aux) (./TwoDimensionalSEASProblem.aux)
 (./FourFormulationsForSEAS.aux) (./Results.aux) (./Extensions.aux))
 \openout1 = `main.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 30.
-LaTeX Font Info:    ... okay on input line 30.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 30.
-LaTeX Font Info:    ... okay on input line 30.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 30.
-LaTeX Font Info:    ... okay on input line 30.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 30.
-LaTeX Font Info:    ... okay on input line 30.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 30.
-LaTeX Font Info:    ... okay on input line 30.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 30.
-LaTeX Font Info:    ... okay on input line 30.
-LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 30.
-LaTeX Font Info:    ... okay on input line 30.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 34.
+LaTeX Font Info:    ... okay on input line 34.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 34.
+LaTeX Font Info:    ... okay on input line 34.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 34.
+LaTeX Font Info:    ... okay on input line 34.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 34.
+LaTeX Font Info:    ... okay on input line 34.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 34.
+LaTeX Font Info:    ... okay on input line 34.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 34.
+LaTeX Font Info:    ... okay on input line 34.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 34.
+LaTeX Font Info:    ... okay on input line 34.
+LaTeX Font Info:    Try loading font information for T1+lmr on input line 34.
 
+(/usr/share/texmf/tex/latex/lm/t1lmr.fd
+File: t1lmr.fd 2009/10/30 v1.6 Font defs for Latin Modern
+)
 *geometry* driver: auto-detecting
 *geometry* detected driver: pdftex
 *geometry* verbose mode - [ preamble ] result:
@@ -2353,16 +2400,16 @@ LaTeX Font Info:    ... okay on input line 30.
 ABD: EveryShipout initializing macros
 (/usr/share/texlive/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
 [Loading MPS to PDF converter (version 2006.09.02).]
-\scratchcounter=\count316
+\scratchcounter=\count319
 \scratchdimen=\dimen306
 \scratchbox=\box65
-\nofMPsegments=\count317
-\nofMParguments=\count318
+\nofMPsegments=\count320
+\nofMParguments=\count321
 \everyMPshowfont=\toks39
-\MPscratchCnt=\count319
+\MPscratchCnt=\count322
 \MPscratchDim=\dimen307
-\MPnumerator=\count320
-\makeMPintoPDFobject=\count321
+\MPnumerator=\count323
+\makeMPintoPDFobject=\count324
 \everyMPtoPDFconversion=\toks40
 ) (/usr/share/texlive/texmf-dist/tex/latex/oberdiek/epstopdf-base.sty
 Package: epstopdf-base 2016/05/15 v2.6 Base part for package epstopdf
@@ -2468,7 +2515,7 @@ Package caption Info: float package is loaded.
 Package caption Info: hyperref package is loaded.
 Package caption Info: End \AtBeginDocument code.
 \AtBeginShipoutBox=\box66
-Package hyperref Info: Link coloring OFF on input line 30.
+Package hyperref Info: Link coloring OFF on input line 34.
 
 (/usr/share/texlive/texmf-dist/tex/latex/hyperref/nameref.sty
 Package: nameref 2016/05/21 v2.44 Cross-referencing by name of section
@@ -2476,67 +2523,152 @@ Package: nameref 2016/05/21 v2.44 Cross-referencing by name of section
 (/usr/share/texlive/texmf-dist/tex/generic/oberdiek/gettitlestring.sty
 Package: gettitlestring 2016/05/16 v1.5 Cleanup title references (HO)
 )
-\c@section@level=\count322
+\c@section@level=\count325
 )
-LaTeX Info: Redefining \ref on input line 30.
-LaTeX Info: Redefining \pageref on input line 30.
-LaTeX Info: Redefining \nameref on input line 30.
+LaTeX Info: Redefining \ref on input line 34.
+LaTeX Info: Redefining \pageref on input line 34.
+LaTeX Info: Redefining \nameref on input line 34.
 
 (./main.out) (./main.out)
 \@outlinefile=\write5
 \openout5 = `main.out'.
 
-\c__siunitx_mathsf_int=\count323
-LaTeX Font Info:    Try loading font information for U+msa on input line 30.
+\c__siunitx_mathsf_int=\count326
+LaTeX Font Info:    Try loading font information for OT1+lmr on input line 34.
+ (/usr/share/texmf/tex/latex/lm/ot1lmr.fd
+File: ot1lmr.fd 2009/10/30 v1.6 Font defs for Latin Modern
+)
+LaTeX Font Info:    Try loading font information for OML+lmm on input line 34.
+
+(/usr/share/texmf/tex/latex/lm/omllmm.fd
+File: omllmm.fd 2009/10/30 v1.6 Font defs for Latin Modern
+)
+LaTeX Font Info:    Try loading font information for OMS+lmsy on input line 34.
+
+
+(/usr/share/texmf/tex/latex/lm/omslmsy.fd
+File: omslmsy.fd 2009/10/30 v1.6 Font defs for Latin Modern
+)
+LaTeX Font Info:    Try loading font information for OMX+lmex on input line 34.
+
+
+(/usr/share/texmf/tex/latex/lm/omxlmex.fd
+File: omxlmex.fd 2009/10/30 v1.6 Font defs for Latin Modern
+)
+LaTeX Font Info:    External font `lmex10' loaded for size
+(Font)              <10> on input line 34.
+LaTeX Font Info:    External font `lmex10' loaded for size
+(Font)              <7> on input line 34.
+LaTeX Font Info:    External font `lmex10' loaded for size
+(Font)              <5> on input line 34.
+LaTeX Font Info:    Try loading font information for U+msa on input line 34.
 
 (/usr/share/texlive/texmf-dist/tex/latex/amsfonts/umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Try loading font information for U+msb on input line 30.
+LaTeX Font Info:    Try loading font information for U+msb on input line 34.
 
 (/usr/share/texlive/texmf-dist/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 )
-LaTeX Font Info:    Try loading font information for U+stmry on input line 30.
+LaTeX Font Info:    Try loading font information for U+stmry on input line 34.
 
 (/usr/share/texlive/texmf-dist/tex/latex/stmaryrd/Ustmry.fd)
-\c__siunitx_mathtt_int=\count324
+LaTeX Font Info:    Try loading font information for OT1+lmss on input line 34.
+
+
+(/usr/share/texmf/tex/latex/lm/ot1lmss.fd
+File: ot1lmss.fd 2009/10/30 v1.6 Font defs for Latin Modern
+)
+\c__siunitx_mathtt_int=\count327
+LaTeX Font Info:    Try loading font information for OT1+lmtt on input line 34.
+
+
+(/usr/share/texmf/tex/latex/lm/ot1lmtt.fd
+File: ot1lmtt.fd 2009/10/30 v1.6 Font defs for Latin Modern
+)
+LaTeX Font Info:    External font `lmex10' loaded for size
+(Font)              <12> on input line 37.
+LaTeX Font Info:    External font `lmex10' loaded for size
+(Font)              <8> on input line 37.
+LaTeX Font Info:    External font `lmex10' loaded for size
+(Font)              <6> on input line 37.
  [1
 
-{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}] (./main.toc)
+{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}]pdfTeX warning (ext4): dest
+ination with the same identifier (name{page.1}) has been already used, duplicat
+e ignored
+<to be read again> 
+                   \relax 
+l.52 \tableofcontents
+                      [1] (./main.toc [2
+
+] [3])
 \tf@toc=\write6
 \openout6 = `main.toc'.
 
-pdfTeX warning (ext4): destination with the same identifier (name{page.1}) has 
-been already used, duplicate ignored
-<to be read again> 
-                   \relax 
-l.36 \include{Introduction}
-                            [1
-
-]
+ [4]
 \openout2 = `Introduction.aux'.
 
  (./Introduction.tex
 Chapter 1.
-[2
+[5
 
 
 ]
-Underfull \hbox (badness 10000) in paragraph at lines 61--63
+Chapter 2.
+
+Overfull \hbox (16.83392pt too wide) in paragraph at lines 6--6
+|[]\T1/lmr/bx/n/14.4 Simulating Se-quences of Earth-quake and Aseis-mic Slip (S
+EAS)| 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 30--32
 
  []
 
-[3]) [4]
+[6
+
+]
+<images/generalSEASModel.png, id=430, 585.18625pt x 461.725pt>
+File: images/generalSEASModel.png Graphic file (type png)
+<use images/generalSEASModel.png>
+Package pdftex.def Info: images/generalSEASModel.png  used on input line 37.
+(pdftex.def)             Requested size: 136.57462pt x 107.75858pt.
+ [7 <./images/generalSEASModel.png (PNG copy)>]
+
+Package caption Warning: \label without proper reference on input line 84.
+See the caption package documentation for explanation.
+
+
+LaTeX Warning: Reference `fig:DependencyParametersAandB' on page 8 undefined on
+ input line 79.
+
+<images/ParametersAandBExperimental.png, id=460, 1135.24126pt x 718.685pt>
+File: images/ParametersAandBExperimental.png Graphic file (type png)
+<use images/ParametersAandBExperimental.png>
+Package pdftex.def Info: images/ParametersAandBExperimental.png  used on input 
+line 83.
+(pdftex.def)             Requested size: 318.66948pt x 201.73486pt.
+[8 <./images/ParametersAandBExperimental.png>]
+
+Package hyperref Warning: No autoref name for `Appendix' on input line 135.
+
+[9]
+
+Package hyperref Warning: No autoref name for `Appendix' on input line 153.
+
+[10]) [11] [12]
 \openout2 = `FirstExperiments.aux'.
 
  (./FirstExperiments.tex
-Chapter 2.
+Chapter 3.
 
-LaTeX Warning: Reference `eq:second_DAE_algeb' on page 5 undefined on input lin
-e 20.
+LaTeX Warning: Reference `eq:second_DAE_algeb' on page 13 undefined on input li
+ne 20.
 
-[5
+[13
 
 
 
@@ -2545,64 +2677,63 @@ Underfull \hbox (badness 10000) in paragraph at lines 41--43
 
  []
 
-[6]
-<images/analysis_RKF45_TS.png, id=207, 722.7pt x 722.7pt>
+[14]
+<images/analysis_RKF45_TS.png, id=556, 722.7pt x 722.7pt>
 File: images/analysis_RKF45_TS.png Graphic file (type png)
 <use images/analysis_RKF45_TS.png>
 Package pdftex.def Info: images/analysis_RKF45_TS.png  used on input line 83.
 (pdftex.def)             Requested size: 145.68144pt x 145.67326pt.
-<images/analysis_RKF45_NI.png, id=209, 722.7pt x 722.7pt>
+<images/analysis_RKF45_NI.png, id=557, 722.7pt x 722.7pt>
 File: images/analysis_RKF45_NI.png Graphic file (type png)
 <use images/analysis_RKF45_NI.png>
 Package pdftex.def Info: images/analysis_RKF45_NI.png  used on input line 89.
 (pdftex.def)             Requested size: 145.68144pt x 145.67326pt.
-<images/analysis_RKF45_psi.png, id=210, 722.7pt x 722.7pt>
+<images/analysis_RKF45_psi.png, id=558, 722.7pt x 722.7pt>
 File: images/analysis_RKF45_psi.png Graphic file (type png)
 <use images/analysis_RKF45_psi.png>
 Package pdftex.def Info: images/analysis_RKF45_psi.png  used on input line 95.
 (pdftex.def)             Requested size: 145.68144pt x 145.67326pt.
-<images/analysis_BDF12_TS.png, id=213, 722.7pt x 722.7pt>
+<images/analysis_BDF12_TS.png, id=561, 722.7pt x 722.7pt>
 File: images/analysis_BDF12_TS.png Graphic file (type png)
 <use images/analysis_BDF12_TS.png>
 Package pdftex.def Info: images/analysis_BDF12_TS.png  used on input line 108.
 (pdftex.def)             Requested size: 145.68144pt x 145.67326pt.
-<images/analysis_BDF12_NI.png, id=214, 722.7pt x 722.7pt>
+<images/analysis_BDF12_NI.png, id=562, 722.7pt x 722.7pt>
 File: images/analysis_BDF12_NI.png Graphic file (type png)
 <use images/analysis_BDF12_NI.png>
 Package pdftex.def Info: images/analysis_BDF12_NI.png  used on input line 114.
 (pdftex.def)             Requested size: 145.68144pt x 145.67326pt.
-<images/analysis_BDF12_psi.png, id=215, 722.7pt x 722.7pt>
+<images/analysis_BDF12_psi.png, id=563, 722.7pt x 722.7pt>
 File: images/analysis_BDF12_psi.png Graphic file (type png)
 <use images/analysis_BDF12_psi.png>
 Package pdftex.def Info: images/analysis_BDF12_psi.png  used on input line 120.
 
 (pdftex.def)             Requested size: 145.68144pt x 145.67326pt.
- [7 <./images/analysis_RKF45_TS.png> <./images/analysis_RKF45_NI.png> <./images
-/analysis_RKF45_psi.png>]
-<images/analysis_BDF23_TS.png, id=236, 722.7pt x 722.7pt>
+ [15 <./images/analysis_RKF45_TS.png> <./images/analysis_RKF45_NI.png> <./image
+s/analysis_RKF45_psi.png>]
+<images/analysis_BDF23_TS.png, id=581, 722.7pt x 722.7pt>
 File: images/analysis_BDF23_TS.png Graphic file (type png)
 <use images/analysis_BDF23_TS.png>
 Package pdftex.def Info: images/analysis_BDF23_TS.png  used on input line 133.
 (pdftex.def)             Requested size: 145.68144pt x 145.67326pt.
-<images/analysis_BDF23_NI.png, id=237, 722.7pt x 722.7pt>
+<images/analysis_BDF23_NI.png, id=582, 722.7pt x 722.7pt>
 File: images/analysis_BDF23_NI.png Graphic file (type png)
 <use images/analysis_BDF23_NI.png>
 Package pdftex.def Info: images/analysis_BDF23_NI.png  used on input line 139.
 (pdftex.def)             Requested size: 145.68144pt x 145.67326pt.
-<images/analysis_BDF23_psi.png, id=238, 722.7pt x 722.7pt>
+<images/analysis_BDF23_psi.png, id=583, 722.7pt x 722.7pt>
 File: images/analysis_BDF23_psi.png Graphic file (type png)
 <use images/analysis_BDF23_psi.png>
 Package pdftex.def Info: images/analysis_BDF23_psi.png  used on input line 145.
 
 (pdftex.def)             Requested size: 145.68144pt x 145.67326pt.
-LaTeX Font Info:    Try loading font information for OMS+cmr on input line 155.
+LaTeX Font Info:    Try loading font information for OMS+lmr on input line 155.
 
-
-(/usr/share/texlive/texmf-dist/tex/latex/base/omscmr.fd
-File: omscmr.fd 2014/09/29 v2.5h Standard LaTeX font definitions
+ (/usr/share/texmf/tex/latex/lm/omslmr.fd
+File: omslmr.fd 2009/10/30 v1.6 Font defs for Latin Modern
 )
-LaTeX Font Info:    Font shape `OMS/cmr/m/n' in size <10> not available
-(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 155.
+LaTeX Font Info:    Font shape `OMS/lmr/m/n' in size <10> not available
+(Font)              Font shape `OMS/lmsy/m/n' tried instead on input line 155.
 
 Underfull \hbox (badness 10000) in paragraph at lines 160--164
 
@@ -2613,612 +2744,316 @@ Underfull \hbox (badness 10000) in paragraph at lines 166--167
 
  []
 
-[8 <./images/analysis_BDF12_TS.png> <./images/analysis_BDF12_NI.png> <./images/
-analysis_BDF12_psi.png> <./images/analysis_BDF23_TS.png> <./images/analysis_BDF
-23_NI.png> <./images/analysis_BDF23_psi.png>]
-<images/timeEvolutionValues.png, id=254, 681.0243pt x 406.3983pt>
+[16 <./images/analysis_BDF12_TS.png> <./images/analysis_BDF12_NI.png> <./images
+/analysis_BDF12_psi.png> <./images/analysis_BDF23_TS.png> <./images/analysis_BD
+F23_NI.png> <./images/analysis_BDF23_psi.png>]
+<images/timeEvolutionValues.png, id=599, 681.0243pt x 406.3983pt>
 File: images/timeEvolutionValues.png Graphic file (type png)
 <use images/timeEvolutionValues.png>
 Package pdftex.def Info: images/timeEvolutionValues.png  used on input line 176
 .
 (pdftex.def)             Requested size: 195.75163pt x 116.8107pt.
-<images/timeEvolutionDT.png, id=255, 629.2308pt x 433.8609pt>
+<images/timeEvolutionDT.png, id=600, 629.2308pt x 433.8609pt>
 File: images/timeEvolutionDT.png Graphic file (type png)
 <use images/timeEvolutionDT.png>
 Package pdftex.def Info: images/timeEvolutionDT.png  used on input line 182.
 (pdftex.def)             Requested size: 195.75163pt x 134.97214pt.
- [9 <./images/timeEvolutionValues.png> <./images/timeEvolutionDT.png>]
-<images/timeEvolutionPSIerror.png, id=270, 601.2864pt x 440.847pt>
+ [17 <./images/timeEvolutionValues.png> <./images/timeEvolutionDT.png>]
+<images/timeEvolutionPSIerror.png, id=615, 601.2864pt x 440.847pt>
 File: images/timeEvolutionPSIerror.png Graphic file (type png)
 <use images/timeEvolutionPSIerror.png>
 Package pdftex.def Info: images/timeEvolutionPSIerror.png  used on input line 1
 97.
 (pdftex.def)             Requested size: 195.75163pt x 143.51573pt.
-<images/timeEvolutionVerror.png, id=271, 651.1527pt x 425.6703pt>
+<images/timeEvolutionVerror.png, id=616, 651.1527pt x 425.6703pt>
 File: images/timeEvolutionVerror.png Graphic file (type png)
 <use images/timeEvolutionVerror.png>
 Package pdftex.def Info: images/timeEvolutionVerror.png  used on input line 203
 .
 (pdftex.def)             Requested size: 195.75163pt x 127.96837pt.
-<images/errorEstimateRKF45.png, id=275, 722.7pt x 505.89pt>
+<images/errorEstimateRKF45.png, id=620, 722.7pt x 505.89pt>
 File: images/errorEstimateRKF45.png Graphic file (type png)
 <use images/errorEstimateRKF45.png>
 Package pdftex.def Info: images/errorEstimateRKF45.png  used on input line 220.
 
 (pdftex.def)             Requested size: 145.68144pt x 101.97128pt.
-<images/errorEstimateBDF12.png, id=276, 722.7pt x 505.89pt>
+<images/errorEstimateBDF12.png, id=621, 722.7pt x 505.89pt>
 File: images/errorEstimateBDF12.png Graphic file (type png)
 <use images/errorEstimateBDF12.png>
 Package pdftex.def Info: images/errorEstimateBDF12.png  used on input line 226.
 
 (pdftex.def)             Requested size: 145.68144pt x 101.97128pt.
-<images/errorEstimateBDF23.png, id=277, 722.7pt x 505.89pt>
+<images/errorEstimateBDF23.png, id=622, 722.7pt x 505.89pt>
 File: images/errorEstimateBDF23.png Graphic file (type png)
 <use images/errorEstimateBDF23.png>
 Package pdftex.def Info: images/errorEstimateBDF23.png  used on input line 232.
 
 (pdftex.def)             Requested size: 145.68144pt x 101.97128pt.
- [10 <./images/timeEvolutionPSIerror.png> <./images/timeEvolutionVerror.png>]) 
-[11 <./images/errorEstimateRKF45.png> <./images/errorEstimateBDF12.png> <./imag
+ [18 <./images/timeEvolutionPSIerror.png> <./images/timeEvolutionVerror.png>]) 
+[19 <./images/errorEstimateRKF45.png> <./images/errorEstimateBDF12.png> <./imag
 es/errorEstimateBDF23.png>]
 \openout2 = `TwoDimensionalSEASProblem.aux'.
 
 
 (./TwoDimensionalSEASProblem.tex
-Chapter 3.
-
-LaTeX Warning: Reference `fig:mesh_BP1_200_fault_elements' on page 12 undefined
- on input line 22.
-
-<images/BP1_MESH_200.png, id=295, 600.2425pt x 599.23875pt>
-File: images/BP1_MESH_200.png Graphic file (type png)
-<use images/BP1_MESH_200.png>
-Package pdftex.def Info: images/BP1_MESH_200.png  used on input line 25.
-(pdftex.def)             Requested size: 182.09486pt x 181.7846pt.
-[12
-
-
-
-]
-Underfull \hbox (badness 10000) in paragraph at lines 34--35
-
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 37--39
-
- []
-
-)
-Runaway argument?
-width=0.7\textwidth {images/TANDEMtimeEvolution_MinMaxAllStacked_Size\ETC.
-! File ended while scanning use of \Gin@ii.
-<inserted text> 
-                \par 
-l.40 \include{TwoDimensionalSEASProblem}
-                                        
-I suspect you have forgotten a `}', causing me
-to read past where you wanted me to stop.
-I'll try to recover; but if the error is serious,
-you'd better type `E' or `X' now and fix your file.
-
-\openout2 = `FourFormulationsForSEAS.aux'.
-
-(./FourFormulationsForSEAS.tex
 Chapter 4.
 
-Underfull \hbox (badness 10000) in paragraph at lines 3--3
-|[]\T1/cmr/bx/n/14.4 First Or-der Dif-fer-en-tial Equa-tion|
+Underfull \hbox (badness 10000) in paragraph at lines 5--6
+
  []
 
-
-LaTeX Warning: Reference `eq:SEAS_DAE_AU=b' on page 13 undefined on input line 
-11.
-
-
-LaTeX Warning: Reference `eq:SEAS_DAE_ageing_law' on page 13 undefined on input
- line 12.
-
-
-LaTeX Warning: Reference `eq:SEASDAE_dV_dt' on page 13 undefined on input line 
-12.
+<images/SEAS_2D_picture.pdf, id=646, 845.01837pt x 597.47943pt>
+File: images/SEAS_2D_picture.pdf Graphic file (type pdf)
+<use images/SEAS_2D_picture.pdf>
+Package pdftex.def Info: images/SEAS_2D_picture.pdf  used on input line 9.
+(pdftex.def)             Requested size: 182.09486pt x 128.7473pt.
+[20
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 15--15
-|[]\T1/cmr/bx/n/12 Formulation as a first or-der ODE|
+
+ <./images/SEAS_2D_picture.pdf>]
+<images/BP1_mesh_with_boundaries.pdf, id=671, 597.65012pt x 597.65012pt>
+File: images/BP1_mesh_with_boundaries.pdf Graphic file (type pdf)
+<use images/BP1_mesh_with_boundaries.pdf>
+Package pdftex.def Info: images/BP1_mesh_with_boundaries.pdf  used on input lin
+e 41.
+(pdftex.def)             Requested size: 182.09486pt x 182.09607pt.
+ [21 <./images/BP1_mesh_with_boundaries.pdf>]
+
+Package caption Warning: \label without proper reference on input line 68.
+See the caption package documentation for explanation.
+
+
+LaTeX Warning: Reference `fig:EvolutionAllQuantitiesMinMaxStacked200Elements' o
+n page 22 undefined on input line 63.
+
+<images/TANDEMtimeEvolution_MinMaxAllStacked_Size200_RKDP5_extendedODE.png, id=
+691, 978.2949pt x 592.3731pt>
+File: images/TANDEMtimeEvolution_MinMaxAllStacked_Size200_RKDP5_extendedODE.png
+ Graphic file (type png)
+<use images/TANDEMtimeEvolution_MinMaxAllStacked_Size200_RKDP5_extendedODE.png>
+
+Package pdftex.def Info: images/TANDEMtimeEvolution_MinMaxAllStacked_Size200_RK
+DP5_extendedODE.png  used on input line 67.
+(pdftex.def)             Requested size: 318.66948pt x 192.95284pt.
+) [22 <./images/TANDEMtimeEvolution_MinMaxAllStacked_Size200_RKDP5_extendedODE.
+png>]
+\openout2 = `FourFormulationsForSEAS.aux'.
+
+ (./FourFormulationsForSEAS.tex
+Chapter 5.
+
+LaTeX Warning: Reference `ssec:physicalDescriptionSEAS2D' on page 23 undefined 
+on input line 5.
+
+[23
+
+
+
+] [24] [25] [26] [27]
+Underfull \hbox (badness 10000) in paragraph at lines 235--237
+
  []
 
+[28]
 
-Underfull \hbox (badness 10000) in paragraph at lines 16--16
-|[]\T1/cmr/bx/n/10 Problem|
- []
+Package hyperref Warning: No autoref name for `Appendix' on input line 293.
 
 
-LaTeX Warning: Reference `eq:SEASDAE_frictionLaw' on page 13 undefined on input
- line 17.
+LaTeX Warning: Reference `ssec:physicalDescriptionSEAS2D' on page 29 undefined 
+on input line 297.
 
+[29]
 
-Underfull \hbox (badness 10000) in paragraph at lines 30--30
-|[]\T1/cmr/bx/n/10 Jacobian ma-trix|
- []
+LaTeX Warning: Reference `eq:???' on page 30 undefined on input line 328.
 
-
-LaTeX Warning: Reference `eq:ODE_formulation_SEAS' on page 13 undefined on inpu
-t line 32.
-
-
-LaTeX Warning: Reference `eq:SEASDAE_frictionLaw' on page 13 undefined on input
- line 41.
-
-
-LaTeX Warning: Reference `eq:partial_df_dV' on page 13 undefined on input line 
-41.
-
-
-LaTeX Warning: Reference `eq:partialDerivative_df_dS' on page 13 undefined on i
-nput line 95.
-
-
-LaTeX Warning: Reference `eq:Jacobian_ODE_formulation' on page 13 undefined on 
-input line 96.
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 105--105
-|[]\T1/cmr/bx/n/12 Formulation as a DAE|
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 106--106
-|[]\T1/cmr/bx/n/10 Problem|
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 137--137
-|[]\T1/cmr/bx/n/10 Jacobian ma-trix|
- []
-
-
-LaTeX Warning: Reference `eq:DAE_extended_formulation_SEAS' on page 13 undefine
-d on input line 139.
-
-
-LaTeX Warning: Reference `eq:SEAS_DAE_ageing_law' on page 13 undefined on input
- line 154.
-
-
-LaTeX Warning: Reference `eq:partial_df_dpsi' on page 13 undefined on input lin
-e 160.
-
-
-LaTeX Warning: Reference `eq:partialDerivative_df_dS' on page 13 undefined on i
-nput line 160.
-
-
-LaTeX Warning: Reference `eq:partial_df_dV' on page 13 undefined on input line 
-160.
-
-
-LaTeX Warning: Reference `eq:Jacobian_DAE_formulation' on page 13 undefined on 
-input line 199.
-
-
-LaTeX Warning: Reference `eq:Jacobian_Newton_Iteration_extended_DAE' on page 13
- undefined on input line 215.
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 219--219
-|[]\T1/cmr/bx/n/12 Compact for-mu-la-tion as a DAE|
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 220--220
-|[]\T1/cmr/bx/n/10 Problem|
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 234--234
-|[]\T1/cmr/bx/n/10 Jacobian ma-trix|
- []
-
-
-LaTeX Warning: Reference `eq:DAE_compact_formulation_SEAS' on page 13 undefined
- on input line 235.
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 252--252
-|[]\T1/cmr/bx/n/12 Verification of the Ja-co-bian ma-tri-ces|
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 259--259
-|[]\T1/cmr/bx/n/12 Practical lim-i-ta-tions of the Ja-co-bian ma-tri-ces|
- []
-
-
-LaTeX Warning: Reference `sssec:Jacobian_ODE' on page 13 undefined on input lin
-e 261.
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 264--264
-|[]\T1/cmr/bx/n/12 Iterative solvers for the Ja-co-bian ma-tri-ces|
- []
-
-
-LaTeX Warning: Reference `eq:Jacobian_compact_DAE' on page 13 undefined on inpu
-t line 266.
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 292--292
-|[]\T1/cmr/bx/n/14.4 Second Or-der Dif-fer-en-tial Equa-tion|
- []
-
-
-LaTeX Warning: Reference `eq:ODE_formulation_SEAS' on page 13 undefined on inpu
-t line 293.
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 308--308
-|[]\T1/cmr/bx/n/12 Derivation of the sec-ond or-der ODE|
- []
-
-
-LaTeX Warning: Reference `eq:SEASDAE_frictionLaw' on page 13 undefined on input
- line 309.
-
-
-LaTeX Warning: Reference `eq:partial_df_dpsi' on page 13 undefined on input lin
-e 314.
-
-
-LaTeX Warning: Reference `eq:partial_df_dV' on page 13 undefined on input line 
-314.
-
-
-LaTeX Warning: Reference `eq:partialDerivative_df_dS' on page 13 undefined on i
-nput line 314.
-
-
-LaTeX Warning: Reference `eq:Jacobian_ODE_formulation' on page 13 undefined on 
-input line 319.
-
-
-LaTeX Warning: Reference `eq:???' on page 13 undefined on input line 323.
-
-
-LaTeX Warning: Reference `fig:timeEvolution_2ndOrderODE_vs_1stOrderODE' on page
- 13 undefined on input line 326.
-
-<images/TANDEMtimeEvolutionVExtendedODE1stvs2ndOrder.png, id=306, 644.6484pt x 
+<images/TANDEMtimeEvolutionVExtendedODE1stvs2ndOrder.png, id=803, 644.6484pt x 
 442.5333pt>
 File: images/TANDEMtimeEvolutionVExtendedODE1stvs2ndOrder.png Graphic file (typ
 e png)
 <use images/TANDEMtimeEvolutionVExtendedODE1stvs2ndOrder.png>
 Package pdftex.def Info: images/TANDEMtimeEvolutionVExtendedODE1stvs2ndOrder.pn
-g  used on input line 329.
+g  used on input line 334.
 (pdftex.def)             Requested size: 204.85846pt x 140.62767pt.
+[30] [31 <./images/TANDEMtimeEvolutionVExtendedODE1stvs2ndOrder.png>]
+Underfull \hbox (badness 10000) in paragraph at lines 364--365
 
-Underfull \hbox (badness 10000) in paragraph at lines 334--334
-|[]\T1/cmr/bx/n/12 Derivation of the an-a-lytic Ja-co-bian|
  []
 
+[32] [33]
+Underfull \hbox (badness 10000) in paragraph at lines 433--435
 
-LaTeX Warning: Reference `eq:2nd_order_ODE_formulation' on page 13 undefined on
- input line 335.
-
-
-LaTeX Warning: Reference `eq:Jacobian_DAE_formulation' on page 13 undefined on 
-input line 359.
-
-
-LaTeX Warning: Reference `eq:2nd_order_ODE_formulation_sum_of_Jacobians' on pag
-e 13 undefined on input line 361.
-
-
-LaTeX Warning: Reference `eq:partialDerivative_df_dS' on page 13 undefined on i
-nput line 361.
-
-
-LaTeX Warning: Reference `eq:partial_df_dpsi' on page 13 undefined on input lin
-e 369.
-
-
-LaTeX Warning: Reference `eq:partial_df_dV' on page 13 undefined on input line 
-369.
-
-
-LaTeX Warning: Reference `eq:Jacobian_2nd_order_ODE_formulation' on page 13 und
-efined on input line 385.
-
-
-LaTeX Warning: Reference `eq:Jacobian_2nd_order_ODE_formulation_with_zeros' on 
-page 13 undefined on input line 386.
-
-
-LaTeX Warning: Reference `eq:update_S_2ndOrderODE' on page 13 undefined on inpu
-t line 386.
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 388--388
-|[]\T1/cmr/bx/n/14.4 Numerical As-pects and Im-ple-men-ta-tion De-tails|
  []
 
+[34]
 
-LaTeX Warning: Reference `tab:availableMethods' on page 13 undefined on input l
-ine 389.
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 406--406
-|[]\T1/cmr/bx/n/14.4 Time in-te-gra-tion|
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 415--415
-|[]\T1/cmr/bx/n/12 Implementation of the BDF schemes|
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 420--420
-|[]\T1/cmr/bx/n/12 Switching be-tween dif-fer-ent meth-ods|
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 423--423
-|[]\T1/cmr/bx/n/12 Tolerances for the time in-te-gra-tion|
- []
+Package caption Warning: \label without proper reference on input line 68.
+See the caption package documentation for explanation.
 
 
 LaTeX Warning: Reference `fig:EvolutionAllQuantitiesMinMaxStacked200Elements' o
-n page 13 undefined on input line 435.
+n page 35 undefined on input line 440.
 
-
-Underfull \hbox (badness 10000) in paragraph at lines 437--437
-|[]\T1/cmr/bx/n/10 Lower bound for the tol-er-ances|
- []
-
-LaTeX Font Info:    Try loading font information for U+bbm on input line 456.
+LaTeX Font Info:    Try loading font information for U+bbm on input line 461.
 (/usr/share/texlive/texmf-dist/tex/latex/bbm-macros/ubbm.fd
 File: ubbm.fd 1999/03/15 V 1.2 Font definition for bbm font - TH
-)
-
-LaTeX Warning: Reference `tab:rangeCdotONE' on page 13 undefined on input line 
-457.
-
-
-LaTeX Warning: Reference `fig:LowerBoundErrorEstimateV' on page 13 undefined on
- input line 480.
-
-<images/ErrorRelationPSI_VAbsoluteRelative.png, id=310, 654.7662pt x 443.4969pt
+) [35]
+<images/ErrorRelationPSI_VAbsoluteRelative.png, id=875, 654.7662pt x 443.4969pt
 >
 File: images/ErrorRelationPSI_VAbsoluteRelative.png Graphic file (type png)
 <use images/ErrorRelationPSI_VAbsoluteRelative.png>
 Package pdftex.def Info: images/ErrorRelationPSI_VAbsoluteRelative.png  used on
- input line 483.
+ input line 488.
 (pdftex.def)             Requested size: 227.62206pt x 154.17732pt.
 
-Underfull \hbox (badness 10000) in paragraph at lines 490--490
-|[]\T1/cmr/bx/n/14.4 Newton It-er-a-tion|
+Overfull \hbox (6.03746pt too wide) in paragraph at lines 484--491
+\T1/lmr/m/n/10 With the same ap-prox-i-ma-tion as ear-lier for the de-nom-i-na-
+tor, the ex-pres-sion sim-pli-fies to $\OML/lmm/m/it/10 "[] > V[]"[]=\OT1/lmr/m
+/n/10 (\OML/lmm/m/it/10 ^^[[] \OT1/lmr/m/n/10 +
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 504--504
-|[]\T1/cmr/bx/n/12 Convergence Prop-er-ties|
+Underfull \hbox (badness 10000) in paragraph at lines 507--508
+
  []
 
-
-LaTeX Warning: Reference `fig:convergenceNewtonAndBroydenDifferentSizes' on pag
-e 13 undefined on input line 524.
-
-<images/NewtonIterationConvergence5Elements.png, id=313, 685.6014pt x 459.3963p
+[36 <./images/ErrorRelationPSI_VAbsoluteRelative.png>]
+<images/NewtonIterationConvergence5Elements.png, id=888, 685.6014pt x 459.3963p
 t>
 File: images/NewtonIterationConvergence5Elements.png Graphic file (type png)
 <use images/NewtonIterationConvergence5Elements.png>
 Package pdftex.def Info: images/NewtonIterationConvergence5Elements.png  used o
-n input line 529.
+n input line 534.
 (pdftex.def)             Requested size: 131.1124pt x 87.85399pt.
-<images/NewtonIterationConvergence40Elements.png, id=314, 685.6014pt x 459.3963
+<images/NewtonIterationConvergence40Elements.png, id=889, 685.6014pt x 459.3963
 pt>
 File: images/NewtonIterationConvergence40Elements.png Graphic file (type png)
 <use images/NewtonIterationConvergence40Elements.png>
 Package pdftex.def Info: images/NewtonIterationConvergence40Elements.png  used 
-on input line 534.
+on input line 539.
 (pdftex.def)             Requested size: 145.68144pt x 97.61165pt.
-<images/NewtonIterationConvergence200Elements.png, id=315, 685.6014pt x 459.396
+<images/NewtonIterationConvergence200Elements.png, id=890, 685.6014pt x 459.396
 3pt>
 File: images/NewtonIterationConvergence200Elements.png Graphic file (type png)
 <use images/NewtonIterationConvergence200Elements.png>
 Package pdftex.def Info: images/NewtonIterationConvergence200Elements.png  used
- on input line 539.
+ on input line 544.
 (pdftex.def)             Requested size: 145.68144pt x 97.61165pt.
-
-LaTeX Warning: Reference `fig:convergenceNewtonAndBroydenDifferentTimeSteps' on
- page 13 undefined on input line 546.
-
-<images/NewtonIterationConvergence200Elements_DifferentDT_Analytic.png, id=316,
+<images/NewtonIterationConvergence200Elements_DifferentDT_Analytic.png, id=892,
  652.5981pt x 442.5333pt>
 File: images/NewtonIterationConvergence200Elements_DifferentDT_Analytic.png Gra
 phic file (type png)
 <use images/NewtonIterationConvergence200Elements_DifferentDT_Analytic.png>
 Package pdftex.def Info: images/NewtonIterationConvergence200Elements_Different
-DT_Analytic.png  used on input line 551.
+DT_Analytic.png  used on input line 556.
 (pdftex.def)             Requested size: 204.85846pt x 138.91254pt.
-<images/NewtonIterationConvergence200Elements_DifferentDT_Broyden.png, id=317, 
+<images/NewtonIterationConvergence200Elements_DifferentDT_Broyden.png, id=893, 
 652.5981pt x 442.5333pt>
 File: images/NewtonIterationConvergence200Elements_DifferentDT_Broyden.png Grap
 hic file (type png)
 <use images/NewtonIterationConvergence200Elements_DifferentDT_Broyden.png>
 Package pdftex.def Info: images/NewtonIterationConvergence200Elements_Different
-DT_Broyden.png  used on input line 556.
+DT_Broyden.png  used on input line 561.
 (pdftex.def)             Requested size: 204.85846pt x 138.91254pt.
+ [37 <./images/NewtonIterationConvergence5Elements.png> <./images/NewtonIterati
+onConvergence40Elements.png> <./images/NewtonIterationConvergence200Elements.pn
+g>]
+Underfull \hbox (badness 10000) in paragraph at lines 568--569
 
-Underfull \hbox (badness 10000) in paragraph at lines 565--565
-|[]\T1/cmr/bx/n/12 Convergence is-sues with the com-pact DAE for-mu-la-tion|
  []
 
 
-LaTeX Warning: Reference `eq:DAE_compact_formulation_SEAS' on page 13 undefined
- on input line 566.
+Underfull \hbox (badness 10000) in paragraph at lines 571--573
 
+ []
 
-LaTeX Warning: Reference `fig:convergenceIssuesCompactDAENewtonIterations' on p
-age 13 undefined on input line 566.
-
-
-LaTeX Warning: Reference `fig:convergenceIssuesCompactDAEMaxResidual_vs_dt' on 
-page 13 undefined on input line 566.
-
-<images/TANDEMConvergenceAnalysisCompactDAENewton_Size5.png, id=318, 681.9879pt
+[38 <./images/NewtonIterationConvergence200Elements_DifferentDT_Analytic.png> <
+./images/NewtonIterationConvergence200Elements_DifferentDT_Broyden.png>]
+<images/TANDEMConvergenceAnalysisCompactDAENewton_Size5.png, id=916, 681.9879pt
  x 459.3963pt>
 File: images/TANDEMConvergenceAnalysisCompactDAENewton_Size5.png Graphic file (
 type png)
 <use images/TANDEMConvergenceAnalysisCompactDAENewton_Size5.png>
 Package pdftex.def Info: images/TANDEMConvergenceAnalysisCompactDAENewton_Size5
-.png  used on input line 573.
+.png  used on input line 578.
 (pdftex.def)             Requested size: 131.1124pt x 88.31664pt.
-<images/TANDEMConvergenceAnalysisCompactDAEMaxResidual_Size5.png, id=319, 692.3
+<images/TANDEMConvergenceAnalysisCompactDAEMaxResidual_Size5.png, id=917, 692.3
 466pt x 459.3963pt>
 File: images/TANDEMConvergenceAnalysisCompactDAEMaxResidual_Size5.png Graphic f
 ile (type png)
 <use images/TANDEMConvergenceAnalysisCompactDAEMaxResidual_Size5.png>
 Package pdftex.def Info: images/TANDEMConvergenceAnalysisCompactDAEMaxResidual_
-Size5.png  used on input line 579.
+Size5.png  used on input line 584.
 (pdftex.def)             Requested size: 145.68144pt x 96.65833pt.
-<images/TANDEMConvergenceAnalysisCompactDAERatioInAddition_Size5.png, id=320, 6
+<images/TANDEMConvergenceAnalysisCompactDAERatioInAddition_Size5.png, id=918, 6
 85.6014pt x 459.3963pt>
 File: images/TANDEMConvergenceAnalysisCompactDAERatioInAddition_Size5.png Graph
 ic file (type png)
 <use images/TANDEMConvergenceAnalysisCompactDAERatioInAddition_Size5.png>
 Package pdftex.def Info: images/TANDEMConvergenceAnalysisCompactDAERatioInAddit
-ion_Size5.png  used on input line 585.
+ion_Size5.png  used on input line 590.
 (pdftex.def)             Requested size: 145.68144pt x 97.61165pt.
 
-LaTeX Warning: Reference `eq:Jacobian_compact_DAE' on page 13 undefined on inpu
-t line 592.
-
-
-LaTeX Warning: Reference `fig:convergenceIssuesCompactDAEMaxResidual_vs_ratio' 
-on page 13 undefined on input line 593.
-
-
-LaTeX Warning: Reference `fig:convergenceIssuesExtendedDAEMaxResidual_vs_dt' on
- page 13 undefined on input line 596.
-
-
-LaTeX Warning: Reference `fig:convergenceIssuesCompactDAEMaxResidual_vs_dt' on 
-page 13 undefined on input line 596.
-
-
-LaTeX Warning: Reference `eq:Jacobian_Newton_Iteration_extended_DAE' on page 13
- undefined on input line 596.
-
-
-LaTeX Warning: Reference `fig:convergenceIssuesExtendedDAEMaxResidual_vs_dt_onl
-yPSI' on page 13 undefined on input line 596.
-
-<images/TANDEMConvergenceAnalysisExtendedDAEMaxResidual_Size5.png, id=321, 652.
+[39 <./images/TANDEMConvergenceAnalysisCompactDAENewton_Size5.png> <./images/TA
+NDEMConvergenceAnalysisCompactDAEMaxResidual_Size5.png> <./images/TANDEMConverg
+enceAnalysisCompactDAERatioInAddition_Size5.png>]
+<images/TANDEMConvergenceAnalysisExtendedDAEMaxResidual_Size5.png, id=934, 652.
 5981pt x 442.5333pt>
 File: images/TANDEMConvergenceAnalysisExtendedDAEMaxResidual_Size5.png Graphic 
 file (type png)
 <use images/TANDEMConvergenceAnalysisExtendedDAEMaxResidual_Size5.png>
 Package pdftex.def Info: images/TANDEMConvergenceAnalysisExtendedDAEMaxResidual
-_Size5.png  used on input line 602.
+_Size5.png  used on input line 607.
 (pdftex.def)             Requested size: 204.85846pt x 138.91254pt.
-<images/TANDEMConvergenceAnalysisExtendedDAEMaxResidual_Size5_onlyPSI.png, id=3
-22, 652.5981pt x 442.5333pt>
+<images/TANDEMConvergenceAnalysisExtendedDAEMaxResidual_Size5_onlyPSI.png, id=9
+35, 652.5981pt x 442.5333pt>
 File: images/TANDEMConvergenceAnalysisExtendedDAEMaxResidual_Size5_onlyPSI.png 
 Graphic file (type png)
 <use images/TANDEMConvergenceAnalysisExtendedDAEMaxResidual_Size5_onlyPSI.png>
 Package pdftex.def Info: images/TANDEMConvergenceAnalysisExtendedDAEMaxResidual
-_Size5_onlyPSI.png  used on input line 608.
+_Size5_onlyPSI.png  used on input line 613.
 (pdftex.def)             Requested size: 204.85846pt x 138.91254pt.
-
-Underfull \hbox (badness 10000) in paragraph at lines 618--618
-|[]\T1/cmr/bx/n/12 Stopping cri-te-rion|
- []
-
-
-LaTeX Warning: Reference `ssec:LowerBoundTimeTolerance' on page 13 undefined on
- input line 620.
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 642--642
-|[]\T1/cmr/bx/n/12 Iterative solvers for the New-ton step up-date|
- []
-
-
-LaTeX Warning: Reference `tab:compactODE_iterativeSolversJacobian' on page 13 u
-ndefined on input line 644.
-
-
-LaTeX Warning: Reference `tab:extendedODE_iterativeSolversJacobian' on page 13 
-undefined on input line 644.
-
-
-LaTeX Warning: Reference `ssec:iterative_solver_Jacobian' on page 13 undefined 
-on input line 644.
-
-
-Overfull \hbox (31.74637pt too wide) in paragraph at lines 647--655
+ [40 <./images/TANDEMConvergenceAnalysisExtendedDAEMaxResidual_Size5.png> <./im
+ages/TANDEMConvergenceAnalysisExtendedDAEMaxResidual_Size5_onlyPSI.png>]
+Overfull \hbox (31.82428pt too wide) in paragraph at lines 656--664
 [][] 
  []
 
 
-Overfull \hbox (31.74637pt too wide) in paragraph at lines 662--671
+Overfull \hbox (31.82428pt too wide) in paragraph at lines 671--680
+[][] 
+ []
+
+[41]
+Overfull \hbox (31.82428pt too wide) in paragraph at lines 687--696
 [][] 
  []
 
 
-Overfull \hbox (31.74637pt too wide) in paragraph at lines 678--687
+Overfull \hbox (27.83829pt too wide) in paragraph at lines 702--711
 [][] 
  []
 
 
-Overfull \hbox (27.76024pt too wide) in paragraph at lines 693--702
-[][] 
- []
+Package caption Warning: \label without proper reference on input line 726.
+See the caption package documentation for explanation.
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 710--710
-|[]\T1/cmr/bx/n/14.4 Data struc-ture|
- []
+LaTeX Warning: Reference `fig:blockStructureScheme' on page 42 undefined on inp
+ut line 721.
 
-
-Underfull \hbox (badness 10000) in paragraph at lines 711--711
-|[]\T1/cmr/bx/n/12 Block struc-ture|
- []
-
-
-LaTeX Warning: Reference `fig:blockStructureScheme' on page 13 undefined on inp
-ut line 712.
-
-<images/blockStructure.png, id=325, 1808.7575pt x 110.4125pt>
+[42]
+<images/blockStructure.png, id=966, 1808.7575pt x 110.4125pt>
 File: images/blockStructure.png Graphic file (type png)
 <use images/blockStructure.png>
-Package pdftex.def Info: images/blockStructure.png  used on input line 716.
+Package pdftex.def Info: images/blockStructure.png  used on input line 725.
 (pdftex.def)             Requested size: 409.71692pt x 25.01021pt.
-
-LaTeX Warning: Reference `ssec:iterative_solver_Jacobian' on page 13 undefined 
-on input line 721.
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 723--723
-|[]\T1/cmr/bx/n/12 Memory re-quire-ments|
- []
-
-)
+) [43 <./images/blockStructure.png (PNG copy)>]
 \openout2 = `Results.aux'.
 
  (./Results.tex
-Chapter 5.
-
-Underfull \hbox (badness 10000) in paragraph at lines 2--2
-|[]\T1/cmr/bx/n/14.4 Evolution of Phys-i-cal Quan-ti-ties|
- []
-
-
-LaTeX Warning: Reference `fig:timeEvolutionTANDEM_V' on page 13 undefined on in
-put line 3.
-
-<images/TANDEMcompareFormulationstimeEvolutionVall.png, id=326, 674.0382pt x 45
+Chapter 6.
+<images/TANDEMcompareFormulationstimeEvolutionVall.png, id=974, 674.0382pt x 45
 9.3963pt>
 File: images/TANDEMcompareFormulationstimeEvolutionVall.png Graphic file (type 
 png)
@@ -3226,7 +3061,7 @@ png)
 Package pdftex.def Info: images/TANDEMcompareFormulationstimeEvolutionVall.png 
  used on input line 8.
 (pdftex.def)             Requested size: 145.68144pt x 99.287pt.
-<images/TANDEMcompareFormulationstimeEvolutionVsurroundings.png, id=327, 712.34
+<images/TANDEMcompareFormulationstimeEvolutionVsurroundings.png, id=975, 712.34
 13pt x 459.3963pt>
 File: images/TANDEMcompareFormulationstimeEvolutionVsurroundings.png Graphic fi
 le (type png)
@@ -3234,7 +3069,7 @@ le (type png)
 Package pdftex.def Info: images/TANDEMcompareFormulationstimeEvolutionVsurround
 ings.png  used on input line 13.
 (pdftex.def)             Requested size: 145.68144pt x 93.95253pt.
-<images/TANDEMcompareFormulationstimeEvolutionVearthquake.png, id=328, 725.3499
+<images/TANDEMcompareFormulationstimeEvolutionVearthquake.png, id=976, 725.3499
 pt x 459.3963pt>
 File: images/TANDEMcompareFormulationstimeEvolutionVearthquake.png Graphic file
  (type png)
@@ -3242,7 +3077,7 @@ File: images/TANDEMcompareFormulationstimeEvolutionVearthquake.png Graphic file
 Package pdftex.def Info: images/TANDEMcompareFormulationstimeEvolutionVearthqua
 ke.png  used on input line 18.
 (pdftex.def)             Requested size: 145.68144pt x 92.26317pt.
-<images/TANDEMcompareFormulationstimeEvolutionDTall.png, id=329, 673.5564pt x 4
+<images/TANDEMcompareFormulationstimeEvolutionDTall.png, id=977, 673.5564pt x 4
 61.3235pt>
 File: images/TANDEMcompareFormulationstimeEvolutionDTall.png Graphic file (type
  png)
@@ -3250,7 +3085,7 @@ File: images/TANDEMcompareFormulationstimeEvolutionDTall.png Graphic file (type
 Package pdftex.def Info: images/TANDEMcompareFormulationstimeEvolutionDTall.png
   used on input line 30.
 (pdftex.def)             Requested size: 145.68144pt x 99.77391pt.
-<images/TANDEMcompareFormulationstimeEvolutionDTsurroundings.png, id=330, 711.8
+<images/TANDEMcompareFormulationstimeEvolutionDTsurroundings.png, id=978, 711.8
 595pt x 461.3235pt>
 File: images/TANDEMcompareFormulationstimeEvolutionDTsurroundings.png Graphic f
 ile (type png)
@@ -3258,7 +3093,7 @@ ile (type png)
 Package pdftex.def Info: images/TANDEMcompareFormulationstimeEvolutionDTsurroun
 dings.png  used on input line 35.
 (pdftex.def)             Requested size: 145.68144pt x 94.41002pt.
-<images/TANDEMcompareFormulationstimeEvolutionDTearthquake.png, id=331, 724.868
+<images/TANDEMcompareFormulationstimeEvolutionDTearthquake.png, id=979, 724.868
 1pt x 461.3235pt>
 File: images/TANDEMcompareFormulationstimeEvolutionDTearthquake.png Graphic fil
 e (type png)
@@ -3266,7 +3101,7 @@ e (type png)
 Package pdftex.def Info: images/TANDEMcompareFormulationstimeEvolutionDTearthqu
 ake.png  used on input line 40.
 (pdftex.def)             Requested size: 145.68144pt x 92.71356pt.
-<images/TANDEMcompareFormulationstimeEvolutionRHSall.png, id=332, 646.3347pt x 
+<images/TANDEMcompareFormulationstimeEvolutionRHSall.png, id=980, 646.3347pt x 
 459.3963pt>
 File: images/TANDEMcompareFormulationstimeEvolutionRHSall.png Graphic file (typ
 e png)
@@ -3274,7 +3109,7 @@ e png)
 Package pdftex.def Info: images/TANDEMcompareFormulationstimeEvolutionRHSall.pn
 g  used on input line 52.
 (pdftex.def)             Requested size: 145.68144pt x 103.54196pt.
-<images/TANDEMcompareFormulationstimeEvolutionRHSsurroundings.png, id=333, 684.
+<images/TANDEMcompareFormulationstimeEvolutionRHSsurroundings.png, id=981, 684.
 8787pt x 459.3963pt>
 File: images/TANDEMcompareFormulationstimeEvolutionRHSsurroundings.png Graphic 
 file (type png)
@@ -3282,7 +3117,7 @@ file (type png)
 Package pdftex.def Info: images/TANDEMcompareFormulationstimeEvolutionRHSsurrou
 ndings.png  used on input line 57.
 (pdftex.def)             Requested size: 145.68144pt x 97.7168pt.
-<images/TANDEMcompareFormulationstimeEvolutionRHSearthquake.png, id=334, 697.64
+<images/TANDEMcompareFormulationstimeEvolutionRHSearthquake.png, id=982, 697.64
 64pt x 459.3963pt>
 File: images/TANDEMcompareFormulationstimeEvolutionRHSearthquake.png Graphic fi
 le (type png)
@@ -3290,248 +3125,397 @@ le (type png)
 Package pdftex.def Info: images/TANDEMcompareFormulationstimeEvolutionRHSearthq
 uake.png  used on input line 62.
 (pdftex.def)             Requested size: 145.68144pt x 95.92929pt.
+[44
 
-Underfull \hbox (badness 10000) in paragraph at lines 71--71
-|[]\T1/cmr/bx/n/14.4 Accuracy of the time in-te-gra-tion|
+
+
+ <./images/TANDEMcompareFormulationstimeEvolutionVall.png> <./images/TANDEMcomp
+areFormulationstimeEvolutionVsurroundings.png> <./images/TANDEMcompareFormulati
+onstimeEvolutionVearthquake.png> <./images/TANDEMcompareFormulationstimeEvoluti
+onDTall.png> <./images/TANDEMcompareFormulationstimeEvolutionDTsurroundings.png
+> <./images/TANDEMcompareFormulationstimeEvolutionDTearthquake.png>]
+Underfull \hbox (badness 10000) in paragraph at lines 73--75
+
+ []
+
+<images/TANDEMcompactODEDifferentTolerancesSize101_AS_FirstEarthquakeTimeDiff.p
+ng, id=997, 672.8337pt x 459.3963pt>
+File: images/TANDEMcompactODEDifferentTolerancesSize101_AS_FirstEarthquakeTimeD
+iff.png Graphic file (type png)
+<use images/TANDEMcompactODEDifferentTolerancesSize101_AS_FirstEarthquakeTimeDi
+ff.png>
+Package pdftex.def Info: images/TANDEMcompactODEDifferentTolerancesSize101_AS_F
+irstEarthquakeTimeDiff.png  used on input line 81.
+(pdftex.def)             Requested size: 145.68144pt x 99.46225pt.
+<images/TANDEMcompactODEDifferentTolerancesSize101_AS_PeriodDiff.png, id=998, 6
+72.8337pt x 459.3963pt>
+File: images/TANDEMcompactODEDifferentTolerancesSize101_AS_PeriodDiff.png Graph
+ic file (type png)
+<use images/TANDEMcompactODEDifferentTolerancesSize101_AS_PeriodDiff.png>
+Package pdftex.def Info: images/TANDEMcompactODEDifferentTolerancesSize101_AS_P
+eriodDiff.png  used on input line 86.
+(pdftex.def)             Requested size: 145.68144pt x 99.46225pt.
+<images/TANDEMcompactODEDifferentTolerancesSize101_AS_DT.png, id=999, 662.7159p
+t x 459.3963pt>
+File: images/TANDEMcompactODEDifferentTolerancesSize101_AS_DT.png Graphic file 
+(type png)
+<use images/TANDEMcompactODEDifferentTolerancesSize101_AS_DT.png>
+Package pdftex.def Info: images/TANDEMcompactODEDifferentTolerancesSize101_AS_D
+T.png  used on input line 91.
+(pdftex.def)             Requested size: 145.68144pt x 100.98337pt.
+
+Underfull \hbox (badness 10000) in paragraph at lines 98--99
+
+ []
+
+[45 <./images/TANDEMcompareFormulationstimeEvolutionRHSall.png> <./images/TANDE
+McompareFormulationstimeEvolutionRHSsurroundings.png> <./images/TANDEMcompareFo
+rmulationstimeEvolutionRHSearthquake.png> <./images/TANDEMcompactODEDifferentTo
+lerancesSize101_AS_FirstEarthquakeTimeDiff.png> <./images/TANDEMcompactODEDiffe
+rentTolerancesSize101_AS_PeriodDiff.png> <./images/TANDEMcompactODEDifferentTol
+erancesSize101_AS_DT.png>]
+<images/TANDEMcompactODEDifferentTolerancesSize101_EQ_Vmax.png, id=1014, 678.85
+62pt x 459.3963pt>
+File: images/TANDEMcompactODEDifferentTolerancesSize101_EQ_Vmax.png Graphic fil
+e (type png)
+<use images/TANDEMcompactODEDifferentTolerancesSize101_EQ_Vmax.png>
+Package pdftex.def Info: images/TANDEMcompactODEDifferentTolerancesSize101_EQ_V
+max.png  used on input line 106.
+(pdftex.def)             Requested size: 145.68144pt x 98.58601pt.
+<images/TANDEMcompactODEDifferentTolerancesSize101_EQ_Smin.png, id=1015, 678.85
+62pt x 459.3963pt>
+File: images/TANDEMcompactODEDifferentTolerancesSize101_EQ_Smin.png Graphic fil
+e (type png)
+<use images/TANDEMcompactODEDifferentTolerancesSize101_EQ_Smin.png>
+Package pdftex.def Info: images/TANDEMcompactODEDifferentTolerancesSize101_EQ_S
+min.png  used on input line 111.
+(pdftex.def)             Requested size: 145.68144pt x 98.58601pt.
+<images/TANDEMcompactODEDifferentTolerancesSize101_EQ_DT.png, id=1016, 672.8337
+pt x 459.3963pt>
+File: images/TANDEMcompactODEDifferentTolerancesSize101_EQ_DT.png Graphic file 
+(type png)
+<use images/TANDEMcompactODEDifferentTolerancesSize101_EQ_DT.png>
+Package pdftex.def Info: images/TANDEMcompactODEDifferentTolerancesSize101_EQ_D
+T.png  used on input line 116.
+(pdftex.def)             Requested size: 145.68144pt x 99.46225pt.
+
+Underfull \hbox (badness 10000) in paragraph at lines 122--123
+
  []
 
 
-LaTeX Warning: Reference `ssec:LowerBoundTimeTolerance' on page 13 undefined on
- input line 72.
+Underfull \hbox (badness 10000) in paragraph at lines 124--125
 
-
-Underfull \hbox (badness 10000) in paragraph at lines 76--76
-|[]\T1/cmr/bx/n/14.4 Time adap-tiv-ity of BDF meth-ods|
  []
 
+<images/TANDEMextendedODEDifferentTolerancesSize101_AS_FirstEarthquakeTimeDiff.
+png, id=1020, 662.9568pt x 459.3963pt>
+File: images/TANDEMextendedODEDifferentTolerancesSize101_AS_FirstEarthquakeTime
+Diff.png Graphic file (type png)
+<use images/TANDEMextendedODEDifferentTolerancesSize101_AS_FirstEarthquakeTimeD
+iff.png>
+Package pdftex.def Info: images/TANDEMextendedODEDifferentTolerancesSize101_AS_
+FirstEarthquakeTimeDiff.png  used on input line 131.
+(pdftex.def)             Requested size: 145.68144pt x 100.94832pt.
+<images/TANDEMextendedODEDifferentTolerancesSize101_AS_PeriodDiff.png, id=1021,
+ 662.7159pt x 469.5141pt>
+File: images/TANDEMextendedODEDifferentTolerancesSize101_AS_PeriodDiff.png Grap
+hic file (type png)
+<use images/TANDEMextendedODEDifferentTolerancesSize101_AS_PeriodDiff.png>
+Package pdftex.def Info: images/TANDEMextendedODEDifferentTolerancesSize101_AS_
+PeriodDiff.png  used on input line 136.
+(pdftex.def)             Requested size: 145.68144pt x 103.20744pt.
+<images/TANDEMextendedODEDifferentTolerancesSize101_AS_DT.png, id=1022, 657.657
+pt x 459.3963pt>
+File: images/TANDEMextendedODEDifferentTolerancesSize101_AS_DT.png Graphic file
+ (type png)
+<use images/TANDEMextendedODEDifferentTolerancesSize101_AS_DT.png>
+Package pdftex.def Info: images/TANDEMextendedODEDifferentTolerancesSize101_AS_
+DT.png  used on input line 141.
+(pdftex.def)             Requested size: 145.68144pt x 101.76146pt.
+[46 <./images/TANDEMcompactODEDifferentTolerancesSize101_EQ_Vmax.png> <./images
+/TANDEMcompactODEDifferentTolerancesSize101_EQ_Smin.png> <./images/TANDEMcompac
+tODEDifferentTolerancesSize101_EQ_DT.png>]
+<images/TANDEMextendedODEDifferentTolerancesSize101_EQ_Vmax.png, id=1031, 678.8
+562pt x 459.3963pt>
+File: images/TANDEMextendedODEDifferentTolerancesSize101_EQ_Vmax.png Graphic fi
+le (type png)
+<use images/TANDEMextendedODEDifferentTolerancesSize101_EQ_Vmax.png>
+Package pdftex.def Info: images/TANDEMextendedODEDifferentTolerancesSize101_EQ_
+Vmax.png  used on input line 154.
+(pdftex.def)             Requested size: 145.68144pt x 98.58601pt.
+<images/TANDEMextendedODEDifferentTolerancesSize101_EQ_Smin.png, id=1032, 678.3
+744pt x 465.4188pt>
+File: images/TANDEMextendedODEDifferentTolerancesSize101_EQ_Smin.png Graphic fi
+le (type png)
+<use images/TANDEMextendedODEDifferentTolerancesSize101_EQ_Smin.png>
+Package pdftex.def Info: images/TANDEMextendedODEDifferentTolerancesSize101_EQ_
+Smin.png  used on input line 159.
+(pdftex.def)             Requested size: 145.68144pt x 99.94945pt.
+<images/TANDEMextendedODEDifferentTolerancesSize101_EQ_DT.png, id=1033, 673.074
+6pt x 459.3963pt>
+File: images/TANDEMextendedODEDifferentTolerancesSize101_EQ_DT.png Graphic file
+ (type png)
+<use images/TANDEMextendedODEDifferentTolerancesSize101_EQ_DT.png>
+Package pdftex.def Info: images/TANDEMextendedODEDifferentTolerancesSize101_EQ_
+DT.png  used on input line 164.
+(pdftex.def)             Requested size: 145.68144pt x 99.4272pt.
 
-Underfull \hbox (badness 10000) in paragraph at lines 77--77
-|[]\T1/cmr/bx/n/12 Quality of the er-ror es-ti-mates|
+Underfull \hbox (badness 10000) in paragraph at lines 176--177
+
  []
 
-
-LaTeX Warning: Reference `fig:BDFOrders_Lagrange_vs_Embedded_compact_ODE' on pa
-ge 13 undefined on input line 79.
-
+[47 <./images/TANDEMextendedODEDifferentTolerancesSize101_AS_FirstEarthquakeTim
+eDiff.png> <./images/TANDEMextendedODEDifferentTolerancesSize101_AS_PeriodDiff.
+png> <./images/TANDEMextendedODEDifferentTolerancesSize101_AS_DT.png> <./images
+/TANDEMextendedODEDifferentTolerancesSize101_EQ_Vmax.png> <./images/TANDEMexten
+dedODEDifferentTolerancesSize101_EQ_Smin.png> <./images/TANDEMextendedODEDiffer
+entTolerancesSize101_EQ_DT.png>]
+<images/TANDEMtimeEvolutionFExtendedODEDifferentTolerances.png, id=1048, 644.64
+84pt x 449.2785pt>
+File: images/TANDEMtimeEvolutionFExtendedODEDifferentTolerances.png Graphic fil
+e (type png)
+<use images/TANDEMtimeEvolutionFExtendedODEDifferentTolerances.png>
+Package pdftex.def Info: images/TANDEMtimeEvolutionFExtendedODEDifferentToleran
+ces.png  used on input line 184.
+(pdftex.def)             Requested size: 204.85846pt x 142.77115pt.
+<images/TANDEMtimeEvolutionFLTEExtendedODEDifferentTolerances.png, id=1049, 655
+.248pt x 442.5333pt>
+File: images/TANDEMtimeEvolutionFLTEExtendedODEDifferentTolerances.png Graphic 
+file (type png)
+<use images/TANDEMtimeEvolutionFLTEExtendedODEDifferentTolerances.png>
+Package pdftex.def Info: images/TANDEMtimeEvolutionFLTEExtendedODEDifferentTole
+rances.png  used on input line 190.
+(pdftex.def)             Requested size: 204.85846pt x 138.35208pt.
+<images/TANDEMtimeEvolutionFExtendedODEDifferentSizes.png, id=1052, 644.6484pt 
+x 449.2785pt>
+File: images/TANDEMtimeEvolutionFExtendedODEDifferentSizes.png Graphic file (ty
+pe png)
+<use images/TANDEMtimeEvolutionFExtendedODEDifferentSizes.png>
+Package pdftex.def Info: images/TANDEMtimeEvolutionFExtendedODEDifferentSizes.p
+ng  used on input line 203.
+(pdftex.def)             Requested size: 204.85846pt x 142.77115pt.
+<images/TANDEMtimeEvolutionFLTEExtendedODEDifferentSizes.png, id=1053, 658.1388
+pt x 442.5333pt>
+File: images/TANDEMtimeEvolutionFLTEExtendedODEDifferentSizes.png Graphic file 
+(type png)
+<use images/TANDEMtimeEvolutionFLTEExtendedODEDifferentSizes.png>
+Package pdftex.def Info: images/TANDEMtimeEvolutionFLTEExtendedODEDifferentSize
+s.png  used on input line 209.
+(pdftex.def)             Requested size: 204.85846pt x 137.74435pt.
+ [48 <./images/TANDEMtimeEvolutionFExtendedODEDifferentTolerances.png> <./image
+s/TANDEMtimeEvolutionFLTEExtendedODEDifferentTolerances.png>]
 <images/TANDEMTimeAnalysisDifferentBDFOrdersEmbedded_vs_Lagrange_CompactODE_Siz
-e5.png, id=337, 924.0924pt x 442.5333pt>
+e5.png, id=1066, 924.0924pt x 442.5333pt>
 File: images/TANDEMTimeAnalysisDifferentBDFOrdersEmbedded_vs_Lagrange_CompactOD
 E_Size5.png Graphic file (type png)
 <use images/TANDEMTimeAnalysisDifferentBDFOrdersEmbedded_vs_Lagrange_CompactODE
 _Size5.png>
 Package pdftex.def Info: images/TANDEMTimeAnalysisDifferentBDFOrdersEmbedded_vs
-_Lagrange_CompactODE_Size5.png  used on input line 82.
+_Lagrange_CompactODE_Size5.png  used on input line 225.
 (pdftex.def)             Requested size: 364.19667pt x 174.41046pt.
-
-Underfull \hbox (badness 10000) in paragraph at lines 89--89
-|[]\T1/cmr/bx/n/12 Effect of the or-der on the timestep size|
- []
-
-
-LaTeX Warning: Reference `fig:BDFOrders_Lagrange_vs_Embedded_compact_ODE' on pa
-ge 13 undefined on input line 90.
-
-
-LaTeX Warning: Reference `fig:BDFOrders_Lagrange_vs_Embedded_compact_ODE' on pa
-ge 13 undefined on input line 91.
-
-
-LaTeX Warning: Reference `fig:BDFOrders_compact_ODE_compare_initialization' on 
-page 13 undefined on input line 92.
-
-
-LaTeX Warning: Reference `fig:BDFOrders_compact_ODE_compare_begin_first_EQ' on 
-page 13 undefined on input line 92.
-
+ [49 <./images/TANDEMtimeEvolutionFExtendedODEDifferentSizes.png> <./images/TAN
+DEMtimeEvolutionFLTEExtendedODEDifferentSizes.png>] [50 <./images/TANDEMTimeAna
+lysisDifferentBDFOrdersEmbedded_vs_Lagrange_CompactODE_Size5.png>]
 <images/TANDEMTimeAnalysisDifferentBDFOrdersLagrange_CompactODE_Size5_Init.png,
- id=338, 661.5114pt x 442.5333pt>
+ id=1086, 661.5114pt x 442.5333pt>
 File: images/TANDEMTimeAnalysisDifferentBDFOrdersLagrange_CompactODE_Size5_Init
 .png Graphic file (type png)
 <use images/TANDEMTimeAnalysisDifferentBDFOrdersLagrange_CompactODE_Size5_Init.
 png>
 Package pdftex.def Info: images/TANDEMTimeAnalysisDifferentBDFOrdersLagrange_Co
-mpactODE_Size5_Init.png  used on input line 98.
+mpactODE_Size5_Init.png  used on input line 241.
 (pdftex.def)             Requested size: 204.85846pt x 137.0421pt.
 <images/TANDEMTimeAnalysisDifferentBDFOrdersLagrange_CompactODE_Size5_Begin1stE
-Q.png, id=339, 661.2705pt x 442.5333pt>
+Q.png, id=1087, 661.2705pt x 442.5333pt>
 File: images/TANDEMTimeAnalysisDifferentBDFOrdersLagrange_CompactODE_Size5_Begi
 n1stEQ.png Graphic file (type png)
 <use images/TANDEMTimeAnalysisDifferentBDFOrdersLagrange_CompactODE_Size5_Begin
 1stEQ.png>
 Package pdftex.def Info: images/TANDEMTimeAnalysisDifferentBDFOrdersLagrange_Co
-mpactODE_Size5_Begin1stEQ.png  used on input line 104.
+mpactODE_Size5_Begin1stEQ.png  used on input line 247.
 (pdftex.def)             Requested size: 204.85846pt x 137.08936pt.
-
-LaTeX Warning: Reference `fig:BDFOrders_compact_ODE_compare_adaptiveBDF' on pag
-e 13 undefined on input line 110.
-
 <images/TANDEMTimeAnalysisDifferentBDFOrders_Lagrange_CompactODE_Size5_FULLTIME
-.png, id=341, 924.0924pt x 442.5333pt>
+.png, id=1090, 924.0924pt x 442.5333pt>
 File: images/TANDEMTimeAnalysisDifferentBDFOrders_Lagrange_CompactODE_Size5_FUL
 LTIME.png Graphic file (type png)
 <use images/TANDEMTimeAnalysisDifferentBDFOrders_Lagrange_CompactODE_Size5_FULL
 TIME.png>
 Package pdftex.def Info: images/TANDEMTimeAnalysisDifferentBDFOrders_Lagrange_C
-ompactODE_Size5_FULLTIME.png  used on input line 115.
+ompactODE_Size5_FULLTIME.png  used on input line 258.
 (pdftex.def)             Requested size: 364.19667pt x 174.41046pt.
+ [51 <./images/TANDEMTimeAnalysisDifferentBDFOrdersLagrange_CompactODE_Size5_In
+it.png> <./images/TANDEMTimeAnalysisDifferentBDFOrdersLagrange_CompactODE_Size5
+_Begin1stEQ.png> <./images/TANDEMTimeAnalysisDifferentBDFOrders_Lagrange_Compac
+tODE_Size5_FULLTIME.png>]
+<images/TANDEM_averageNumberNewtonSteps.png, id=1100, 655.0071pt x 459.3963pt>
+File: images/TANDEM_averageNumberNewtonSteps.png Graphic file (type png)
+<use images/TANDEM_averageNumberNewtonSteps.png>
+Package pdftex.def Info: images/TANDEM_averageNumberNewtonSteps.png  used on in
+put line 271.
+(pdftex.def)             Requested size: 145.68144pt x 102.17505pt.
+<images/TANDEM_averageNumberKSPIteration.png, id=1101, 672.3519pt x 618.8721pt>
 
-Underfull \hbox (badness 3471) in paragraph at lines 121--121
-|[]\T1/cmr/bx/n/14.4 Error es-ti-ma-tion of the 2nd or-der ODE for-mu-la-tion|
+File: images/TANDEM_averageNumberKSPIteration.png Graphic file (type png)
+<use images/TANDEM_averageNumberKSPIteration.png>
+Package pdftex.def Info: images/TANDEM_averageNumberKSPIteration.png  used on i
+nput line 276.
+(pdftex.def)             Requested size: 150.0517pt x 138.11647pt.
+
+Overfull \hbox (4.37025pt too wide) in paragraph at lines 276--277
+ [][] 
  []
 
-
-LaTeX Warning: Reference `fig:timeEvolution_2ndOrderODE_differentTolerances' on
- page 13 undefined on input line 124.
-
-
-LaTeX Warning: Reference `fig:timeEvolution_LTE_2ndOrderODE_differentTolerances
-' on page 13 undefined on input line 124.
-
-<images/TANDEMtimeEvolutionFExtendedODEDifferentTolerances.png, id=342, 644.648
-4pt x 449.2785pt>
-File: images/TANDEMtimeEvolutionFExtendedODEDifferentTolerances.png Graphic fil
-e (type png)
-<use images/TANDEMtimeEvolutionFExtendedODEDifferentTolerances.png>
-Package pdftex.def Info: images/TANDEMtimeEvolutionFExtendedODEDifferentToleran
-ces.png  used on input line 130.
-(pdftex.def)             Requested size: 204.85846pt x 142.77115pt.
-<images/TANDEMtimeEvolutionFLTEExtendedODEDifferentTolerances.png, id=343, 655.
-248pt x 442.5333pt>
-File: images/TANDEMtimeEvolutionFLTEExtendedODEDifferentTolerances.png Graphic 
-file (type png)
-<use images/TANDEMtimeEvolutionFLTEExtendedODEDifferentTolerances.png>
-Package pdftex.def Info: images/TANDEMtimeEvolutionFLTEExtendedODEDifferentTole
-rances.png  used on input line 136.
-(pdftex.def)             Requested size: 204.85846pt x 138.35208pt.
-
-LaTeX Warning: Reference `fig:timeEvolution_2ndOrderODE_differentSizes' on page
- 13 undefined on input line 143.
-
-
-LaTeX Warning: Reference `fig:timeEvolution_LTE_2ndOrderODE_differentSizes' on 
-page 13 undefined on input line 143.
-
-<images/TANDEMtimeEvolutionFExtendedODEDifferentSizes.png, id=344, 644.6484pt x
- 449.2785pt>
-File: images/TANDEMtimeEvolutionFExtendedODEDifferentSizes.png Graphic file (ty
-pe png)
-<use images/TANDEMtimeEvolutionFExtendedODEDifferentSizes.png>
-Package pdftex.def Info: images/TANDEMtimeEvolutionFExtendedODEDifferentSizes.p
-ng  used on input line 149.
-(pdftex.def)             Requested size: 204.85846pt x 142.77115pt.
-<images/TANDEMtimeEvolutionFLTEExtendedODEDifferentSizes.png, id=345, 658.1388p
-t x 442.5333pt>
-File: images/TANDEMtimeEvolutionFLTEExtendedODEDifferentSizes.png Graphic file 
-(type png)
-<use images/TANDEMtimeEvolutionFLTEExtendedODEDifferentSizes.png>
-Package pdftex.def Info: images/TANDEMtimeEvolutionFLTEExtendedODEDifferentSize
-s.png  used on input line 155.
-(pdftex.def)             Requested size: 204.85846pt x 137.74435pt.
-
-Underfull \hbox (badness 10000) in paragraph at lines 164--164
-|[]\T1/cmr/bx/n/14.4 Scalability|
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 166--166
-|[]\T1/cmr/bx/n/14.4 Runtime Anal-y-sis|
- []
-
+<images/TANDEM_averageNumberRHSEvaluations.png, id=1102, 655.0071pt x 459.3963p
+t>
+File: images/TANDEM_averageNumberRHSEvaluations.png Graphic file (type png)
+<use images/TANDEM_averageNumberRHSEvaluations.png>
+Package pdftex.def Info: images/TANDEM_averageNumberRHSEvaluations.png  used on
+ input line 281.
+(pdftex.def)             Requested size: 145.68144pt x 102.17505pt.
+<images/TANDEM_MeanTimeStepSize_AseismicPhase.png, id=1103, 706.5597pt x 459.39
+63pt>
+File: images/TANDEM_MeanTimeStepSize_AseismicPhase.png Graphic file (type png)
+<use images/TANDEM_MeanTimeStepSize_AseismicPhase.png>
+Package pdftex.def Info: images/TANDEM_MeanTimeStepSize_AseismicPhase.png  used
+ on input line 292.
+(pdftex.def)             Requested size: 145.68144pt x 94.7166pt.
+<images/TANDEM_MeanTimeStepSize_EarthquakePhase.png, id=1104, 804.606pt x 618.8
+721pt>
+File: images/TANDEM_MeanTimeStepSize_EarthquakePhase.png Graphic file (type png
 )
+<use images/TANDEM_MeanTimeStepSize_EarthquakePhase.png>
+Package pdftex.def Info: images/TANDEM_MeanTimeStepSize_EarthquakePhase.png  us
+ed on input line 297.
+(pdftex.def)             Requested size: 166.07675pt x 127.73837pt.
+
+Overfull \hbox (20.39531pt too wide) in paragraph at lines 296--298
+ [] 
+ []
+
+<images/TANDEM_NumberTimeSteps_differentSizes.png, id=1105, 698.1282pt x 459.39
+63pt>
+File: images/TANDEM_NumberTimeSteps_differentSizes.png Graphic file (type png)
+<use images/TANDEM_NumberTimeSteps_differentSizes.png>
+Package pdftex.def Info: images/TANDEM_NumberTimeSteps_differentSizes.png  used
+ on input line 302.
+(pdftex.def)             Requested size: 145.68144pt x 95.85919pt.
+<images/TANDEM_TimePerRHSEvaluation_differentSizes.png, id=1106, 673.3155pt x 4
+59.3963pt>
+File: images/TANDEM_TimePerRHSEvaluation_differentSizes.png Graphic file (type 
+png)
+<use images/TANDEM_TimePerRHSEvaluation_differentSizes.png>
+Package pdftex.def Info: images/TANDEM_TimePerRHSEvaluation_differentSizes.png 
+ used on input line 313.
+(pdftex.def)             Requested size: 145.68144pt x 99.39215pt.
+<images/TANDEM_CPU_Time_intialization.png, id=1107, 794.2473pt x 618.8721pt>
+File: images/TANDEM_CPU_Time_intialization.png Graphic file (type png)
+<use images/TANDEM_CPU_Time_intialization.png>
+Package pdftex.def Info: images/TANDEM_CPU_Time_intialization.png  used on inpu
+t line 318.
+(pdftex.def)             Requested size: 171.90303pt x 133.94257pt.
+
+Overfull \hbox (26.22159pt too wide) in paragraph at lines 317--319
+ [] 
+ []
+
+<images/TANDEM_CPU_Time_solving.png, id=1108, 658.1388pt x 459.3963pt>
+File: images/TANDEM_CPU_Time_solving.png Graphic file (type png)
+<use images/TANDEM_CPU_Time_solving.png>
+Package pdftex.def Info: images/TANDEM_CPU_Time_solving.png  used on input line
+ 323.
+(pdftex.def)             Requested size: 145.68144pt x 101.68436pt.
+) [52 <./images/TANDEM_averageNumberNewtonSteps.png> <./images/TANDEM_averageNu
+mberKSPIteration.png> <./images/TANDEM_averageNumberRHSEvaluations.png> <./imag
+es/TANDEM_MeanTimeStepSize_AseismicPhase.png> <./images/TANDEM_MeanTimeStepSize
+_EarthquakePhase.png> <./images/TANDEM_NumberTimeSteps_differentSizes.png> <./i
+mages/TANDEM_TimePerRHSEvaluation_differentSizes.png> <./images/TANDEM_CPU_Time
+_intialization.png> <./images/TANDEM_CPU_Time_solving.png>]
 \openout2 = `Extensions.aux'.
 
  (./Extensions.tex
-Chapter 6.
+Chapter 7.
 
-Underfull \hbox (badness 10000) in paragraph at lines 2--2
-|[]\T1/cmr/bx/n/14.4 Elasticity Equa-tion|
+Underfull \hbox (badness 10000) in paragraph at lines 3--4
+
  []
 
-
-Underfull \hbox (badness 10000) in paragraph at lines 5--5
-|[]\T1/cmr/bx/n/14.4 Three-Dimensional Sim-u-la-tions|
- []
+[53
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 9--9
-|[]\T1/cmr/bx/n/14.4 Seismic Waves in the Do-main|
- []
 
-) (./main.bbl)
+] [54]
 
-! LaTeX Error: \begin{figure} on input line 43 ended by \end{document}.
+LaTeX Warning: Reference `eq:theLastLine' on page 55 undefined on input line 10
+1.
 
-See the LaTeX manual or LaTeX Companion for explanation.
-Type  H <return>  for immediate help.
- ...                                              
-                                                  
-l.51 \end{document}
-                   
-Your command was ignored.
-Type  I <command> <return>  to replace it with another command,
-or  <return>  to continue without it.
+[55]) [56] [57
 
-Package atveryend Info: Empty hook `BeforeClearDocument' on input line 51.
-Package atveryend Info: Empty hook `AfterLastShipout' on input line 51.
-(./main.aux (./Introduction.aux) (./FirstExperiments.aux)
-(./TwoDimensionalSEASProblem.aux) (./FourFormulationsForSEAS.aux)
-(./Results.aux) (./Extensions.aux))
-Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 51.
-Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 51.
+
+
+]
+Appendix A.
+[58
+
+] [59]
+Appendix B.
+[60
+
+]
+Appendix C.
+(./main.bbl [61
+
+] [62
+
+]) [63]
+Package atveryend Info: Empty hook `BeforeClearDocument' on input line 192.
+Package atveryend Info: Empty hook `AfterLastShipout' on input line 192.
+ (./main.aux (./Introduction.aux)
+(./FirstExperiments.aux) (./TwoDimensionalSEASProblem.aux)
+(./FourFormulationsForSEAS.aux) (./Results.aux) (./Extensions.aux))
+Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 192.
+Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 192.
 Package rerunfilecheck Info: File `main.out' has not changed.
-(rerunfilecheck)             Checksum: 3D7D37CA0378A58F325E0B961CECA0B7;1371.
+(rerunfilecheck)             Checksum: 1C3597B40A1C3DDDA83CEC891A34FB96;5626.
 
 
 LaTeX Warning: There were undefined references.
 
-Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 51.
-! You can't use `\end' in internal vertical mode.
-\enddocument ...es \z@ \Call@AtVeryVeryEnd \@@end 
-                                                  
-l.51 \end{document}
-                   
-Sorry, but I'm not programmed to handle this case;
-I'll just pretend that you didn't ask for it.
-If you're in the wrong mode, you might be able to
-return to the right one by typing `I}' or `I$' or `I\par'.
-
-
-! LaTeX Error: \begin{figure} on input line 43 ended by \end{document}.
-
-See the LaTeX manual or LaTeX Companion for explanation.
-Type  H <return>  for immediate help.
- ...                                              
-                                                  
-l.51 \end{document}
-                   
-Your command was ignored.
-Type  I <command> <return>  to replace it with another command,
-or  <return>  to continue without it.
-
-! Missing } inserted.
-<inserted text> 
-                }
-l.51 \end{document}
-                   
-I've inserted something that you may have forgotten.
-(See the <inserted text> above.)
-With luck, this will get me unwedged. But if you
-really didn't forget anything, try typing `2' now; then
-my insertion and my current dilemma will both disappear.
-
-)
-! Emergency stop.
-<*> main.tex
-            
-*** (job aborted, no legal \end found)
-
- 
+Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 192.
+ ) 
 Here is how much of TeX's memory you used:
- 38255 strings out of 494324
- 823932 string characters out of 6170707
- 1218789 words of memory out of 5000000
- 40937 multiletter control sequences out of 15000+600000
- 555114 words of font info for 92 fonts, out of 8000000 for 9000
+ 39051 strings out of 494324
+ 842982 string characters out of 6170707
+ 967037 words of memory out of 5000000
+ 41408 multiletter control sequences out of 15000+600000
+ 639360 words of font info for 98 fonts, out of 8000000 for 9000
  475 hyphenation exceptions out of 8191
- 62i,20n,56p,10382b,1080s stack positions out of 5000i,500n,10000p,200000b,80000s
-!  ==> Fatal error occurred, no output PDF file produced!
+ 62i,18n,56p,10382b,888s stack positions out of 5000i,500n,10000p,200000b,80000s
+{/usr/share/texmf/fonts/enc/dvips/lm/lm-rm.enc}{/usr/share/texmf/fonts/enc/dv
+ips/lm/lm-mathsy.enc} </home/raffael/.texlive2017/texmf-var/fonts/pk/ljfour/pub
+lic/bbm/bbm8.600pk> </home/raffael/.texlive2017/texmf-var/fonts/pk/ljfour/publi
+c/bbm/bbm10.600pk>{/usr/share/texmf/fonts/enc/dvips/lm/lm-mathit.enc}{/usr/shar
+e/texmf/fonts/enc/dvips/lm/lm-ec.enc}{/usr/share/texmf/fonts/enc/dvips/lm/lm-ma
+thex.enc}</usr/share/texmf/fonts/type1/public/lm/lmbx10.pfb></usr/share/texmf/f
+onts/type1/public/lm/lmbx12.pfb></usr/share/texmf/fonts/type1/public/lm/lmbx7.p
+fb></usr/share/texmf/fonts/type1/public/lm/lmbx8.pfb></usr/share/texmf/fonts/ty
+pe1/public/lm/lmex10.pfb></usr/share/texmf/fonts/type1/public/lm/lmmi10.pfb></u
+sr/share/texmf/fonts/type1/public/lm/lmmi5.pfb></usr/share/texmf/fonts/type1/pu
+blic/lm/lmmi6.pfb></usr/share/texmf/fonts/type1/public/lm/lmmi7.pfb></usr/share
+/texmf/fonts/type1/public/lm/lmmi8.pfb></usr/share/texmf/fonts/type1/public/lm/
+lmr10.pfb></usr/share/texmf/fonts/type1/public/lm/lmr12.pfb></usr/share/texmf/f
+onts/type1/public/lm/lmr17.pfb></usr/share/texmf/fonts/type1/public/lm/lmr5.pfb
+></usr/share/texmf/fonts/type1/public/lm/lmr6.pfb></usr/share/texmf/fonts/type1
+/public/lm/lmr7.pfb></usr/share/texmf/fonts/type1/public/lm/lmr8.pfb></usr/shar
+e/texmf/fonts/type1/public/lm/lmri10.pfb></usr/share/texmf/fonts/type1/public/l
+m/lmsy10.pfb></usr/share/texmf/fonts/type1/public/lm/lmsy5.pfb></usr/share/texm
+f/fonts/type1/public/lm/lmsy6.pfb></usr/share/texmf/fonts/type1/public/lm/lmsy7
+.pfb></usr/share/texmf/fonts/type1/public/lm/lmsy8.pfb></usr/share/texlive/texm
+f-dist/fonts/type1/public/stmaryrd/stmary10.pfb>
+Output written on main.pdf (64 pages, 14363487 bytes).
+PDF statistics:
+ 1422 PDF objects out of 1440 (max. 8388607)
+ 1144 compressed objects within 12 object streams
+ 346 named destinations out of 1000 (max. 500000)
+ 957 words of extra memory for PDF output out of 10000 (max. 10000000)
+
