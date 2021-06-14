@@ -9,16 +9,17 @@
 %Introduction and Background Theory
 %
 % ---------------------------------------------------------------------------
-\part[Introduction and Background Theory]{First Approach to the Topic}
-\label{part:introAndBackgroundTheory}
 \input{chapters/Introduction}
+\part[Background and 1D Experiments]{Background and 1D Experiments}
+\label{part:introAndBackgroundTheory}
+\input{chapters/Theory}
 \input{chapters/FirstExperiments}
 %% ---------------------------------------------------------------------------
 %%
 %% Thesis content: What did you do?
 %%
 %%% ---------------------------------------------------------------------------
-\part[Body: What was done for the thesis]{The Two-Dimensional Antiplane Shear Problem}
+\part[The Two-Dimensional Antiplane Shear Problem]{The Two-Dimensional Antiplane Shear Problem}
 \label{part:body}
 \input{chapters/TwoDimensionalSEASProblem}
 \input{chapters/FourFormulationsForSEAS}
@@ -29,9 +30,10 @@
 %% Results and Conclusion
 %%
 %% ---------------------------------------------------------------------------
-\part[Results and Conclusion]{Generalization and Conclusion}
+\part[Generalization to 3D and Conclusion]{Generalization to 3D and Conclusion}
 \label{part:resultsAndConclusion}
 \input{chapters/Extensions}
+\input{chapters/Conclusion}
 
 % ---------------------------------------------------------------------------
 %
@@ -44,3 +46,10 @@
 \appendix %---------------------------------------
 
 \input{chapters/Appendix}
+
+%\clearemptydoublepage
+
+\printglossaries
+
+\addcontentsline{toc}{chapter}{Bibliography}
+\bibliography{bibliography/literature}

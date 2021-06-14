@@ -38,7 +38,7 @@
 #include "mesh/LocalSimplexMesh.h"
 
 namespace tndm {
-    void testJacobianScript(LocalSimplexMesh<DomainDimension> const& mesh, Config const& cfg);
+    void testJacobianScript(LocalSimplexMesh<DomainDimension> const& mesh, Config& cfg);
 }
 
 namespace tndm::detail {

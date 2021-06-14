@@ -26,6 +26,7 @@
 #include <cstddef>
 #include <memory>
 #include <utility>
+#include <fstream>
 
 namespace tndm {
 
@@ -821,37 +822,49 @@ public:
 
         CHKERRTHROW(MatDenseGetArrayRead(dtau_dS_, &dtau_dS));
 
-        // Fill the vector A_V
-        for (int j = 0; j < numFaultNodes; j++){
-            for (int i = 0; i < numFaultNodes; i++){
-                A_V_vec(i) += dtau_dS[i + j * numFaultNodes] * V_vec(j);
+        Vec SlipRate_vec, H_vec;
+        CHKERRTHROW(VecCreateSeq(comm(), numFaultNodes, &SlipRate_vec));
+        CHKERRTHROW(VecDuplicate(SlipRate_vec, &H_vec));
+
+        // fill vector V
+        double * V_array;
+        CHKERRTHROW(VecGetArrayWrite(SlipRate_vec, &V_array));
+        for (int noFault = 0; noFault < numFaultElements; noFault++){
+            for(int i = 0; i<nbf; i++){ 
+                n_i = noFault * nbf + i;
+                V_array[n_i] = V_vec(n_i);
             }
         }
+        CHKERRTHROW(VecRestoreArrayWrite(SlipRate_vec, &V_array));
+
+        // calculate product dtau/dS * dS/dt 
+        CHKERRTHROW(MatMult(dtau_dS_, SlipRate_vec, H_vec));
+
+        const double * H_array;
+        CHKERRTHROW(VecGetArrayRead(H_vec, &H_array));
 
         auto dtaudt_handle = dtau_dt_->begin_access_readonly();
         CHKERRTHROW(MatDenseGetArrayWrite(Jac, &J));
         for (int noFault = 0; noFault < numFaultElements; noFault++){
             auto C = dtau_dt_->get_block(dtaudt_handle, noFault);
             for (int i = 0; i < nbf; i++){                  // row iteration
-                S_i = noFault * blockSize + i;
-                PSI_i = noFault * blockSize + 
-                        RateAndStateBase::TangentialComponents     * nbf + i;
-                V_i = noFault * blockSize + 
-                       (RateAndStateBase::TangentialComponents +1) * nbf + i;
-                n_i = noFault * nbf + i;
+                S_i   = noFault * blockSize + 0 * nbf + i;
+                PSI_i = noFault * blockSize + 1 * nbf + i;
+                V_i   = noFault * blockSize + 2 * nbf + i;
+                n_i   = noFault * nbf                 + i;
                 
                 J[S_i   + S_i   * totalSize] = 1.0;
-                J[PSI_i + PSI_i * totalSize] = dg_dpsi_vec(n_i);    // dg/dpsi
-                J[PSI_i + V_i   * totalSize] = dg_dV_vec(n_i);      // dg/dV
-                J[V_i   + PSI_i * totalSize] =                      // dh/dpsi
+                J[PSI_i + PSI_i * totalSize] = dg_dpsi_vec(n_i);    // dG/dpsi
+                J[PSI_i + V_i   * totalSize] = dg_dV_vec(n_i);      // dG/dV
+                J[V_i   + PSI_i * totalSize] =                      // dH/dpsi
                     - dxi_dpsi_vec(n_i) * (C(i) + 
-                                           A_V_vec(n_i) + 
+                                           H_array[n_i] + 
                                            df_dpsi_vec(n_i) * g_vec(n_i) ) - 
                      (dzeta_dpsi_vec(n_i) * g_vec(n_i) + 
                       df_dpsi_vec(n_i) * dg_dpsi_vec(n_i)) / df_dV_vec(n_i);
-                 J[V_i   + V_i   * totalSize] =                      // dh/dV
+                 J[V_i   + V_i   * totalSize] =                      // dH/dV
                     - dxi_dV_vec(n_i) * (C(i) + 
-                                         A_V_vec(n_i) + 
+                                         H_array[n_i] + 
                                          df_dpsi_vec(n_i) * g_vec(n_i) ) - 
                      (dzeta_dV_vec(n_i) * g_vec(n_i) + 
                       df_dpsi_vec(n_i) * dg_dV_vec(n_i)) / df_dV_vec(n_i) ;
@@ -859,9 +872,8 @@ public:
                 for (int noFault_j = 0; noFault_j < numFaultElements; noFault_j++){
                     for(int j = 0; j < nbf; j++) {          // column iteration
 
-                        V_j = noFault * blockSize + 
-                              (RateAndStateBase::TangentialComponents +1) * nbf + j;
-                        n_j = noFault_j * nbf + j;
+                        V_j = noFault_j * blockSize + 2 * nbf + j;
+                        n_j = noFault_j * nbf                 + j;
 
                         // dense components in dh/dV
                         J[V_i   + V_j * totalSize  ] -= dtau_dS[n_i + n_j * numFaultNodes] / df_dV_vec(n_i);
@@ -872,6 +884,9 @@ public:
         dtau_dt_->end_access_readonly(dtaudt_handle);
         CHKERRTHROW(MatDenseRestoreArrayRead(dtau_dS_, &dtau_dS));
         CHKERRTHROW(MatDenseRestoreArrayWrite(Jac, &J));
+        CHKERRTHROW(VecRestoreArrayRead(H_vec, &H_array));
+        CHKERRTHROW(VecDestroy(&SlipRate_vec));
+        CHKERRTHROW(VecDestroy(&H_vec));
     }
  
     /**
@@ -2071,62 +2086,62 @@ public:
         std::ofstream JacobianFile;
         JacobianFile.open("Jacobian_matrices_t"+std::to_string(time));
         // --------------APPROXIMATE J ------------------- //
-//       if (full) std::cout << "relative difference to the approximated J is: "<<std::endl<<"[ "; 
-//        if (full) JacobianFile << "approximated J: \n [ "; 
-//         for (int faultNo_j = 0; faultNo_j < 3; ++faultNo_j){
-//             for (int j = 0; j < blockSize; j++){
-//                 n_j = faultNo_j * blockSize + j;
-//                 PetscBlockVector x_left(blockSize, numFaultElements, comm());
-//                 PetscBlockVector x_right(blockSize, numFaultElements, comm());
-//                 PetscBlockVector f_left(blockSize, numFaultElements, comm());
-//                 PetscBlockVector f_right(blockSize, numFaultElements, comm());
-//
-//                 CHKERRTHROW(VecCopy(state.vec(), x_left.vec()));
-//                 CHKERRTHROW(VecCopy(state.vec(), x_right.vec()));
-//                
-//                 auto x_r = x_right.begin_access();
-//                 auto x_l = x_left.begin_access();
-//                 const auto x = state.begin_access_readonly();
-//
-//                 auto x_l_block = x_left.get_block(x_l, faultNo_j);
-//                 auto x_r_block = x_right.get_block(x_r, faultNo_j);
-//                 auto x_block = rhs.get_block(x, faultNo_j);
-//
-//                 double h = 1e-8 + 1e-10 * abs(x_block(j));
-//                 x_l_block(j) -= h;
-//                 x_r_block(j) += h;
-//
-//                 x_left.end_access(x_l);
-//                 x_right.end_access(x_r);
-//                 state.end_access_readonly(x);
-//
-//                 rhsCompactODE(time, x_left, f_left, false);
-//                 rhsCompactODE(time, x_right, f_right, false);
-//
-//                 const auto f_r = f_right.begin_access_readonly();
-//                 const auto f_l = f_left.begin_access_readonly();
-//
-//                 for (int faultNo_i = 0; faultNo_i < numFaultElements; ++faultNo_i){
-//                     auto f_l_block = f_left.get_block(f_l, faultNo_i);
-//                     auto f_r_block = f_right.get_block(f_r, faultNo_i);
-//                     for (int i = 0; i < blockSize; i++){                        
-//                         n_i = faultNo_i * blockSize + i;
-//
-//                         J_approx = (f_r_block(i) - f_l_block(i)) / (2.0 * h);            
-//                         J = F_x[n_i + n_j * totalSize];
-//                         if (full) JacobianFile << J_approx << " ";
-// //                        if (full) std::cout << (J_approx - J) / J_approx << " ";
-//                         if (!full) max_rel_diff = std::max(max_rel_diff, 
-//                                                   std::abs((J_approx - J) / J_approx));
-//                     }
-//                 }
-//
-//                 if (full) ((j+1 == blockSize) && (faultNo_j + 1 == 3)) ? JacobianFile << "]" : JacobianFile << "; "; 
-//                 if (full) JacobianFile << "\n";
-//                 f_left.end_access_readonly(f_l);
-//                 f_right.end_access_readonly(f_r);
-//             }            
-//         }
+      if (full) std::cout << "relative difference to the approximated J is: "<<std::endl<<"[ "; 
+       if (full) JacobianFile << "approximated J: \n [ "; 
+        for (int faultNo_j = 0; faultNo_j < 3; ++faultNo_j){
+            for (int j = 0; j < blockSize; j++){
+                n_j = faultNo_j * blockSize + j;
+                PetscBlockVector x_left(blockSize, numFaultElements, comm());
+                PetscBlockVector x_right(blockSize, numFaultElements, comm());
+                PetscBlockVector f_left(blockSize, numFaultElements, comm());
+                PetscBlockVector f_right(blockSize, numFaultElements, comm());
+
+                CHKERRTHROW(VecCopy(state.vec(), x_left.vec()));
+                CHKERRTHROW(VecCopy(state.vec(), x_right.vec()));
+               
+                auto x_r = x_right.begin_access();
+                auto x_l = x_left.begin_access();
+                const auto x = state.begin_access_readonly();
+
+                auto x_l_block = x_left.get_block(x_l, faultNo_j);
+                auto x_r_block = x_right.get_block(x_r, faultNo_j);
+                auto x_block = rhs.get_block(x, faultNo_j);
+
+                double h = 1e-8 + 1e-10 * abs(x_block(j));
+                x_l_block(j) -= h;
+                x_r_block(j) += h;
+
+                x_left.end_access(x_l);
+                x_right.end_access(x_r);
+                state.end_access_readonly(x);
+
+                rhsCompactODE(time, x_left, f_left, false);
+                rhsCompactODE(time, x_right, f_right, false);
+
+                const auto f_r = f_right.begin_access_readonly();
+                const auto f_l = f_left.begin_access_readonly();
+
+                for (int faultNo_i = 0; faultNo_i < numFaultElements; ++faultNo_i){
+                    auto f_l_block = f_left.get_block(f_l, faultNo_i);
+                    auto f_r_block = f_right.get_block(f_r, faultNo_i);
+                    for (int i = 0; i < blockSize; i++){                        
+                        n_i = faultNo_i * blockSize + i;
+
+                        J_approx = (f_r_block(i) - f_l_block(i)) / (2.0 * h);            
+                        J = F_x[n_i + n_j * totalSize];
+                        if (full) JacobianFile << J_approx << " ";
+//                        if (full) std::cout << (J_approx - J) / J_approx << " ";
+                        if (!full) max_rel_diff = std::max(max_rel_diff, 
+                                                  std::abs((J_approx - J) / J_approx));
+                    }
+                }
+
+                if (full) ((j+1 == blockSize) && (faultNo_j + 1 == 3)) ? JacobianFile << "]" : JacobianFile << "; "; 
+                if (full) JacobianFile << "\n";
+                f_left.end_access_readonly(f_l);
+                f_right.end_access_readonly(f_r);
+            }            
+        }
         JacobianFile << "analytic Jacobian is: \n[ ";
         for (int faultNo_j = 0; faultNo_j < 3; ++faultNo_j){
             for (int j = 0; j < blockSize; j++){
@@ -2266,127 +2281,127 @@ public:
             if (full) std::cout << std::endl << std::endl << std::endl;
             if (!full) std::cout << "maximal relative difference between df/dS and its approximate is " << max_rel_diff << std::endl;
         } else {
-//             if (full) JacobianFile << "approximated df/dS is: "<<std::endl<<"[ ";        
-//             for (int faultNo_j = 0; faultNo_j < numFaultNodes; ++faultNo_j){
-//                 for (int j = 0; j < faultDim * nbf; j++){
-//                     n_j = faultNo_j * faultDim * nbf + j;
-//
-//                     PetscBlockVector x_left(blockSize, numFaultElements, comm());
-//                     PetscBlockVector x_right(blockSize, numFaultElements, comm());
-//                     PetscBlockVector f_left(tractionDim*nbf, numFaultElements, comm());
-//                     PetscBlockVector f_right(tractionDim*nbf, numFaultElements, comm());
-//
-//                     CHKERRTHROW(VecCopy(state.vec(), x_left.vec()));
-//                     CHKERRTHROW(VecCopy(state.vec(), x_right.vec()));
-//                 
-//                     auto x_r = x_right.begin_access();
-//                     auto x_l = x_left.begin_access();
-//                     const auto x = state.begin_access_readonly();
-//
-//                     auto x_l_block = x_left.get_block(x_l, faultNo_j);
-//                     auto x_r_block = x_right.get_block(x_r, faultNo_j);
-//                     auto x_block = rhs.get_block(x, faultNo_j);
-//
-//                     double h = 1e-4 + 1e-10 * abs(x_block(j));
-//                     x_l_block(j) -= h;
-//                     x_r_block(j) += h;
-//
-//                     x_left.end_access(x_l);
-//                     x_right.end_access(x_r);
-//                     state.end_access_readonly(x);
-//
-//                     // get the friction law to the left
-//                     adapter_->solve(time, x_left);
-//
-//                     scratch_.reset();
-//                     auto in_handle = x_left.begin_access_readonly();
-//                     auto in_rhs_handle = rhs.begin_access();
-//                     auto traction = Managed<Matrix<double>>(adapter_->traction_info());
-//                     adapter_->begin_traction([&x_left, &in_handle](std::size_t faultNo) {
-//                         return x_left.get_block(in_handle, faultNo);
-//                     });
-//                     auto out_handle = f_left.begin_access();
-//             
-//                     for (std::size_t faultNo = 0, num = numLocalElements(); faultNo < num; ++faultNo) {
-//                         adapter_->traction(faultNo, traction, scratch_);
-//
-//                         auto result_block = f_left.get_block(out_handle, faultNo);
-//
-//                         lop_->getTractionComponents(faultNo, time, traction, result_block, scratch_);
-//                     }
-//                     adapter_->end_traction();
-//                     x_left.end_access_readonly(in_handle);
-//                     rhs.end_access(in_rhs_handle);
-//                     f_left.end_access(out_handle);
-//
-//                     // get the friction law to the right
-//                     adapter_->solve(time, x_right);
-//
-//                     in_handle = x_right.begin_access_readonly();
-//                     in_rhs_handle = rhs.begin_access();
-//                     traction = Managed<Matrix<double>>(adapter_->traction_info());
-//                     adapter_->begin_traction([&x_right, &in_handle](std::size_t faultNo) {
-//                         return x_right.get_block(in_handle, faultNo);
-//                     });
-//                     out_handle = f_right.begin_access();
-//
-//                     for (std::size_t faultNo = 0, num = numLocalElements(); faultNo < num; ++faultNo) {
-//                         adapter_->traction(faultNo, traction, scratch_);
-//
-//                         auto result_block = f_right.get_block(out_handle, faultNo);
-//
-//                         lop_->getTractionComponents(faultNo, time, traction, result_block, scratch_);
-//                     }
-//                     adapter_->end_traction();
-//                     x_right.end_access_readonly(in_handle);
-//                     rhs.end_access(in_rhs_handle);
-//                     f_right.end_access(out_handle);
-//
-//
-//                     const auto f_r = f_right.begin_access_readonly();
-//                     const auto f_l = f_left.begin_access_readonly();
-//
-//                     for (int faultNo_i = 0; faultNo_i < numFaultElements; ++faultNo_i){
-//                         auto f_l_block = f_left.get_block(f_l, faultNo_i);
-//                         auto f_r_block = f_right.get_block(f_r, faultNo_i);
-//
-//                         for (int i = 0; i < tractionDim*nbf; i++){                        
-//                             n_i = faultNo_i * tractionDim*nbf  + i;
-//                             dfdS_approx = (f_r_block(i) - f_l_block(i)) / (2.0 * h);                        
-//                             dfdS = dtau_dS[n_i + n_j * tractionSizeGlobal];
-//                             JacobianFile << dfdS_approx << ", ";
-// //                            if (full)  JacobianFile << (dfdS_approx - dfdS) / dfdS_approx<< " ";                            
-//                             if (!full) max_rel_diff = std::max(max_rel_diff, 
-//                                                         std::abs((dfdS_approx - dfdS) / dfdS_approx));
-//                         }
-//                     }
-//                            if (full) ((j+1 == faultDim*nbf) && (faultNo_j + 1 == numFaultNodes)) ? JacobianFile << "]" : JacobianFile << "; "; 
-//                     if (full) JacobianFile << std::endl;
-//                     f_left.end_access_readonly(f_l);
-//                     f_right.end_access_readonly(f_r);
-//                 }
-//             }            
-//             if (full) JacobianFile << "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n";
-//             if (!full) std::cout << "maximal relative difference between df/dS and its approximate is " << max_rel_diff << std::endl;
-//
-//             if (full) JacobianFile << "analytic df/dS is: \n[ ";        
-//             for (int faultNo_j = 0; faultNo_j < numFaultNodes; ++faultNo_j){
-//                 for (int j = 0; j < faultDim*nbf; j++){
-//                     n_j = faultNo_j * faultDim*nbf + j;
-//                     for (int faultNo_i = 0; faultNo_i < numFaultElements; ++faultNo_i){
-//                         for (int i = 0; i < tractionDim*nbf; i++){                        
-//                             n_i = faultNo_i * tractionDim*nbf  + i;
-//                             dfdS = dtau_dS[n_i + n_j * tractionSizeGlobal];
-//                             JacobianFile << dfdS << ", ";
-// //                            if (full)  JacobianFile << (dfdS_approx - dfdS) / dfdS_approx<< " ";                            
-//                             if (!full) max_rel_diff = std::max(max_rel_diff, 
-//                                                         std::abs((dfdS_approx - dfdS) / dfdS_approx));
-//                         }
-//                     }
-//                             if (full) ((j+1 == faultDim*nbf) && (faultNo_j + 1 == numFaultNodes)) ? JacobianFile << "]" : JacobianFile << "; "; 
-//                             if (full) JacobianFile << std::endl;
-//                 }
-//             }            
+            if (full) JacobianFile << "approximated df/dS is: "<<std::endl<<"[ ";        
+            for (int faultNo_j = 0; faultNo_j < numFaultNodes; ++faultNo_j){
+                for (int j = 0; j < faultDim * nbf; j++){
+                    n_j = faultNo_j * faultDim * nbf + j;
+
+                    PetscBlockVector x_left(blockSize, numFaultElements, comm());
+                    PetscBlockVector x_right(blockSize, numFaultElements, comm());
+                    PetscBlockVector f_left(tractionDim*nbf, numFaultElements, comm());
+                    PetscBlockVector f_right(tractionDim*nbf, numFaultElements, comm());
+
+                    CHKERRTHROW(VecCopy(state.vec(), x_left.vec()));
+                    CHKERRTHROW(VecCopy(state.vec(), x_right.vec()));
+                
+                    auto x_r = x_right.begin_access();
+                    auto x_l = x_left.begin_access();
+                    const auto x = state.begin_access_readonly();
+
+                    auto x_l_block = x_left.get_block(x_l, faultNo_j);
+                    auto x_r_block = x_right.get_block(x_r, faultNo_j);
+                    auto x_block = rhs.get_block(x, faultNo_j);
+
+                    double h = 1e-4 + 1e-10 * abs(x_block(j));
+                    x_l_block(j) -= h;
+                    x_r_block(j) += h;
+
+                    x_left.end_access(x_l);
+                    x_right.end_access(x_r);
+                    state.end_access_readonly(x);
+
+                    // get the friction law to the left
+                    adapter_->solve(time, x_left);
+
+                    scratch_.reset();
+                    auto in_handle = x_left.begin_access_readonly();
+                    auto in_rhs_handle = rhs.begin_access();
+                    auto traction = Managed<Matrix<double>>(adapter_->traction_info());
+                    adapter_->begin_traction([&x_left, &in_handle](std::size_t faultNo) {
+                        return x_left.get_block(in_handle, faultNo);
+                    });
+                    auto out_handle = f_left.begin_access();
+            
+                    for (std::size_t faultNo = 0, num = numLocalElements(); faultNo < num; ++faultNo) {
+                        adapter_->traction(faultNo, traction, scratch_);
+
+                        auto result_block = f_left.get_block(out_handle, faultNo);
+
+                        lop_->getTractionComponents(faultNo, time, traction, result_block, scratch_);
+                    }
+                    adapter_->end_traction();
+                    x_left.end_access_readonly(in_handle);
+                    rhs.end_access(in_rhs_handle);
+                    f_left.end_access(out_handle);
+
+                    // get the friction law to the right
+                    adapter_->solve(time, x_right);
+
+                    in_handle = x_right.begin_access_readonly();
+                    in_rhs_handle = rhs.begin_access();
+                    traction = Managed<Matrix<double>>(adapter_->traction_info());
+                    adapter_->begin_traction([&x_right, &in_handle](std::size_t faultNo) {
+                        return x_right.get_block(in_handle, faultNo);
+                    });
+                    out_handle = f_right.begin_access();
+
+                    for (std::size_t faultNo = 0, num = numLocalElements(); faultNo < num; ++faultNo) {
+                        adapter_->traction(faultNo, traction, scratch_);
+
+                        auto result_block = f_right.get_block(out_handle, faultNo);
+
+                        lop_->getTractionComponents(faultNo, time, traction, result_block, scratch_);
+                    }
+                    adapter_->end_traction();
+                    x_right.end_access_readonly(in_handle);
+                    rhs.end_access(in_rhs_handle);
+                    f_right.end_access(out_handle);
+
+
+                    const auto f_r = f_right.begin_access_readonly();
+                    const auto f_l = f_left.begin_access_readonly();
+
+                    for (int faultNo_i = 0; faultNo_i < numFaultElements; ++faultNo_i){
+                        auto f_l_block = f_left.get_block(f_l, faultNo_i);
+                        auto f_r_block = f_right.get_block(f_r, faultNo_i);
+
+                        for (int i = 0; i < tractionDim*nbf; i++){                        
+                            n_i = faultNo_i * tractionDim*nbf  + i;
+                            dfdS_approx = (f_r_block(i) - f_l_block(i)) / (2.0 * h);                        
+                            dfdS = dtau_dS[n_i + n_j * tractionSizeGlobal];
+                            JacobianFile << dfdS_approx << ", ";
+//                            if (full)  JacobianFile << (dfdS_approx - dfdS) / dfdS_approx<< " ";                            
+                            if (!full) max_rel_diff = std::max(max_rel_diff, 
+                                                        std::abs((dfdS_approx - dfdS) / dfdS_approx));
+                        }
+                    }
+                           if (full) ((j+1 == faultDim*nbf) && (faultNo_j + 1 == numFaultNodes)) ? JacobianFile << "]" : JacobianFile << "; "; 
+                    if (full) JacobianFile << std::endl;
+                    f_left.end_access_readonly(f_l);
+                    f_right.end_access_readonly(f_r);
+                }
+            }            
+            if (full) JacobianFile << "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n";
+            if (!full) std::cout << "maximal relative difference between df/dS and its approximate is " << max_rel_diff << std::endl;
+
+            if (full) JacobianFile << "analytic df/dS is: \n[ ";        
+            for (int faultNo_j = 0; faultNo_j < numFaultNodes; ++faultNo_j){
+                for (int j = 0; j < faultDim*nbf; j++){
+                    n_j = faultNo_j * faultDim*nbf + j;
+                    for (int faultNo_i = 0; faultNo_i < numFaultElements; ++faultNo_i){
+                        for (int i = 0; i < tractionDim*nbf; i++){                        
+                            n_i = faultNo_i * tractionDim*nbf  + i;
+                            dfdS = dtau_dS[n_i + n_j * tractionSizeGlobal];
+                            JacobianFile << dfdS << ", ";
+//                            if (full)  JacobianFile << (dfdS_approx - dfdS) / dfdS_approx<< " ";                            
+                            if (!full) max_rel_diff = std::max(max_rel_diff, 
+                                                        std::abs((dfdS_approx - dfdS) / dfdS_approx));
+                        }
+                    }
+                            if (full) ((j+1 == faultDim*nbf) && (faultNo_j + 1 == numFaultNodes)) ? JacobianFile << "]" : JacobianFile << "; "; 
+                            if (full) JacobianFile << std::endl;
+                }
+            }            
         }
         CHKERRTHROW(MatDenseRestoreArrayRead(dtau_dS_, &dtau_dS));
 
@@ -2394,151 +2409,151 @@ public:
 
         // // --------------APPROXIMATE DF/DV------------------- //
 
-        // double dfdV_approx;
-        // double dfdV;
-        // max_rel_diff = 0; 
-        // if (full) std::cout << "relative difference to the approximated df/dV is: "<<std::endl<<"[ ";        
-        // for (int faultNo_j = 0; faultNo_j < numFaultElements; ++faultNo_j){
-        //     for (int j = 0; j < nbf; j++){
-        //         n_j = faultNo_j * nbf + j;
+        double dfdV_approx;
+        double dfdV;
+        max_rel_diff = 0; 
+        if (full) std::cout << "relative difference to the approximated df/dV is: "<<std::endl<<"[ ";        
+        for (int faultNo_j = 0; faultNo_j < numFaultElements; ++faultNo_j){
+            for (int j = 0; j < nbf; j++){
+                n_j = faultNo_j * nbf + j;
 
-        //         PetscBlockVector f_left(blockSize, numFaultElements, comm());
-        //         PetscBlockVector f_right(blockSize, numFaultElements, comm());
+                PetscBlockVector f_left(blockSize, numFaultElements, comm());
+                PetscBlockVector f_right(blockSize, numFaultElements, comm());
 
-        //         double h;
+                double h;
 
-        //         // get the friction law
-        //         scratch_.reset();
-        //         auto in_handle = state.begin_access_readonly();
-        //         auto in_rhs_handle = rhs.begin_access();
-        //         auto traction = Managed<Matrix<double>>(adapter_->traction_info());
-        //         adapter_->begin_traction([&state, &in_handle](std::size_t faultNo) {
-        //             return state.get_block(in_handle, faultNo);
-        //         });
-        //         auto out_left_handle = f_left.begin_access();
-        //         auto out_right_handle = f_right.begin_access();
+                // get the friction law
+                scratch_.reset();
+                auto in_handle = state.begin_access_readonly();
+                auto in_rhs_handle = rhs.begin_access();
+                auto traction = Managed<Matrix<double>>(adapter_->traction_info());
+                adapter_->begin_traction([&state, &in_handle](std::size_t faultNo) {
+                    return state.get_block(in_handle, faultNo);
+                });
+                auto out_left_handle = f_left.begin_access();
+                auto out_right_handle = f_right.begin_access();
 
-        //         for (std::size_t faultNo = 0, num = numLocalElements(); faultNo < num; ++faultNo) {
-        //             adapter_->traction(faultNo, traction, scratch_);
+                for (std::size_t faultNo = 0, num = numLocalElements(); faultNo < num; ++faultNo) {
+                    adapter_->traction(faultNo, traction, scratch_);
 
-        //             auto state_block = state.get_block(in_handle, faultNo);
-        //             auto state_der_block = rhs.get_block(in_rhs_handle, faultNo);
-        //             auto result_left_block = f_left.get_block(out_left_handle, faultNo);
-        //             auto result_right_block = f_right.get_block(out_right_handle, faultNo);
+                    auto state_block = state.get_block(in_handle, faultNo);
+                    auto state_der_block = rhs.get_block(in_rhs_handle, faultNo);
+                    auto result_left_block = f_left.get_block(out_left_handle, faultNo);
+                    auto result_right_block = f_right.get_block(out_right_handle, faultNo);
 
-        //             h = 1e-2 * abs(state_der_block(j));
-        //             if (faultNo == faultNo_j) state_der_block(j) -= h;
-        //             lop_->applyFrictionLaw(faultNo, time, traction, state_block, state_der_block, result_left_block, scratch_);
-        //             if (faultNo == faultNo_j) state_der_block(j) += h;
-        //             if (faultNo == faultNo_j) state_der_block(j) += h;
-        //             lop_->applyFrictionLaw(faultNo, time, traction, state_block, state_der_block, result_right_block, scratch_);
-        //             if (faultNo == faultNo_j) state_der_block(j) -= h;
-        //         }
-        //         adapter_->end_traction();
-        //         state.end_access_readonly(in_handle);
-        //         rhs.end_access(in_rhs_handle);
-        //         f_left.end_access(out_left_handle);
-        //         f_right.end_access(out_right_handle);
-
-
-        //         const auto f_r = f_right.begin_access_readonly();
-        //         const auto f_l = f_left.begin_access_readonly();
-
-        //         for (int faultNo_i = 0; faultNo_i < numFaultElements; ++faultNo_i){
-        //             auto f_l_block = f_left.get_block(f_l, faultNo_i);
-        //             auto f_r_block = f_right.get_block(f_r, faultNo_i);
-
-        //             for (int i = 0; i < nbf; i++){     
-        //                 n_i = faultNo_i * nbf + i;                                           
-        //                 dfdV_approx = (f_r_block(i) - f_l_block(i)) / (2.0 * h);
-        //                 dfdV = df_dV * delta(n_i, n_j);
-        //                 if (full) std::cout << (dfdV_approx - dfdV) / dfdV_approx <<" ";                           
-        //                 if (!full) max_rel_diff = std::max(max_rel_diff, 
-        //                                           std::abs((dfdV_approx - dfdV) / dfdV_approx)); 
-        //             }
-        //         }
-        //         if (full) ((j+1 == nbf) && (faultNo_j + 1 == numFaultElements)) ? std::cout << "]" : std::cout << "; "; 
-        //         if (full) std::cout << std::endl;
-        //         f_left.end_access_readonly(f_l);
-        //         f_right.end_access_readonly(f_r);
-        //     }            
-        // }
-        // if (full) std::cout << std::endl << std::endl << std::endl;
-        // if (!full) std::cout << "maximal relative difference between df/dV and its approximate is " << max_rel_diff << std::endl;
-
-        // // ------------------APPROXIMATE DV/Dt ---------------------------- //
-        // PetscBlockVector x_left(blockSize, numFaultElements, comm());
-        // PetscBlockVector x_right(blockSize, numFaultElements, comm());
-        // PetscBlockVector f_left(blockSize, numFaultElements, comm());
-        // PetscBlockVector f_right(blockSize, numFaultElements, comm());
-
-        // CHKERRTHROW(VecCopy(state.vec(), x_left.vec()));
-        // CHKERRTHROW(VecCopy(state.vec(), x_right.vec()));
-
-        // double h = 1e-5;
-
-        // CHKERRTHROW(VecAXPY(x_right.vec(), h, rhs.vec()));
-        // CHKERRTHROW(VecAXPY(x_left.vec(), -h, rhs.vec()));
-
-        // rhsCompactODE(time-h, x_left, f_left, false);
-        // rhsCompactODE(time+h, x_right, f_right, false);
+                    h = 1e-2 * abs(state_der_block(j));
+                    if (faultNo == faultNo_j) state_der_block(j) -= h;
+                    lop_->applyFrictionLaw(faultNo, time, traction, state_block, state_der_block, result_left_block, scratch_);
+                    if (faultNo == faultNo_j) state_der_block(j) += h;
+                    if (faultNo == faultNo_j) state_der_block(j) += h;
+                    lop_->applyFrictionLaw(faultNo, time, traction, state_block, state_der_block, result_right_block, scratch_);
+                    if (faultNo == faultNo_j) state_der_block(j) -= h;
+                }
+                adapter_->end_traction();
+                state.end_access_readonly(in_handle);
+                rhs.end_access(in_rhs_handle);
+                f_left.end_access(out_left_handle);
+                f_right.end_access(out_right_handle);
 
 
-        // // calculate the derivative of the slip rate
-        // int S_i;
-        // int PSI_i;
-        // int S_j;
+                const auto f_r = f_right.begin_access_readonly();
+                const auto f_l = f_left.begin_access_readonly();
 
-        // auto out_handle = rhs.begin_access();
+                for (int faultNo_i = 0; faultNo_i < numFaultElements; ++faultNo_i){
+                    auto f_l_block = f_left.get_block(f_l, faultNo_i);
+                    auto f_r_block = f_right.get_block(f_r, faultNo_i);
 
-        // auto left_handle = f_left.begin_access_readonly();
-        // auto right_handle = f_right.begin_access_readonly();
+                    for (int i = 0; i < nbf; i++){     
+                        n_i = faultNo_i * nbf + i;                                           
+                        dfdV_approx = (f_r_block(i) - f_l_block(i)) / (2.0 * h);
+                        dfdV = df_dV_vec(n_i) * delta(n_i, n_j);
+                        if (full) std::cout << (dfdV_approx - dfdV) / dfdV_approx <<" ";                           
+                        if (!full) max_rel_diff = std::max(max_rel_diff, 
+                                                  std::abs((dfdV_approx - dfdV) / dfdV_approx)); 
+                    }
+                }
+                if (full) ((j+1 == nbf) && (faultNo_j + 1 == numFaultElements)) ? std::cout << "]" : std::cout << "; "; 
+                if (full) std::cout << std::endl;
+                f_left.end_access_readonly(f_l);
+                f_right.end_access_readonly(f_r);
+            }            
+        }
+        if (full) std::cout << std::endl << std::endl << std::endl;
+        if (!full) std::cout << "maximal relative difference between df/dV and its approximate is " << max_rel_diff << std::endl;
 
-        // double dVdt;
-        // double dVdt_approx;
+        // ------------------APPROXIMATE DV/Dt ---------------------------- //
+        PetscBlockVector x_left(blockSize, numFaultElements, comm());
+        PetscBlockVector x_right(blockSize, numFaultElements, comm());
+        PetscBlockVector f_left(blockSize, numFaultElements, comm());
+        PetscBlockVector f_right(blockSize, numFaultElements, comm());
 
-        // CHKERRTHROW(MatDenseGetArrayRead(dtau_dS_, &dtau_dS));
-        // max_rel_diff = 0; 
-        // if (full) std::cout << "relative difference to the approximated dV/dt is: " << std::endl;
-        // for (int noFault = 0; noFault < numFaultElements; noFault++){
-        //     auto dPSIdt = rhs.get_block(out_handle, noFault);
+        CHKERRTHROW(VecCopy(state.vec(), x_left.vec()));
+        CHKERRTHROW(VecCopy(state.vec(), x_right.vec()));
 
-        //     auto lb = f_left.get_block(left_handle, noFault);
-        //     auto rb = f_right.get_block(right_handle, noFault);
+        double h = 1e-5;
 
-        //    for (int i = 0; i < nbf; i++){                  // row iteration
-        //         S_i   = i;
-        //         PSI_i =  RateAndStateBase::TangentialComponents * nbf + i;
+        CHKERRTHROW(VecAXPY(x_right.vec(), h, rhs.vec()));
+        CHKERRTHROW(VecAXPY(x_left.vec(), -h, rhs.vec()));
 
-        //         n_i = noFault * nbf + i;
+        rhsCompactODE(time-h, x_left, f_left, false);
+        rhsCompactODE(time+h, x_right, f_right, false);
+
+
+        // calculate the derivative of the slip rate
+        int S_i;
+        int PSI_i;
+        int S_j;
+
+        auto out_handle = rhs.begin_access();
+
+        auto left_handle = f_left.begin_access_readonly();
+        auto right_handle = f_right.begin_access_readonly();
+
+        double dVdt;
+        double dVdt_approx;
+
+        CHKERRTHROW(MatDenseGetArrayRead(dtau_dS_, &dtau_dS));
+        max_rel_diff = 0; 
+        if (full) std::cout << "relative difference to the approximated dV/dt is: " << std::endl;
+        for (int noFault = 0; noFault < numFaultElements; noFault++){
+            auto dPSIdt = rhs.get_block(out_handle, noFault);
+
+            auto lb = f_left.get_block(left_handle, noFault);
+            auto rb = f_right.get_block(right_handle, noFault);
+
+           for (int i = 0; i < nbf; i++){                  // row iteration
+                S_i   = i;
+                PSI_i =  RateAndStateBase::TangentialComponents * nbf + i;
+
+                n_i = noFault * nbf + i;
  
-        //         dVdt = -df_dpsi_vec(n_i) * dPSIdt(PSI_i);  // = -dF/dpsi * dpsi/dt
+                dVdt = -df_dpsi_vec(n_i) * dPSIdt(PSI_i);  // = -dF/dpsi * dpsi/dt
                 
-        //         for (int noFault_j = 0; noFault_j < numFaultElements; noFault_j++){ 
-        //             auto dSdt = rhs.get_block(out_handle, noFault_j);
+                for (int noFault_j = 0; noFault_j < numFaultElements; noFault_j++){ 
+                    auto dSdt = rhs.get_block(out_handle, noFault_j);
               
-        //             for(int j = 0; j < nbf; j++) {          // column iteration
+                    for(int j = 0; j < nbf; j++) {          // column iteration
 
-        //                 n_j = noFault_j * nbf + j;
-        //                 S_j = j;
+                        n_j = noFault_j * nbf + j;
+                        S_j = j;
 
-        //                 dVdt -= dtau_dS[n_i + n_j * numFaultNodes] * dSdt(S_j);    // = -dF/dS * dS/dt
-        //             }
-        //         }
-        //         dVdt /= df_dV_vec(n_i); // = (dF/dV)^-1 * dF/dt
+                        dVdt -= dtau_dS[n_i + n_j * numFaultNodes] * dSdt(S_j);    // = -dF/dS * dS/dt
+                    }
+                }
+                dVdt /= df_dV_vec(n_i); // = (dF/dV)^-1 * dF/dt
 
-        //         dVdt_approx = (rb(i) - lb(i)) / (2.0 * h);
-        //         if (full) std::cout << (dVdt - dVdt_approx) / dVdt_approx << std::endl;
-        //         max_rel_diff = std::max(max_rel_diff,std::abs((dVdt - dVdt_approx) / dVdt_approx));
-        //     }
-        // }
-        // if (full) std::cout << std::endl << std::endl << std::endl;
-        // if (!full) std::cout << "maximal relative difference between dV/dt and its approximate is " << max_rel_diff << std::endl;
+                dVdt_approx = (rb(i) - lb(i)) / (2.0 * h);
+                if (full) std::cout << (dVdt - dVdt_approx) / dVdt_approx << std::endl;
+                max_rel_diff = std::max(max_rel_diff,std::abs((dVdt - dVdt_approx) / dVdt_approx));
+            }
+        }
+        if (full) std::cout << std::endl << std::endl << std::endl;
+        if (!full) std::cout << "maximal relative difference between dV/dt and its approximate is " << max_rel_diff << std::endl;
 
-        // rhs.end_access_readonly(out_handle);
-        // f_left.end_access_readonly(left_handle);
-        // f_right.end_access_readonly(right_handle);
-        // CHKERRTHROW(MatDenseRestoreArrayRead(dtau_dS_, &dtau_dS));
+        rhs.end_access_readonly(out_handle);
+        f_left.end_access_readonly(left_handle);
+        f_right.end_access_readonly(right_handle);
+        CHKERRTHROW(MatDenseRestoreArrayRead(dtau_dS_, &dtau_dS));
 
     }
 
@@ -2816,7 +2831,7 @@ public:
     std::unique_ptr<SeasAdapter> adapter_;  // on domain: DG solver (handles traction and mechanical solver)
     Scratch<double> scratch_;               // some aligned scratch memory
     double VMax_ = 0.0;                     // metrics: maximal velocity among all fault elements
-    double error_extended_ODE_ = -1.0;      // metrics: evaluation of the maximum absolute value of the friction law 
+    double error_extended_ODE_ = 0.0;      // metrics: evaluation of the maximum absolute value of the friction law 
     size_t evaluation_rhs_count = 0;        // metrics: counts the number of calls of the rhs function in one time step
 
     PetscBlockVector* JacobianQuantities_;  // contains the partial derivatives [df/dV, df/dpsi, dg/dV, dg/dpsi]

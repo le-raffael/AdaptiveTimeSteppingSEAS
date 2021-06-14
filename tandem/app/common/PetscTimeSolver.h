@@ -28,8 +28,9 @@ class PetscTimeSolver {
 public:
     /**
      * set up the Petsc time solver 
-     * @param timeop instance of the seas operator
-     * @param ksp object to solve the linear system
+     * @param [inout] timeop instance of the seas operator
+     * @param [inout] ksp    object to solve the linear system
+     * @param [  out] ierr   error code (0 if the initialization was successful, else the execution is aborted)
      */
     template <typename TimeOp> PetscTimeSolver(TimeOp& timeop, KSP& ksp, int& ierr) {
 
@@ -39,7 +40,6 @@ public:
         // start up PETSc
         CHKERRTHROW(TSCreate(timeop.comm(), &ts_));
         CHKERRTHROW(TSSetProblemType(ts_, TS_NONLINEAR));
- //       CHKERRTHROW(TSSetExactFinalTime(ts_, TS_EXACTFINALTIME_MATCHSTEP)); - think about how to add that later
 
         if (cfg){
             // read petsc options from file
@@ -73,6 +73,7 @@ public:
             CHKERRTHROW(TSSetRHSFunction(ts_, nullptr, RHSFunctionCompactODE<TimeOp>, &timeop));
             CHKERRTHROW(TSSetRHSJacobian(ts_, timeop.getJacobianCompactODE(), timeop.getJacobianCompactODE(), RHSJacobianCompactODE<TimeOp>, &timeop));
             CHKERRTHROW(TSSetFromOptions(ts_));
+            ierr = 0;
         }
     }
 
@@ -85,7 +86,7 @@ public:
 
     /**
      * Start the Petsc time solver. It will perform all time iterations
-     * @param upcoming_time final simulation time
+     * @param [in   ] upcoming_time final simulation time
      */
     void solve(double upcoming_time) {
         CHKERRTHROW(TSSetMaxTime(ts_, upcoming_time));
@@ -94,15 +95,13 @@ public:
     }
 
     /**
-     * return the solution vector of the ODE. It has the form: 
-     * [1_V1, 1_V2, 1_V3, 1_psi1, 1_psi2, 1_psi3, 2_V1, 2_V2, 2_V3, 2_psi1, 2_psi2, 2_psi3, ...]
+     * return the solution vector of the ODE.
      * @return PetscBlockVector instance 
      */
     auto& state() { return *state_; }
 
     /**
-     * return the solution vector of the ODE. It has the form: 
-     * [1_V1, 1_V2, 1_V3, 1_psi1, 1_psi2, 1_psi3, 2_V1, 2_V2, 2_V3, 2_psi1, 2_psi2, 2_psi3, ...]
+     * return the solution vector of the ODE. 
      * @return constant PetscBlockVector instance 
      */
     auto const& state() const { return *state_; }
@@ -116,7 +115,7 @@ public:
 
     /**
      * Initialize the PETSC monitor to print metrics at certain iteration
-     * @param monitor reference to the monitor (instance of SeasWriter.h)
+     * @param [in   ] monitor reference to the monitor (instance of SeasWriter.h)
      */
     template <class Monitor> void set_monitor(Monitor& monitor) {
         CHKERRTHROW(TSMonitorSet(ts_, &MonitorFunction<Monitor>, &monitor, nullptr));
@@ -125,11 +124,11 @@ public:
 private:
     /**
      * evaluate the rhs of the compact ODE
-     * @param ts TS object
-     * @param t current simulation time
-     * @param u current state vector (contains V and psi on all fault nodes in block format)
-     * @param F first time derivative of u (solution vector to be written to)
-     * @param ctx pointer to Seas operator instanceTimeOp*
+     * @param [in   ] ts TS object
+     * @param [in   ] t current simulation time
+     * @param [in   ] u current state vector (contains V and psi on all fault nodes in block format)
+     * @param [inout] F first time derivative of u (solution vector to be written to)
+     * @param [inout] ctx pointer to Seas operator instanceTimeOp*
      */
     template <typename TimeOp>
     static PetscErrorCode RHSFunctionCompactODE(TS ts, PetscReal t, Vec u, Vec F, void* ctx) {
@@ -141,12 +140,28 @@ private:
     }
 
     /**
+     * evaluate the Jacobian of the compact ODE
+     * @param [in   ] ts TS object
+     * @param [in   ] t current simulation time
+     * @param [in   ] u current state vector (contains V and psi on all fault nodes in block format)
+     * @param [inout] A Jacobian matrix
+     * @param [inout] B matrix for the preconditioner (take the same as A)
+     * @param [inout] ctx pointer to Seas operator instance
+     */
+    template <typename TimeOp>
+    static PetscErrorCode RHSJacobianCompactODE(TS ts, PetscReal t, Vec u, Mat A, Mat B, void *ctx){
+        TimeOp* self = reinterpret_cast<TimeOp*>(ctx);
+        self->updateJacobianCompactODE(A);
+        return 0;
+    }
+
+    /**
      * evaluate the rhs of the extended ODE
-     * @param ts TS object
-     * @param t current simulation time
-     * @param u current state vector (contains V and psi on all fault nodes in block format)
-     * @param F first time derivative of u (solution vector to be written to)
-     * @param ctx pointer to Seas operator instanceTimeOp*
+     * @param [in   ] ts TS object
+     * @param [in   ] t current simulation time
+     * @param [in   ] u current state vector (contains V and psi on all fault nodes in block format)
+     * @param [inout] F first time derivative of u (solution vector to be written to)
+     * @param [inout] ctx pointer to Seas operator instanceTimeOp*
      */
     template <typename TimeOp>
     static PetscErrorCode RHSFunctionExtendedODE(TS ts, PetscReal t, Vec u, Vec F, void* ctx) {
@@ -158,12 +173,12 @@ private:
     }
 
     /**
-     * evaluate the rhs to 0 for DAEs
-     * @param ts TS object
-     * @param t current simulation time
-     * @param u current state vector (contains V and psi on all fault nodes in block format)
-     * @param F first time derivative of u (solution vector to be written to)
-     * @param ctx pointer to Seas operator instanceTimeOp*
+     * evaluate the rhs to 0 for DAEs (not used)
+     * @param [in   ] ts TS object
+     * @param [in   ] t current simulation time
+     * @param [in   ] u current state vector (contains V and psi on all fault nodes in block format)
+     * @param [inout] F first time derivative of u (solution vector to be written to)
+     * @param [inout] ctx pointer to Seas operator instanceTimeOp*
      */
     static PetscErrorCode zeroRHS(TS ts, PetscReal t, Vec u, Vec F, void* ctx) {
         CHKERRTHROW(VecZeroEntries(F));
@@ -171,30 +186,15 @@ private:
     }
 
 
-    /**
-     * evaluate the Jacobian of the compact ODE
-     * @param ts TS object
-     * @param t current simulation time
-     * @param u current state vector (contains V and psi on all fault nodes in block format)
-     * @param A Jacobian matrix
-     * @param B matrix for the preconditioner (take the same as A)
-     * @param ctx pointer to Seas operator instance
-     */
-    template <typename TimeOp>
-    static PetscErrorCode RHSJacobianCompactODE(TS ts, PetscReal t, Vec u, Mat A, Mat B, void *ctx){
-        TimeOp* self = reinterpret_cast<TimeOp*>(ctx);
-        self->updateJacobianCompactODE(A);
-        return 0;
-    }
 
     /**
      * evaluate the Jacobian of the extended ODE
-     * @param ts TS object
-     * @param t current simulation time
-     * @param u current state vector (contains V and psi on all fault nodes in block format)
-     * @param A Jacobian matrix
-     * @param B matrix for the preconditioner (take the same as A)
-     * @param ctx pointer to Seas operator instance
+     * @param [in   ] ts TS object
+     * @param [in   ] t current simulation time
+     * @param [in   ] u current state vector (contains V and psi on all fault nodes in block format)
+     * @param [inout] A Jacobian matrix
+     * @param [inout] B matrix for the preconditioner (take the same as A)
+     * @param [inout] ctx pointer to Seas operator instance
      */
     template <typename TimeOp>
     static PetscErrorCode RHSJacobianExtendedODE(TS ts, PetscReal t, Vec u, Mat A, Mat B, void *ctx){
@@ -205,12 +205,12 @@ private:
 
     /**
      * evaluate the lhs F() of the compact DAE
-     * @param ts TS object
-     * @param t current simulation time
-     * @param u current state vector (contains S and psi on all fault nodes in block format)
-     * @param u_t current state derivative vector (contains V and dot{psi} on all fault nodes in block format)
-     * @param F first time derivative of u (solution vector to be written to)
-     * @param ctx pointer to Seas operator instanceTimeOp*
+     * @param [in   ] ts TS object
+     * @param [in   ] t current simulation time
+     * @param [in   ] u current state vector (contains S and psi on all fault nodes in block format)
+     * @param [in   ] u_t current state derivative vector (contains V and dot{psi} on all fault nodes in block format)
+     * @param [inout] F first time derivative of u (solution vector to be written to)
+     * @param [inout] ctx pointer to Seas operator instanceTimeOp*
      */
     template <typename TimeOp>
     static PetscErrorCode LHSFunctionCompactDAE(TS ts, PetscReal t, Vec u, Vec u_t, Vec F, void* ctx) {
@@ -226,14 +226,14 @@ private:
 
     /**
      * evaluate the Jacobian of the compact DAE
-     * @param ts TS object
-     * @param t current simulation time
-     * @param u current state vector (contains S and psi on all fault nodes in block format)
-     * @param u_t current state derivative vector (contains V and dot{psi} on all fault nodes in block format)
-     * @param sigma shift dx_dot/dx, depends on the numerical scheme
-     * @param A Jacobian matrix
-     * @param B matrix for the preconditioner (take the same as A)
-     * @param ctx pointer to Seas operator instance
+     * @param [in   ] ts    TS object
+     * @param [in   ] t     current simulation time
+     * @param [in   ] u     current state vector (contains S and psi on all fault nodes in block format)
+     * @param [in   ] u_t   current state derivative vector (contains V and dot{psi} on all fault nodes in block format)
+     * @param [in   ] sigma shift dx_dot/dx, depends on the numerical scheme
+     * @param [inout] A     Jacobian matrix
+     * @param [inout] B     matrix for the preconditioner (take the same as A)
+     * @param [inout] ctx   pointer to Seas operator instance
      */
     template <typename TimeOp>
     static PetscErrorCode LHSJacobianCompactDAE(TS ts, PetscReal t, Vec u, Vec u_t, PetscReal sigma, Mat A, Mat B, void *ctx){
@@ -245,12 +245,12 @@ private:
 
     /**
      * evaluate the lhs F() of the extended DAE
-     * @param ts TS object
-     * @param t current simulation time
-     * @param u current state vector (contains S and psi on all fault nodes in block format)
-     * @param u_t current state derivative vector (contains V and dot{psi} on all fault nodes in block format)
-     * @param F first time derivative of u (solution vector to be written to)
-     * @param ctx pointer to Seas operator instanceTimeOp*
+     * @param [in   ] ts TS object
+     * @param [in   ] t current simulation time
+     * @param [in   ] u current state vector (contains S and psi on all fault nodes in block format)
+     * @param [in   ] u_t current state derivative vector (contains V and dot{psi} on all fault nodes in block format)
+     * @param [inout] F first time derivative of u (solution vector to be written to)
+     * @param [inout] ctx pointer to Seas operator instanceTimeOp*
      */
     template <typename TimeOp>
     static PetscErrorCode LHSFunctionExtendedDAE(TS ts, PetscReal t, Vec u, Vec u_t, Vec F, void* ctx) {
@@ -269,14 +269,14 @@ private:
 
     /**
      * evaluate the Jacobian of the extended DAE
-     * @param ts TS object
-     * @param t current simulation time
-     * @param u current state vector (contains S and psi on all fault nodes in block format)
-     * @param u_t current state derivative vector (contains V and dot{psi} on all fault nodes in block format)
-     * @param sigma shift dx_dot/dx, depends on the numerical scheme
-     * @param A Jacobian matrix
-     * @param B matrix for the preconditioner (take the same as A)
-     * @param ctx pointer to Seas operator instance
+     * @param [in   ] ts    TS object
+     * @param [in   ] t     current simulation time
+     * @param [in   ] u     current state vector (contains S and psi on all fault nodes in block format)
+     * @param [in   ] u_t   current state derivative vector (contains V and dot{psi} on all fault nodes in block format)
+     * @param [in   ] sigma shift dx_dot/dx, depends on the numerical scheme
+     * @param [inout] A     Jacobian matrix
+     * @param [inout] B     matrix for the preconditioner (take the same as A)
+     * @param [inout] ctx   pointer to Seas operator instance
      */
     template <typename TimeOp>
     static PetscErrorCode LHSJacobianExtendedDAE(TS ts, PetscReal t, Vec u, Vec u_t, PetscReal sigma, Mat A, Mat B, void *ctx){
@@ -287,11 +287,11 @@ private:
 
     /**
      * call the PETSC monitor at each iteration when printing is desired
-     * @param ts TS object
-     * @param steps current iteration step number
-     * @param time current simulation time
-     * @param u current state vector (contains V and psi on all fault nodes in block format)
-     * @param ctx pointer to the Seas writer instance
+     * @param [in   ] ts TS object
+     * @param [in   ] steps current iteration step number
+     * @param [in   ] time current simulation time
+     * @param [in   ] u current state vector (contains V and psi on all fault nodes in block format)
+     * @param [in   ] ctx pointer to the Seas writer instance
      */
     template <class Monitor>
     static PetscErrorCode MonitorFunction(TS ts, PetscInt steps, PetscReal time, Vec u, void* ctx) {
@@ -304,7 +304,8 @@ private:
 
     /**
      * Initialize the solver with respect to the given parameters
-     * @param timeop instance of the seas operator
+     * @param [inout] timeop instance of the seas operator
+     * @return               error code
      */
     template <typename TimeOp> 
     int initializeSolver(TimeOp& timeop){
@@ -378,8 +379,8 @@ private:
 
     /**
      * Check whether the configuration file makes sense
-     * @param cfg specific configuration file
-     * 
+     * @param [in   ] cfg specific configuration file
+     * @return            error code
      */
     template<typename CFG, typename TimeOp>
     int checkSanity(CFG& cfg, TimeOp& timeop){
@@ -418,7 +419,7 @@ private:
             }
             if (!cfg->bdf_custom_Newton_iteration)
                 std::cout << "\nInfo: Using the PETSc default Newton iteration" << std::endl;
-            if (cfg->bdf_custom_LU_solver && (cfg->problem_formulation == "ode") && (Dim == 3)){
+            if (cfg->bdf_custom_LU_solver && ((cfg->problem_formulation == "ode") || (Dim == 3))){
                 std::cerr << "\nError: The reduced linear system with a partial LU decomposition is only available for DAE formulations in 2D." << std::endl;
                 return -1;
             }
@@ -437,8 +438,8 @@ private:
      * Performs actions before each stage
      * - If it is the first call of a compact DAE, calculate the initial derivative vector
      *   and approximate the initial guess with an explicit RK4
-     * @param ts TS context
-     * @param t current simulation time
+     * @param [inout] ts TS context
+     * @param [in   ] t current simulation time
      */
     template <typename TimeOp> 
     static PetscErrorCode functionPreStage(TS ts, double t) {
@@ -464,10 +465,10 @@ private:
     /**
      * Performs actions after each stage
      * - in the 2nd order ODE formulation, if an implicit method is used, the slip is calculated separately after the Newton iteration
-     * @param ts TS context
-     * @param t current simulation time
-     * @param k stage index
-     * @param Y current solution vector
+     * @param [inout] ts TS context
+     * @param [in   ] t  current simulation time
+     * @param [in   ] k  stage index
+     * @param [in   ] Y  current solution vector
      */
     template <typename TimeOp> 
     static PetscErrorCode functionPostStage(TS ts, double t, int k, Vec* Y) {
@@ -499,7 +500,7 @@ private:
 
     /**
      * This function is executed at the end of each succesfull timestep. Used to update tolerances
-     * @param ts the TS context
+     * @param [inout] ts the TS context
      */
     template <typename TimeOp>
     static PetscErrorCode functionPostEvaluate(TS ts){
@@ -534,10 +535,10 @@ private:
 
     /**
      * Sets the absolute and relative tolerances 
-     * @param ts           the TS context
-     * @param timeop       instance of the seas opTS contexterator
-     * @param enterEQphase direction of the switch: true for as->eq, false for eq->as
-     * @param initialCall  only true to initialize the system at the very beginning
+     * @param [inout] ts           the TS context
+     * @param [inout] timeop       instance of the seas opTS contexterator
+     * @param [in   ] enterEQphase direction of the switch: true for as->eq, false for eq->as
+     * @param [in   ] initialCall  only true to initialize the system at the very beginning
      */
     template <typename TimeOp>
     static void switchBetweenASandEQ(TS ts, TimeOp& timeop, bool enterEQphase, bool initialCall){
@@ -617,13 +618,13 @@ private:
 
     /**
      * Change formulation of the problem. e.g. from extended ODE -> compact DAE
-     * @param ts                 TS instance
-     * @param time               current simulation time
-     * @param timeop             instance of the SEAS operator
-     * @param cfg_prev           specific configuration of the previous section
-     * @param cfg_next           specific configuration of the next section
-     * @param nextSolutionVector solution vector after the change
-     * @param initialCall        only true to initialize the system at the very beginning
+     * @param [inout] ts                 TS instance
+     * @param [in   ] time               current simulation time
+     * @param [inout] timeop             instance of the SEAS operator
+     * @param [in   ] cfg_prev           specific configuration of the previous section
+     * @param [in   ] cfg_next           specific configuration of the next section
+     * @param [inout] nextSolutionVector solution vector after the change
+     * @param [in   ] initialCall        only true to initialize the system at the very beginning
      */
     template <typename TimeOp, typename BlockVector>
     static void changeFormulation(TS ts, double time, TimeOp& timeop, 
@@ -743,15 +744,15 @@ private:
 
     /**
      * Sets the absolute and relative tolerances for the formulation
-     * @param ts the TS context
-     * @param timeop instance of the seas operator
-     * @param solution_size can be compact or extended
-     * @param S_rtol relative error tolerance of the slip 
-     * @param S_atol absolute error tolerance of the slip 
-     * @param psi_rtol relative error tolerance of the state variable 
-     * @param psi_atol absolute error tolerance of the state varaible 
-     * @param V_rtol relative error tolerance of the slip rate
-     * @param V_atol absolute error tolerance of the slip rate
+     * @param [inout] ts the TS context
+     * @param [in   ] timeop instance of the seas operator
+     * @param [in   ] solution_size can be compact or extended
+     * @param [in   ] S_rtol relative error tolerance of the slip 
+     * @param [in   ] S_atol absolute error tolerance of the slip 
+     * @param [in   ] psi_rtol relative error tolerance of the state variable 
+     * @param [in   ] psi_atol absolute error tolerance of the state varaible 
+     * @param [in   ] V_rtol relative error tolerance of the slip rate
+     * @param [in   ] V_atol absolute error tolerance of the slip rate
      */
     template <typename TimeOp> 
     static void setTolerancesVector(TS ts, TimeOp& timeop, std::string solution_size, double S_rtol, double S_atol, double psi_rtol, double psi_atol, double V_rtol, double V_atol){
@@ -769,12 +770,12 @@ private:
     }
 
     /** fill the components of a block vector with constant values for S, psi and eventually V
-     * @param timeop instance of the seas operator
-     * @param includeV true for extended
-     * @param vec vector to write to
-     * @param S value for S
-     * @param psi value for psi
-     * @param V value for V
+     * @param [in   ] timeop   instance of the seas operator
+     * @param [in   ] includeV true for extended formulations
+     * @param [  out] vec      vector to write to
+     * @param [in   ] S        value for S
+     * @param [in   ] psi      value for psi
+     * @param [in   ] V        value for V
      */
     template <typename TimeOp> 
     static void fillBlockVector(TimeOp& timeop, bool includeV, Vec& vec, double S, double psi, double V){
@@ -821,8 +822,8 @@ private:
 
     /**
      * Sets the tolerances for the nonlinear solver
-     * @param ts the TS context
-     * @param seasop SeasOperator instance
+     * @param [inout] ts the TS context
+     * @param [in   ] seasop SeasOperator instance
      */
     template <typename TimeOp>
     static void setSNESTolerances(TS ts, TimeOp& seasop) {
@@ -865,10 +866,10 @@ private:
 
     /**
      * Set up the BDF scheme
-     * @param ts TS instance
-     * @param seasop SeasOperator instance
-     * @param cfg specific configuration to see whether use manual implementations or not
-     * @param solverStruct contains the pointer to the manual implementations
+     * @param [inout] ts TS instance
+     * @param [in   ] seasop SeasOperator instance
+     * @param [in   ] cfg specific configuration to see whether use manual implementations or not
+     * @param [inout] solverStruct contains the pointer to the manual implementations
      */
     template <typename CFG, typename TimeOp>
     static void setBDFParameters(TS ts, TimeOp& seasop,
@@ -905,8 +906,8 @@ private:
 
     /**
      * Custom implementation of the Newton algorithm 
-     * @param snes solving context
-     * @param x solution vector 
+     * @param [inout] snes solving context
+     * @param [inout] x    solution vector 
      */
     template <typename TimeOp> 
     static PetscErrorCode solveNewton(SNES snes, Vec x){
@@ -1019,10 +1020,10 @@ private:
 
     /**
      * Evaluate the local truncation error with the embedded BDF method 
-     * @param ts main ts object [in]
-     * @param NormType norm to be used to calculate the lte [in]
-     * @param order order of the error evaluation [out]
-     * @param wlte weighted local truncation error [out]
+     * @param [in   ] ts       main ts object
+     * @param [in   ] NormType norm to be used to calculate the lte
+     * @param [  out] order    order of the error evaluation
+     * @param [  out] wlte     weighted local truncation error
      */
     static PetscErrorCode evaluateEmbeddedMethodBDF(TS ts,NormType wnormtype,PetscInt *order,PetscReal *wlte){
         // presolve processing
@@ -1068,15 +1069,15 @@ private:
 
     /**
      * Custom time step adapter
-     * @param adapt time adapter context
-     * @param ts general time-stepping context
-     * @param h previous time step
-     * @param next_sc ?
-     * @param next_h next time step
-     * @param accept whether time step is accepted or not
-     * @param wlte local truncation error
-     * @param wltea absolute LTE
-     * @param wlter relative LTE
+     * @param [in   ] adapt   time adapter context
+     * @param [in   ] ts      general time-stepping context
+     * @param [in   ] h       previous time step
+     * @param [  out] next_sc ?
+     * @param [  out] next_h  next time step
+     * @param [  out] accept  whether time step is accepted or not
+     * @param [  out] wlte    local truncation error
+     * @param [  out] wltea   absolute LTE
+     * @param [  out] wlter   relative LTE
      */
 static PetscErrorCode TSAdaptChoose_Custom(TSAdapt adapt,TS ts,PetscReal h,PetscInt *next_sc,PetscReal *next_h,PetscBool *accept,PetscReal *wlte,PetscReal *wltea,PetscReal *wlter)
 {
@@ -1151,10 +1152,10 @@ static PetscErrorCode TSAdaptChoose_Custom(TSAdapt adapt,TS ts,PetscReal h,Petsc
 
     /**
      * Calculate the cofficients for the Lagrangian extrapolation
-     * @param n number of interpolation points
-     * @param t current time
-     * @param T vector with the times at these points
-     * @param dL vector with the coefficients
+     * @param [in   ] n  number of interpolation points
+     * @param [in   ] t  current time
+     * @param [in   ] T  vector with the times at these points
+     * @param [  out] dL vector with the coefficients
      */
     PETSC_STATIC_INLINE void LagrangeBasisDers(PetscInt n,PetscReal t,const PetscReal T[],PetscScalar dL[])
     {
@@ -1188,6 +1189,10 @@ static PetscErrorCode TSAdaptChoose_Custom(TSAdapt adapt,TS ts,PetscReal h,Petsc
         PetscFunctionReturn(0);
     }
 
+    /** Calculate the timestep size with an error estimated one order above or below and return the order with the largest timestep
+     * @param [in   ] TS        TS context
+     * @param [  out] new_order best order 
+     * */
     template <typename TimeOp> 
     static PetscErrorCode adaptBDFOrder(TS ts, PetscInt& new_order)
     {
@@ -1224,8 +1229,8 @@ static PetscErrorCode TSAdaptChoose_Custom(TSAdapt adapt,TS ts,PetscReal h,Petsc
 
     /**
      * Resets the time to 0 at the beginning of the earthquake because of bad precision
-     * @param ts TS instance
-     * @param time_eq variable to store the time at the earthquake start
+     * @param [in   ] ts      TS instance
+     * @param [  out] time_eq variable to store the time at the earthquake start
      */
     static PetscErrorCode reducedTimeBeginEQ(TS ts, double& time_eq){
         TS_BDF         *bdf = (TS_BDF*)ts->data;
@@ -1243,8 +1248,8 @@ static PetscErrorCode TSAdaptChoose_Custom(TSAdapt adapt,TS ts,PetscReal h,Petsc
 
     /**
      * Restores the time at the end of the earthquake
-     * @param ts TS instance
-     * @param time_eq variable to retrieve the time at the earthquake start
+     * @param [in   ] ts      TS instance
+     * @param [  out] time_eq variable to store the time at the earthquake start
      */
     static PetscErrorCode reducedTimeEndEQ(TS ts, double& time_eq){
         TS_BDF         *bdf = (TS_BDF*)ts->data;
@@ -1262,8 +1267,8 @@ static PetscErrorCode TSAdaptChoose_Custom(TSAdapt adapt,TS ts,PetscReal h,Petsc
 
     /**
      * Resets the time to 0 at the end of each step
-     * @param ts TS instance
-     * @param time_eq variable to store the time at the earthquake start
+     * @param [in   ] ts      TS instance
+     * @param [  out] time_eq variable to store the time at the earthquake start
      */
     static PetscErrorCode reducedTimeEachStep(TS ts, double& time_eq){
         TS_BDF         *bdf = (TS_BDF*)ts->data;
@@ -1281,13 +1286,13 @@ static PetscErrorCode TSAdaptChoose_Custom(TSAdapt adapt,TS ts,PetscReal h,Petsc
 
     /**
      * Performs the fourth order RK scheme (wihout error correction) 
-     * @param ts TS instance
-     * @param t previous simulation time
-     * @param dt time step size to current simulation time
-     * @param X solution vector at previous time
-     * @param Y solution vector at current time
-     * @param f function to evaluate the right-hand side
-     * @param ctx pointer to the SEAS instance
+     * @param [in   ] ts TS instance
+     * @param [in   ] t previous simulation time
+     * @param [in   ] dt time step size to current simulation time
+     * @param [in   ] X solution vector at previous time
+     * @param [  out] Y solution vector at current time
+     * @param [in   ] f function to evaluate the right-hand side
+     * @param [in   ] ctx pointer to the SEAS instance
      */
     static PetscErrorCode RK4(TS ts, double t, double dt, Vec& X, Vec& Y, PetscErrorCode (*f)(TS,PetscReal,Vec,Vec,void*), void* ctx){
         Vec F[4];      // working vector for the right hand-side
@@ -1325,7 +1330,7 @@ static PetscErrorCode TSAdaptChoose_Custom(TSAdapt adapt,TS ts,PetscReal h,Petsc
     TS ts_ = nullptr;
 
     /**
-     * Struct of the internal BDF scheme in Petsc 
+     * Struct of the internal BDF scheme in Petsc -- to do hacky hacky stuff 
      */
     typedef struct {
         PetscInt  k,n;

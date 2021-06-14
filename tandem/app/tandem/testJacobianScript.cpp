@@ -1,5 +1,7 @@
 #include "testJacobianScript.h"
 
+#include "GlobalVariables.h"
+
 #include "kernels/poisson_adapter/tensor.h"
 
 namespace tndm::detail {
@@ -39,7 +41,7 @@ template <> struct adapter<SeasType::Elasticity> {
 
 
 template <SeasType type>
-void solve_Jacobian(LocalSimplexMesh<DomainDimension> const& mesh, Config const& cfg) {
+void solve_Jacobian(LocalSimplexMesh<DomainDimension> const& mesh, Config& cfg) {
     using adapter_t = typename adapter<type>::type;
     using adapter_lop_t = typename adapter<type>::type::local_operator_t;
     using fault_op_t = RateAndState<DieterichRuinaAgeing>;
@@ -58,6 +60,34 @@ void solve_Jacobian(LocalSimplexMesh<DomainDimension> const& mesh, Config const&
 
     KSP& ksp = adapt->getKSP();
     
+    // detect the aseismic phase/earthquake formulations
+    if((cfg.solver->solver_aseismicslip->solution_size == "compact")  
+    && (cfg.solver->solver_aseismicslip->problem_formulation == "ode")) 
+        cfg.solver->solver_aseismicslip->formulation = tndm::FIRST_ORDER_ODE;
+    if((cfg.solver->solver_aseismicslip->solution_size == "compact")  
+    && (cfg.solver->solver_aseismicslip->problem_formulation == "dae")) 
+        cfg.solver->solver_aseismicslip->formulation = tndm::COMPACT_DAE;
+    if((cfg.solver->solver_aseismicslip->solution_size == "extended") 
+    && (cfg.solver->solver_aseismicslip->problem_formulation == "dae")) 
+        cfg.solver->solver_aseismicslip->formulation = tndm::EXTENDED_DAE;
+    if((cfg.solver->solver_aseismicslip->solution_size == "extended") 
+    && (cfg.solver->solver_aseismicslip->problem_formulation == "ode")) 
+        cfg.solver->solver_aseismicslip->formulation = tndm::SECOND_ORDER_ODE;
+
+    if((cfg.solver->solver_earthquake->solution_size == "compact")  
+    && (cfg.solver->solver_earthquake->problem_formulation == "ode")) 
+        cfg.solver->solver_earthquake->formulation = tndm::FIRST_ORDER_ODE;
+    if((cfg.solver->solver_earthquake->solution_size == "compact")  
+    && (cfg.solver->solver_earthquake->problem_formulation == "dae")) 
+        cfg.solver->solver_earthquake->formulation = tndm::COMPACT_DAE;
+    if((cfg.solver->solver_earthquake->solution_size == "extended") 
+    && (cfg.solver->solver_earthquake->problem_formulation == "dae")) 
+        cfg.solver->solver_earthquake->formulation = tndm::EXTENDED_DAE;
+    if((cfg.solver->solver_earthquake->solution_size == "extended")
+    && (cfg.solver->solver_earthquake->problem_formulation == "ode"))
+        cfg.solver->solver_earthquake->formulation = tndm::SECOND_ORDER_ODE;
+
+
     auto seasop = std::make_shared<seas_op_t>(std::move(fop), std::move(adapt), cfg.solver);
     seasop->lop().set_constant_params(friction_scenario.constant_params());
     seasop->lop().set_params(friction_scenario.param_fun());
@@ -79,6 +109,7 @@ void solve_Jacobian(LocalSimplexMesh<DomainDimension> const& mesh, Config const&
         CHKERRTHROW(PCFactorSetMatSolverType(pc, cfg.solver->pc_factor_mat_solver_type.c_str()));
     }
 
+    seasop->setFormulation(tndm::FIRST_ORDER_ODE);
 
     /************ BEGIN of new code ***************/
     blockSize = seasop->block_size();
@@ -99,7 +130,7 @@ void solve_Jacobian(LocalSimplexMesh<DomainDimension> const& mesh, Config const&
         // initialize full solution vector
         PetscBlockVector xB = PetscBlockVector(blockSize, numFaultElements, seasop->comm());
         seasop->initial_condition(xB);
-        seasop->initialize_Jacobian(blockSize, 1.5 * blockSize);
+        seasop->prepareJacobian();
         VectorXd x_init(totalSize);
         writeBlockToEigen(xB, x_init);
 
@@ -274,7 +305,7 @@ VectorXd F(double dt,VectorXd& x, VectorXd& x_old, VectorXd rhs(VectorXd&)){
 
 namespace tndm {
 
-void testJacobianScript(LocalSimplexMesh<DomainDimension> const& mesh, Config const& cfg) {
+void testJacobianScript(LocalSimplexMesh<DomainDimension> const& mesh, Config& cfg) {
     if (cfg.seas.type == SeasType::Poisson) {
         detail::solve_Jacobian<SeasType::Poisson>(mesh, cfg);
     } else if (cfg.seas.type == SeasType::Elasticity) {

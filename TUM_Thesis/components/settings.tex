@@ -23,6 +23,8 @@
 % Conditional commands in LaTeX documents, used for the \clearemptydoublepage.
 \usepackage{ifthen}
 
+\setlength\parindent{0pt}
+
 % Typeset text in multiple columns (optional)
 % \usepackage{multicol}
 
@@ -58,7 +60,7 @@
 \bibliographystyle{plain}
 
 % Special biblography package (nice to have)
-% \usepackage{natbib}
+ \usepackage{natbib}
 
 
 %--------------------------------------------------
@@ -101,7 +103,8 @@
 \usepackage{stmaryrd}
 \usepackage{mathtools}
 \usepackage{bbm}
-
+\usepackage{bm}
+\usepackage{upgreek}
 %--------------------------------------------------
 % Source code and algorithms
 %--------------------------------------------------
@@ -109,7 +112,7 @@
 % Source code typesetting
 % \usepackage{listings} % (optional - alternative)
 \usepackage[newfloat]{minted} % (recommended)
-% Set global Minted options
+ % Set global Minted options
 \setminted{linenos, autogobble, frame=lines, framesep=2mm}
 % Inline C++ (optional)
 \newcommand{\incpp}[1]{\mintinline{c++}{#1}}
@@ -132,6 +135,12 @@
 
 % Add color to LaTeX tables (optional)
 % \usepackage{colortbl}
+
+\usepackage{tabularx}
+
+\usepackage{ltablex}
+
+\usepackage{arydshln}
 
 % Create tabular cells spanning multiple rows (optional)
 % \usepackage{multirow}

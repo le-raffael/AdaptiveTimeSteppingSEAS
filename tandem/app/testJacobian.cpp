@@ -90,15 +90,6 @@ int main(int argc, char** argv) {
         });
 
     auto& solverSchema = schema.add_table("solver", &Config::solver);
-    solverSchema.add_value("bdf_custom_error_evaluation", &SolverConfigGeneral::bdf_custom_error_evaluation)
-        .default_value(false)
-        .help("Only for BDF methods:\n  -[false] to use the default error estimate with Lagrange polynomials. \n  -[true] for a custom evaluation with an other BDF evaluation of lower order");
-    solverSchema.add_value("bdf_custom_Newton_iteration", &SolverConfigGeneral::bdf_custom_Newton_iteration)
-        .default_value(false)
-        .help("Only for BDF methods:\n  -[false] to use the default Newton iteration.\n  - [true] for a custom implementation (used for debugging)");
-    solverSchema.add_value("custom_time_step_adapter", &SolverConfigGeneral::custom_time_step_adapter)
-        .default_value(false)
-        .help("Estimation of the new time step size:\n  -[false] to use the basic PETSc built-in adapter.\n  -[true] to use a custom, implementation-dependent adapter.\n Deverloper note: this parameter is likely to be changed to string to allow the choice between different custom adapter");
     solverSchema.add_value("adapt_wnormtype", &SolverConfigGeneral::adapt_wnormtype)
         .default_value("infinity")
         .help("norm to estimate the local truncation error");
@@ -128,9 +119,9 @@ int main(int argc, char** argv) {
         .default_value("5dp")
         .help("type of the Runge-Kutta scheme (use Petsc standard). Does not need to be provided if no Runge-Kutta scheme is used. ['3bs', '5dp', ... ]");
     earthquakeSchema.add_value("bdf_order", &SolverConfigSpecific::bdf_order)
-        .validator([](auto&& x) { return ((x > 0) || (x <= 6)); })
+        .validator([](auto&& x) { return ((x >= 0) || (x <= 6)); })
         .default_value(4)
-        .help("Order of the BDF scheme. Does not need to be provided if no BDF scheme is used");
+        .help("Order of the BDF scheme. Does not need to be provided if no BDF scheme is used. Set 0 to adaptively change the order.");
     earthquakeSchema.add_value("S_atol", &SolverConfigSpecific::S_atol)
         .validator([](auto&& x) { return x >= 0; })
         .default_value(1e-7)
@@ -155,6 +146,24 @@ int main(int argc, char** argv) {
         .validator([](auto&& x) { return x >= 0; })
         .default_value(1e-7)
         .help("relative tolerance for the slip rate");
+    earthquakeSchema.add_value("bdf_custom_error_evaluation", &SolverConfigSpecific::bdf_custom_error_evaluation)
+        .default_value(false)
+        .help("Only for BDF methods:\n  -[false] to use the default error estimate with Lagrange polynomials. \n  -[true] for a custom evaluation with an other BDF evaluation of lower order");
+    earthquakeSchema.add_value("bdf_custom_Newton_iteration", &SolverConfigSpecific::bdf_custom_Newton_iteration)
+        .default_value(false)
+        .help("Only for BDF methods:\n  -[false] to use the default Newton iteration.\n  - [true] for a custom implementation (necessary for the extended ODE formulation)");
+    earthquakeSchema.add_value("bdf_custom_LU_solver", &SolverConfigSpecific::bdf_custom_LU_solver)
+        .default_value(false)
+        .help("Only for BDF methods:\n  -[false] to use the default linear solver in the Newton iteration O(n^3).\n  - [true] for a custom implementation with partial initial LU in O(n^2)");
+    earthquakeSchema.add_value("custom_time_step_adapter", &SolverConfigSpecific::custom_time_step_adapter)
+        .default_value(false)
+        .help("Estimation of the new time step size:\n  -[false] to use the basic PETSc built-in adapter.\n  -[true] to use a custom, implementation-dependent adapter.\n Deverloper note: this parameter is likely to be changed to string to allow the choice between different custom adapter");
+    earthquakeSchema.add_value("bdf_ksp_type", &SolverConfigSpecific::bdf_ksp_type)
+        .default_value("preonly")
+        .help("type of the ksp matrix-vector multiplication procedure for the Jacobian");
+    earthquakeSchema.add_value("bdf_pc_type", &SolverConfigSpecific::bdf_pc_type)
+        .default_value("lu")
+        .help("type of the preconditioner for the Jacobian");
 
     auto& aseismicSlipSchema = solverSchema.add_table("aseismic_slip", &SolverConfigGeneral::solver_aseismicslip);
     aseismicSlipSchema.add_value("solution_size", &SolverConfigSpecific::solution_size)
@@ -199,6 +208,24 @@ int main(int argc, char** argv) {
         .validator([](auto&& x) { return x >= 0; })
         .default_value(1e-7)
         .help("relative tolerance for the slip rate - Only nededed if the solution size is extended");
+    aseismicSlipSchema.add_value("bdf_custom_error_evaluation", &SolverConfigSpecific::bdf_custom_error_evaluation)
+        .default_value(false)
+        .help("Only for BDF methods:\n  -[false] to use the default error estimate with Lagrange polynomials. \n  -[true] for a custom evaluation with an other BDF evaluation of lower order");
+    aseismicSlipSchema.add_value("bdf_custom_Newton_iteration", &SolverConfigSpecific::bdf_custom_Newton_iteration)
+        .default_value(false)
+        .help("Only for BDF methods:\n  -[false] to use the default Newton iteration.\n  - [true] for a custom implementation (necessary for the extended ODE formulation)");
+    aseismicSlipSchema.add_value("bdf_custom_LU_solver", &SolverConfigSpecific::bdf_custom_LU_solver)
+        .default_value(false)
+        .help("Only for BDF methods:\n  -[false] to use the default linear solver in the Newton iteration O(n^3).\n  - [true] for a custom implementation with partial initial LU in O(n^2)");
+    aseismicSlipSchema.add_value("custom_time_step_adapter", &SolverConfigSpecific::custom_time_step_adapter)
+        .default_value(false)
+        .help("Estimation of the new time step size:\n  -[false] to use the basic PETSc built-in adapter.\n  -[true] to use a custom, implementation-dependent adapter.\n Deverloper note: this parameter is likely to be changed to string to allow the choice between different custom adapter");
+    aseismicSlipSchema.add_value("bdf_ksp_type", &SolverConfigSpecific::bdf_ksp_type)
+        .default_value("preonly")
+        .help("type of the ksp matrix-vector multiplication procedure for the Jacobian");
+    aseismicSlipSchema.add_value("bdf_pc_type", &SolverConfigSpecific::bdf_pc_type)
+        .default_value("lu")
+        .help("type of the preconditioner for the Jacobian");
 
 
     std::optional<Config> cfg = readFromConfigurationFileAndCmdLine(schema, program, argc, argv);

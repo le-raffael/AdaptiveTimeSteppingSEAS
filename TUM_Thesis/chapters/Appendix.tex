@@ -4,7 +4,7 @@
 \label{apx:ButcherTableaus}
 
 \section{2nd order Bogacki-Shampine method}
-It is a 2nd order scheme with a 3rd order embedded method for the error estimate developped in 1989 \cite{RK-BogackiShampine}. It is well-suited if a rough error estimation is sufficient. The Butcher tableau reads:
+This is a 2nd order scheme with a 3rd order embedded method for the error estimate developed in 1989 \cite{RK-BogackiShampine}. It is well suited if a rough error estimation is sufficient. The Butcher tableau reads:
 \begin{center}
 	\begin{tabular}{c | c c c c}
 		0 & & & & \\
@@ -17,7 +17,7 @@ It is a 2nd order scheme with a 3rd order embedded method for the error estimate
 \end{center}
 
 \section{4th order Fehlberg method}
-It is a 4th order scheme with a 5th order embedded method for the error estimate developped in 1969 \cite{RK-Fehlberg}. It gives a more accurate error estimate than the RK-BS scheme and converges with 4th order. The Butcher tableau reads:
+This is a 4th order scheme with a 5th order embedded method for the error estimate developed in 1969 \cite{RK-Fehlberg}. It gives a more accurate error estimate than the RK-BS scheme and converges with 4th order. The Butcher tableau reads:
 
 \begin{center}
 	\begin{tabular}{c | c c c c c c}
@@ -34,7 +34,7 @@ It is a 4th order scheme with a 5th order embedded method for the error estimate
 
 
 \section{5th order Dormand-Prince method}
-It is a 5th order scheme with a 4th order embedded method for the error estimate developped in 1969 \cite{RK-DormandPrince}. Unlike the Fehlberg scheme, it minimizes the error of the 5th order solution. The Butcher tableau reads:
+This is a 5th order scheme with a 4th order embedded method for the error estimate developed in 1969 \cite{RK-DormandPrince}. Unlike the Fehlberg scheme, it minimizes the error of the 5th order solution. The Butcher tableau reads:
 
 \begin{center}
 	\begin{tabular}{c | c c c c c c c}
@@ -50,8 +50,8 @@ It is a 5th order scheme with a 4th order embedded method for the error estimate
 	\end{tabular}
 \end{center}
 
-
-\chapter{Alternative derivation of the BDF method}
+\chapter{Additional proofs and mathematical explanations}
+\section{Alternative derivation of the BDF method}
 \label{apx:BDF_derivation_Taylor}
 The first order BDF-scheme corresponds to the backward Euler method in \autoref{eq:BDF_coeffs_1st_order}.
 \begin{equation}
@@ -65,11 +65,11 @@ Next, we try to derive the second order BDF-scheme. Because of the adaptive time
 \label{eq:taylor-polynomialBDF1(2)}
 \psi_{n+1} &= \psi_{n+2} - h_{n+1}\frac{d\psi_{n+2}}{dt} + \frac{h_{n+1}^2}{2}\frac{d^2\psi_{n+2}}{dt^2} + \mathcal{O}\left(h_{n+1}^3\right)
 \end{align}
-The idea is to add equations (\ref{eq:taylor-polynomialBDF1(1)}) and (\ref{eq:taylor-polynomialBDF1(2)}), where the latter is multiplied by a factor $\alpha$ in a way that the second-derivative term drops. The addition of the two Taylor-expansions yields: 
+The idea is to add equations (\ref{eq:taylor-polynomialBDF1(1)}) and (\ref{eq:taylor-polynomialBDF1(2)}), where the latter is multiplied by a factor $\alpha$ in such a way that the second-derivative term drops. The addition of the two Taylor expansions yields: 
 \begin{equation}
 \psi_{n} + \alpha \psi_{n+1} = (1+\alpha)\psi_{n+2} - \left(h_{n} + (1+\alpha)h_{n+1}\right)\frac{d\psi_{n+2}}{dt} + \frac{(h_{n} + h_{n+1})^2+\alpha h_{n+1}^2}{2}\frac{d^2\psi_{n+2}}{dt^2} + \mathcal{O}\left(h^3\right) \\
 \end{equation}
-By the choice of $\alpha$ in \autoref{eq:alpha}, the coefficient in front of the second time derivative of $\psi_{n+2}$ vanishes and the second order time adaptive BDF method is given by: \autoref{eq:BDF_coeffs_2nd_order}. 
+By the choice of $\alpha$ in \autoref{eq:alpha}, the coefficient in front of the second time derivative of $\psi_{n+2}$ vanishes and the second order time adaptive BDF method is given by \autoref{eq:BDF_coeffs_2nd_order}. 
 \begin{align}
 \label{eq:alpha}
 \alpha &= -\left(\frac{h_n}{h_{n+1}}\right)^2 - 2\frac{h_n}{h_{n+1}} - 1 \\
@@ -88,13 +88,74 @@ Analogously, the time-adapative third-order BDF3 scheme is given with the coeffi
 \psi_n + \alpha \psi_{n+1} + \beta \psi_{n+2} -(1+\alpha+\beta)\psi_{n+3} = \left(h_n + (1+\alpha)h_{n+1} + (1+\alpha+\beta)h_{n+2}\right)f(\psi_{n+3},V_{n+3})
 \end{equation}
 
-\chapter{Reduced Jacobian system for the extended DAE formulation}
+
+\section{Derivatives of the stress components with respective to the slip}
+\label{apx:dtau_dS}
+To calculate the Jacobian matrices of the SEAS problem, all formulations need the derivatives of the stress components $\tau$ in 2D and $\sigma_x$, $\tau_{xy}$ and $\tau_{xz}$ in 3D with respect to the slip at all fault nodes. All calculations here describe the symmetric 2D scenario, but a very similar reasoning holds for each of the three stress components in the 3D scenario. \\
+
+The traction $\tau$ is directly calculated from the displacement $u$, which in its turn is obtained from the DG problem. The matrix $\dv{\tau_i(u)}{S_j}$ is dense, but constant and can be therefore precomputed. To show this, we start with the form:
+
+\begin{align}
+\label{eq:partialDerivative_df_dS}
+\dv{\tau_i(u)}{S_j} = \pdv{\tau_i(u)}{u_k}\dv{u_k}{S_j} + \pdv{\tau_i(u)}{S_j}
+\end{align}
+
+The first task is calculating the partial derivative $\pdv{ U}{ S}$. Since $u = A^{-1}b(S)$ and the matrix $A$ does not depend on $S$, we just need to find the derivative of $b(S)$. For each edge $e$ of an element, $b_i$ is defined at the quadrature points of the Gaussian integration. Specifically for edges on the fault, we get:
+\begin{align}
+\pdv{b_i(S)}{S_j} &= \pdv{}{S_j}\int_e \eta \{\{\mathbf{C}_{mpkl}\epsilon_{kl}(w)n_p^e\}\}\llbracket u_m \rrbracket + \frac{\delta^e}{|e|^\beta}\llbracket u_m \rrbracket\llbracket w_m \rrbracket dx
+\end{align}
+where $\mathbf{C}$ is the stiffness tensor, $\epsilon$ is the strain, $\eta$ is either -1,0 or 1, $\beta$ depends on the domain dimension, $w$ are the quadrature weights, $n^e$ is the normal vector at the edge, $\delta^e$ is a penalty value and $\{\{\bullet\}\}$ is the operation $(\bullet^+ + \bullet^-) / 2$. The difference between the displacement on both sides is the negative slip $u_i^- - u_i^+ = \llbracket u_i \rrbracket = -S_i$, therefore the partial derivatives can be simplified with the terms in the integral. On all other quadrature points that are not on the fault, the right-hand side $b$ does not depend on $S$ and the derivatives at these points consequently vanish entirely. We then obtain, for all points $i$ in $\Omega$:
+\begin{equation}
+\label{eq:db_dS}
+\pdv{b_i(S)}{S_j} = -\int_e 
+\eta  \{\{\mathbf{C}_{jpkl}\epsilon_{kl}(w)n_p^e\}\} +
+\frac{\delta^e}{|e|^\beta}\llbracket w_j \rrbracket dx
+\end{equation}
+By extension, we get:
+\begin{equation}
+\pdv{ U_i}{ S_j} = A_{ik}^{-1}\pdv{b_k(S)}{S_j}
+\end{equation}
+The traction term $\tau(U,S)$ is calculated as $\tau = \mu \pdv{ u}{ x_i}n_i$, and is numerically approximated on the nodal basis by:
+ \begin{equation}
+ 	\tau_p = \sum_q \mathbf{M}_{rp}^{-1}\mathbf{e}_{rq}w_q(\nabla u)_{kq}n_{kq}
+ \end{equation} 
+where $\mathbf{M}$ is the mass matrix of the fault basis and $\mathbf{e}$ maps from fault to quadrature points. The gradient of $u$ is approximated by: 
+\begin{equation}
+	(\nabla u)_{pq} = \frac{1}{2}\left(\mathbf{D}_{lpq}^+u_l^+ + \mathbf{D}_{lpq}^-u_l^-\right) + c_0\left(\mathbf{E}_{lq}+u_l^+ - \mathbf{E}_{lq}^-u_l^- - f_q\right)n_{pq}
+\end{equation}
+where $\mathbf{E}$ maps from the quadrature to the element basis and $\mathbf{D}$ is the gradient of $\mathbf{E}$. The term $f_q$ contains actual slip transformed to the quadrature points. The evaluation of the derivative of the traction with respect to the displacement requires to derivate the gradient of the displacement with respect to itself. We obtain: 
+\begin{align}
+\pdv{(\nabla u)_{pq}}{u_k} &= \frac{1}{2}\left(\mathbf{D}_{lpq}^0\pdv{ u_l^0}{u_k} + \mathbf{D}_{lpq}^1\pdv{ u_l^1}{ u_k}\right) + c_0\left(\mathbf{E}_{lq}^0\pdv{u_l^0}{ u_k} - \mathbf{E}_{lq}^1\pdv{ u_l^1}{ u_k}\right)n_{pq} \\
+&= \frac{1}{2}\left(\mathbf{D}_{lpq}^0\delta_{lk}^0 + \mathbf{D}_{lpq}^1\delta_{lk}^1\right) + c_0\left(\mathbf{E}_{lq}^0\delta_{lk}^0 - \mathbf{E}_{lq}^1\delta_{lk}^1\right)n_{pq} \\
+&= \frac{1}{2}\left(\mathbf{D}_{kpq}^0 + \mathbf{D}_{kpq}^1\right) + c_0\left(\mathbf{E}_{kq}^0 - \mathbf{E}_{kq}^1\right)n_{pq} 
+\end{align}
+Furthermore we get: 
+\begin{equation}
+\pdv{ \tau_p}{ u_l} = M_{rp}^{-1}\mathbf{e}_{qr}^Tw_q
+\frac{(\nabla u)_{kq}}{ u_l}n_{kq}
+\end{equation}
+In addition, the traction needs to be derivated with respect to the current slip directly for the term $\pdv{\tau_i(U)}{S_j}$. $S$ appears in the term $f_q = \mathbf{e}_{qj}S_j$ of the gradient, so the derivative of $\nabla u$ with respect to the slip is also needed. 
+\begin{align}
+\pdv{(\nabla u)_{pq}}{S_j} = -c_0 \pdv{ f_q}{ S_j}n_{pq} 
+= -c_0 e^T_{qk}\pdv{ S_k}{ S_j}n_{pq} 
+= -c_0 e^T_{qj}n_{pq} 	
+\end{align}
+With this expression, we obtain: 
+\begin{equation}
+\label{eq:JacobianDtauDS_Poisson}
+\pdv{ \tau_p}{ S_j} = -\sum_q M_{rp}^{-1}\mathbf{e}_{qr}^Tw_qc_0e^T_{qj}n_{kq}n_{kq}
+\end{equation}
+This derivative term does not depend on the current slip anymore but only on the geometry of the discretization, so it can be calculated once at the beginning of the simulation. All components of the remaining partial derivative in \autoref{eq:partialDerivative_df_dS} are now available. \\
+In the implementation, existing structures could be used to calculate $\dv{\tau}{S}$. In \autoref{eq:db_dS}, the term $\pdv{b_i}{S_i}$ is calculated the exact same way as $b(S)$, but with the the unit vector $e^j$ instead of the slip. Furthermore, $f_q$ depends on the Dirichlet boundary conditions, which is $S$ on the rate-and-state fault and an imposed slip outside of it. At the initial time $t=0$, the imposed slip rate vanishes and only $S$ remains in $f_q$. To evaluate one row of $\dv{\tau_i}{S_j}$, the routine to calculate $\tau$ can be called with the unit vector $e^j$ instead of $S$ at the time $t=0$. Each call of this routine solves the DG problem and to set up the entire matrix, $\tau$ needs to be evaluated for each possible unit vector $e^j$. This is an expensive operations because the DG problem needs to be solved $n$ times in total, where $n$ is the number of fault nodes.
+
+
+\section{Reduced Jacobian system for the extended DAE formulation}
 \label{apx:ReducedJacobianExtendedDAE}
 To efficiently apply iterative solvers for the extended DAE formulation, a blockwise Gaussian-elimination on the sparse components of the Jacobian matrix can be calculated such that the iterative solvers are only applied on a dense subsystem. For a general 2D problem, the Jacobian system takes the form: 
 \begin{equation}
 \begin{pmatrix}
 \mathbf{J}_{11} & \mathbf{0}      & \mathbf{J}_{13} \\
-\mathbf{0}        & \mathbf{J}_{22} & \mathbf{J}_{23}   \\
+\mathbf{0}      & \mathbf{J}_{22} & \mathbf{J}_{23}   \\
 \mathbf{B}      & \mathbf{J}_{32} & \mathbf{J}_{33}   \\
 \end{pmatrix}\begin{pmatrix}
 x_1 \\ x_2 \\ x_3 
@@ -117,4 +178,75 @@ b_3 - \mathbf{J}_{33}\mathbf{J}_{13}^{-1}b_1 - \mathbf{J}_{32}\mathbf{J}_{22}^{-
 \\ b_1 
 \end{pmatrix}
 \end{align}
-The upper-left block form the reduced system which is solved iteratively. The other solution components are then calculated by an easy backward substitution.
+The upper-left block forms the reduced system, which is then solved iteratively. The other solution components are then calculated by an easy backward substitution.
+
+\chapter{Description of the implementation}
+Two separate programs were developed in the scope of this thesis. The first one\footnote{\url{https://github.com/le-raffael/AdaptiveTimeSteppingSEAS/tree/main/rate\_and\_state}} is a naive implementation of the 1D model of \autoref{chap:FirstExperiments}. It does not use any numerical library and includes a simple implementation of the RK-Fehlberg and the BDF schemes of 1st and 2nd order. Furthermore, the error estimates with Lagrangian polynomials and with an embedded higher-order method for BDF as well as the local elementary stepsize controller and the PI controller were implemented in it. \\
+The second and main software developed in the scope of this thesis\footnote{\url{https://github.com/le-raffael/AdaptiveTimeSteppingSEAS/tree/main/tandem}} is an based on {\ttfamily tandem} as of December 28th, 2020. \\
+The {\ttfamily .toml} file to specify the model parameters in {\ttfamily tandem} was extended by one section to include PETSc settings and to select the different possibilities presented in the thesis. At the beginning of the execution, all parameters are checked for sanity and warnings or errors are thrown if the selected parameter combination cannot be used or might lead to problems. An overview of the global settings is found in \autoref{tab:GlobalSettings}, they replace PETSc settings that were passed as command line arguments in {\ttfamily tandem}. Further settings in \autoref{tab:SpecificSettings} can be defined separately for the aseismic and earthquake phases.
+
+	\begin{tabularx}{\textwidth}{| >{\raggedright\arraybackslash}m{0.3\textwidth} | >{\raggedright\arraybackslash}X |}
+		\hline
+		Parameter & Description \\
+		\hline \hline
+		adapt\_wnormtype \newline \textbf{Options}: "2" or "infinity" 
+		& Defines the norm to be used to calculate the total LTE from the estimated LTE at each node. \newline \textbf{Remarks}: It is recommended to use the $\infty$-norm. \\ 
+		\hline
+		ksp\_type \newline \textbf{Options}: as in PETSc 
+		& Type of the linear solver for the DG problem \newline \textbf{Remarks}: Use "preonly" to use the direct LU decomposition. \\
+		\hline
+		pc\_type \newline \textbf{Options}: as in PETSc 
+		& Pre-conditioner for the DG problem \newline \textbf{Remarks}: Use "lu" to use the direct LU decomposition. \\
+		\hline
+		pc\_factor\_mat\_solver\_type \newline \textbf{Options}: as in PETSc 
+		& Software to perform the factorization in the LU decomposition \newline \textbf{Remarks}: Use of "mumps" is recommended \\		
+		\hline
+		\caption{Global settings. }
+		\label{tab:GlobalSettings}
+	\end{tabularx}
+
+	\begin{tabularx}{\textwidth}{| >{\raggedright\arraybackslash}m{0.32\textwidth} | >{\raggedright\arraybackslash}X |}
+		\hline
+		Parameter & Description \\
+		\hline \hline
+		solution\_size       \newline \textbf{Options}: "compact" or "extended"
+		& All solution vectors have a component in $S$ and $\psi$, the extended size has in addition $V$ \newline \textbf{Remarks}: "compact" for 1st order ODE and compact DAE formulations, "extended" for 2nd order ODE and extended DAE formulations \\ \hline
+		problem\_formulation \newline \textbf{Options}: "ode" or "dae" 
+		& Together with the information about the solution size, the desired formulation can be defined \\ \hline 
+		type                 \newline \textbf{Options}: "rk" or "bdf" 
+		& Decides whether an explicit Runge-Kutta scheme or an implicit BDF scheme is used for the time integration. \\ \hline
+		rk\_type             \newline \textbf{Options}: as in PETSc 
+		& Sets the desired RK method \newline \textbf{Remarks}: This setting is ignored if a BDF scheme is selected. \\ \hline 
+		bdf\_order           \newline \textbf{Options}: 0-6 
+		& Sets the order of the BDF scheme, the adaptive BDF order is selected with 0. \newline \textbf{Remarks}: This setting is ignored if a RK scheme is selected. \\ \hline 
+		S\_atol              \newline \textbf{Options}: $\ge0$
+		& Absolute tolerance for the slip $S$. \newline \textbf{Remarks}: Recommended is $10^{-6}$  \\ \hline 
+		S\_rtol              \newline \textbf{Options}: $\ge0$
+		& Relative tolerance for the slip $S$. \newline \textbf{Remarks}: Recommended is $0$ \\ \hline 
+		psi\_atol            \newline \textbf{Options}: $\ge0$
+		& Absolute tolerance for the state variable $\psi$. \newline \textbf{Remarks}: Recommended is $10^{-8}$ \\ \hline 
+		psi\_rtol            \newline \textbf{Options}: $\ge0$
+		& Relative tolerance for the slip $\psi$. \newline \textbf{Remarks}: Recommended is $0$ \\ \hline 
+		V\_atol              \newline \textbf{Options}: $\ge0$
+		& Absolute tolerance for the slip rate $V$. \newline \textbf{Remarks}:  Recommended is $0$ \\ \hline 
+		V\_rtol              \newline \textbf{Options}: $\ge0$
+		& Relative tolerance for the slip rate $V$.\newline \textbf{Remarks}:  Recommended is $10^{-8}$ only for the second order ODE. \\ \hline 
+	    bdf\_custom\_error\_evaluation	\newline \textbf{Options}: "true" or "false"
+	    & If true, the program uses a higher order embedded method to estimate the error from \autoref{sssec:errorEstimateBDFEmbeddedScheme}, elsewise it uses the derivative of the Lagrangian polynomials from \autoref{sssec:errorEstimateBDFLagrange} \newline \textbf{Remarks}: This setting is ignored if a RK scheme is selected. \\ \hline
+		bdf\_custom\_LU\_solver         \newline \textbf{Options}: "true" or "false"
+		& If true, the linear system in the Newton iteration is reduced as described in \autoref{ssec:iterative_solver_Jacobian} for DAE formulations in 2D. \newline \textbf{Remarks}: This setting is ignored if a RK scheme is selected. \\ \hline 
+		bdf\_ksp\_type                  \newline \textbf{Options}: as in PETSc
+		& Type of the iterative solver for the linear system in the Newton iteration. \newline \textbf{Remarks}: This setting is ignored if a RK scheme is selected. "gmres" is recommended, "preonly" for a direct LU solver. \\ \hline 
+		bdf\_pc\_type                   \newline \textbf{Options}: as in PETSc
+		& Type of the pre-conditioner for the iterative solver. \newline \textbf{Remarks}: This setting is ignored if a RK scheme is selected. "sor" is recommended, "lu" for a direct LU solver.\\
+		\hline
+		bdf\_custom\_Newton\_iteration  \newline \textbf{Options}: "true" or "false"
+		& If true, the program uses an own implementation of the Newton iteration, elsewise it uses the PETSc default implementation. \newline \textbf{Remarks}: This setting is ignored if a RK scheme is selected. "true" is necessary for the 2nd order ODE and for the custom LU solver.\\ \hline 
+		custom\_time\_step\_adapter     \newline \textbf{Options}: "true" or "false"
+		& If true, the program uses an own implementation of the timestep size controller, else wise, it uses the PETSc default controller.\newline \textbf{Remarks}: No custom timestep controller has been implemented yet, but it can be easily added in the code. \\ \hline
+		\caption{Specific settings for the aseismic and earthquake phases. }
+		\label{tab:SpecificSettings}
+	\end{tabularx}
+
+
+

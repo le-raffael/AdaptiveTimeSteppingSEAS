@@ -18,3 +18,5 @@ tandem/build/*
 *.cyp
 *.msh
 *.log
+results/*.png
+
